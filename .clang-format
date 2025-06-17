@@ -1,0 +1,8 @@
+---
+Language: Cpp
+BasedOnStyle: Google
+IndentWidth: 2
+Standard: Auto
+TabWidth: 2
+UseCRLF: false
+UseTab: Never

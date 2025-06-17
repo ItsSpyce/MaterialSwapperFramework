@@ -1,0 +1,20 @@
+{
+  "name": "material-swapper-framework",
+  "version-string": "0.0.1",
+  "dependencies": [
+    "boost-stl-interfaces",
+    "fmt",
+    "spdlog",
+    "simpleini",
+    "catch2",
+    "rapidcsv",
+    "rsm-binary-io",
+    "xbyak",
+    "directxtk",
+    {
+      "name": "imgui",
+      "version>=": "1.91.8",
+      "features": [ "dx11-binding", "win32-binding", "freetype", "wchar32" ]
+    }
+  ]
+}
