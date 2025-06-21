@@ -112,7 +112,7 @@ class MaterialLoader {
     auto it = materialConfigs_.find(formID);
     if (it != materialConfigs_.end()) {
       for (auto& record : it->second) {
-        if (record.isDefault) {
+        if (!record.modifyName) {
           return record;
         }
       }
