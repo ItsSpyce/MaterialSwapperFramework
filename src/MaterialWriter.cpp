@@ -65,7 +65,7 @@ bool MaterialWriter::ApplyMaterial(RE::TESObjectREFR* refr,
   auto inventoryItem =
       Helpers::GetInventoryItemWithFormID(refr, armo->GetFormID());
   RETURN_IF_FALSE(inventoryItem.data)
-  if (material.isDefault) {
+  if (!material.modifyName) {
     ClearItemDisplayName(inventoryItem.data);
   } else {
     const auto newDisplayName = AppendMaterialName(armo, material);

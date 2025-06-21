@@ -5,7 +5,7 @@ struct MaterialRecord {
   std::string filename;
   std::vector<std::string> shapes{};
   bool isHidden;
-  bool isDefault;
+  bool modifyName = true;
 };
 
 struct FormIDConfigEntry {

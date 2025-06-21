@@ -5,6 +5,7 @@
 #include "UI.h"
 #include "Hooks.h"
 #include "Events.h"
+#include "MaterialPapyrus.h"
 
 static void InitializeLogging() {
   static bool initialized = false;
@@ -56,6 +57,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
   SKSE::GetMessagingInterface()->RegisterListener(HandleMessage);
   UI::RegisterHooks();
   Hooks::Install();
+  SKSE::GetPapyrusInterface()->Register(MaterialPapyrus::RegisterFunctions);
 
   return true;
 }
