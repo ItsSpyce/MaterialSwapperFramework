@@ -5,7 +5,6 @@
 #include "UI.h"
 #include "Hooks.h"
 #include "Events.h"
-#include "MaterialCache.h"
 
 static void InitializeLogging() {
   static bool initialized = false;
@@ -36,7 +35,7 @@ static void InitializeLogging() {
   logger->set_level(spdlog::level::trace);
   logger->flush_on(spdlog::level::trace);
   spdlog::set_default_logger(std::move(logger));
-  spdlog::set_pattern("%^[%T] %n: %v%$");
+  spdlog::set_pattern("%^[%T] %l: %v%$");
 }
 
 static void HandleMessage(SKSE::MessagingInterface::Message* msg) {
@@ -57,7 +56,6 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
   SKSE::GetMessagingInterface()->RegisterListener(HandleMessage);
   UI::RegisterHooks();
   Hooks::Install();
-  MaterialCache::Initialize();
 
   return true;
 }

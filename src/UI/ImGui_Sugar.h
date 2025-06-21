@@ -205,6 +205,9 @@ inline auto BeginTooltip() -> bool {
 
 #define ImGui_Column ImGui::TableNextColumn();
 
+#define ImGui_ID(...) \
+  IMGUI_SUGAR_SCOPED_VOID_N(ImGui::PushID, ImGui::PopID, __VA_ARGS__)
+
 // Layout
 #define ImGui_Horizontal(...)                                             \
   IMGUI_SUGAR_SCOPED_VOID_N(ImGui::BeginHorizontal, ImGui::EndHorizontal, \

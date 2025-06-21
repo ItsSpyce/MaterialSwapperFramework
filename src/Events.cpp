@@ -2,21 +2,23 @@
 
 #include "MaterialWriter.h"
 
-RE::BSEventNotifyControl
-Events::ProcessEvent(
+RE::BSEventNotifyControl Events::ProcessEvent(
     const RE::TESEquipEvent* event,
     RE::BSTEventSource<RE::TESEquipEvent>* src) {
-  /*MaterialWriter::ApplyDefaultMaterial(
-      RE::PlayerCharacter::GetSingleton(), RE::BIPED_OBJECTS::BIPED_OBJECT::kBody);*/
+  if (event->equipped) {
+    RE::NiPointer actorRef(event->actor);
+    SKSE::GetTaskInterface()->AddTask([actorRef] {
+      MaterialWriter::ApplySavedMaterials(actorRef);
+    });
+  }
+  
   return RE::BSEventNotifyControl::kContinue;
 }
 
-RE::BSEventNotifyControl
-Events::ProcessEvent(
+RE::BSEventNotifyControl Events::ProcessEvent(
     const RE::TESLoadGameEvent* event,
     RE::BSTEventSource<RE::TESLoadGameEvent>* src) {
-  /*MaterialWriter::ApplyDefaultMaterial(
-      RE::PlayerCharacter::GetSingleton(), RE::BIPED_OBJECTS::BIPED_OBJECT::kBody);*/
+  MaterialWriter::ApplySavedMaterials(RE::PlayerCharacter::GetSingleton());
   return RE::BSEventNotifyControl::kContinue;
 }
 

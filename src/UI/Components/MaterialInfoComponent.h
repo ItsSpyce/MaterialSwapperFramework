@@ -1,39 +1,31 @@
 #pragma once
 
+#include "MaterialConfig.h"
+#include "MaterialWriter.h"
+#include "UI/ImGui_Sugar.h"
+
 namespace UI::Components {
 struct MaterialInfoComponentProps {
-  std::shared_ptr<ShaderMaterialFile> material;
-  const char* name;
+  MaterialRecord material;
+  RE::BIPED_OBJECTS::BIPED_OBJECT selectedSlot;
 };
 
 inline void MaterialInfoComponent(const MaterialInfoComponentProps& props) {
-  if (!props.material) {
-    ImGui::Text("No material selected.");
-    return;
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{4.0f, 8.0f});
+  ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2{0.0f, 0.5f});
+  ImGui::PushStyleColor(ImGuiCol_Border, ImVec4{0.5f, 0.5f, 0.5f, 1.0f});
+  ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.f, 0.f, 0.f, 0.f});
+
+  ImGui_Button(props.material.name.c_str(),
+               ImVec2{ImGui::GetContentRegionAvail().x, 0.0f}) {
+    if (ImGui::IsItemHovered()) {
+      ImGui::SetTooltip("Click to apply this material to the selected item.");
+    }
+    MaterialWriter::ApplyMaterial(RE::PlayerCharacter::GetSingleton(),
+                                  props.selectedSlot, props.material);
   }
-  if (const auto effectMaterial = props.material->As<BGEMFile>()) {
-    ImGui::Text("Material Name: %s", props.name);
-    ImGui::Text("Selected Material: %s", effectMaterial->base_map.c_str());
-    ImGui::Text("Base Map: %s", effectMaterial->base_map.c_str());
-    ImGui::Text("Normal Map: %s", effectMaterial->normal_map.c_str());
-    ImGui::Text("Grayscale Map: %s", effectMaterial->grayscale_map.c_str());
-    ImGui::Text(
-        "Emittance Color: (%f, %f, %f)", effectMaterial->emittance_color.x,
-        effectMaterial->emittance_color.y, effectMaterial->emittance_color.z);
-  } else if (const auto lightingMaterial = props.material->As<BGSMFile>()) {
-    ImGui::Text("Material Name: %s", props.name);
-    ImGui::Text("Selected Material: %s", lightingMaterial->diffuse_map.c_str());
-    ImGui::Text("Diffuse Map: %s", lightingMaterial->diffuse_map.c_str());
-    ImGui::Text("Normal Map: %s", lightingMaterial->normal_map.c_str());
-    ImGui::Text("Smooth Spec Map: %s",
-                lightingMaterial->smooth_spec_map.c_str());
-    ImGui::Text("Specular Map: %s", lightingMaterial->specular_map.c_str());
-    ImGui::Text("Emittance Color: (%f, %f, %f)",
-                lightingMaterial->emittance_color.x,
-                lightingMaterial->emittance_color.y,
-                lightingMaterial->emittance_color.z);
-  } else {
-    ImGui::Text("Unknown material type.");
-  }
+
+  ImGui::PopStyleColor(2);
+  ImGui::PopStyleVar(2);
 }
 }  // namespace MaterialSwapperFramework::UI::Components

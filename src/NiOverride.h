@@ -78,34 +78,35 @@ MAKE_NI_OVERRIDE_FUNCTION(HasNodeOverride, bool, RE::TESObjectREFR* refr,
                           bool isFemale, const char* node, int key,
                           uint32_t index)
 
-// -- Unique ID stuff
-MAKE_NI_OVERRIDE_FUNCTION(GetItemUniqueID, int, RE::TESObjectREFR* refr,
-                          int weaponSlot, int slotMask, bool makeUnique)
-
-MAKE_NI_OVERRIDE_FUNCTION(GetObjectUniqueID, int, RE::TESObjectREFR* obj,
-                          bool makeUnique)
-
 static bool OverrideShaderTexture(RE::TESObjectREFR* refr, const char* nodeName,
                                   const char* texPath) {
-  auto geometry = NifHelpers::GetNode(refr, nodeName);
-  RETURN_IF_FALSE(geometry)
-  auto shaderProperty = NifHelpers::GetShaderProperty(geometry);
+  auto triShape = refr->GetNodeByName(nodeName)->AsTriShape();
+  RETURN_IF_FALSE(triShape)
+  auto shaderProperty = NifHelpers::GetShaderProperty(triShape);
   RETURN_IF_FALSE(shaderProperty)
   auto material =
       skyrim_cast<RE::BSLightingShaderMaterial*>(shaderProperty->material);
   RETURN_IF_FALSE(material)
   logger::info("Overriding shader texture for node: {}, path: {}", nodeName,
                texPath);
-  material->textureSet->SetTexturePath(RE::BSTextureSet::Texture::kDiffuse,
-                                       texPath);
+  /*material->textureSet->SetTexturePath(RE::BSTextureSet::Texture::kDiffuse,
+                                       texPath);*/
+  RE::BSShaderTextureSet* newTextureSet = RE::BSShaderTextureSet::Create();
+  for (uint32_t i = 0; i < RE::BSTextureSet::Texture::kTotal; i++) {
+    auto texture = static_cast<RE::BSTextureSet::Texture>(i);
+    newTextureSet->SetTexturePath(texture, material->textureSet->GetTexturePath(texture));
+  }
+  newTextureSet->SetTexturePath(RE::BSTextureSet::Texture::kDiffuse, texPath);
+  material->SetTextureSet(RE::NiPointer(newTextureSet));
+  
   shaderProperty->InvalidateTextures(0);
-  shaderProperty->InitializeShader(geometry);
+  shaderProperty->InitializeShader(triShape);
+
   return true;
 }
 
 static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool isFemale,
-                                const RE::TESObjectARMO* armo,
-                                const RE::TESObjectARMA* arma, const char* node,
+                                const char* node,
                                 ShaderMaterialFile& material) {
   RETURN_IF_FALSE(refr)
   RETURN_IF_FALSE(node)
@@ -115,21 +116,26 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool isFemale,
                          false);
 
   if (const auto lightingMaterial = material.As<BGSMFile>()) {
-    auto diffuseTex =
-        Helpers::PrefixTexturesPath(lightingMaterial->diffuse_map);
-    auto normalTex = Helpers::PrefixTexturesPath(lightingMaterial->normal_map);
+    auto diffuseTex = StringHelpers::PrefixTexturesPath(lightingMaterial->diffuse_map);
+    auto normalTex =
+        lightingMaterial->normal_map.empty()
+            ? ""
+            : StringHelpers::PrefixTexturesPath(lightingMaterial->normal_map);
     auto specularTex =
-        Helpers::PrefixTexturesPath(lightingMaterial->specular_map);
-    logger::info(
+        lightingMaterial->specular_map.empty()
+            ? ""
+            : StringHelpers::PrefixTexturesPath(lightingMaterial->specular_map);
+    logger::debug(
         "Applying lighting material to node: {}, diffuse: {}, "
         "normal: {}, specular: {}",
         node, diffuseTex, normalTex, specularTex);
+    //OverrideShaderTexture(refr, node, diffuseTex.c_str());
     AddNodeOverrideString()(RE::StaticFunctionTag{}, refr, isFemale, node,
                             kNiOverrideKey_ShaderTexture, 0, diffuseTex.c_str(),
                             false);
-    /*AddNodeOverrideString()(RE::StaticFunctionTag{}, refr, isFemale, node,
+    AddNodeOverrideString()(RE::StaticFunctionTag{}, refr, isFemale, node,
                             kNiOverrideKey_ShaderTexture, 1,
-                            normalTex.c_str(), true);*/
+                            normalTex.c_str(), false);
     AddNodeOverrideString()(RE::StaticFunctionTag{}, refr, isFemale, node,
                             kNiOverrideKey_ShaderTexture, 7,
                             specularTex.c_str(), false);

@@ -1,16 +1,15 @@
 #pragma once
 
-struct ArmorMaterialConfig {
+struct MaterialRecord {
   std::string name;
-  std::vector<std::string> shapes{};
   std::string filename;
-  bool hidden;
+  std::vector<std::string> shapes{};
+  bool isHidden;
+  bool isDefault;
 };
 
-struct ArmorConfig {
-  std::vector<ArmorMaterialConfig> materials{};
+struct FormIDConfigEntry {
+  std::vector<MaterialRecord> materials{};
 };
 
-struct MaterialConfig {
-  std::unordered_map<std::string, ArmorConfig> armors{};
-};
+using MaterialConfig = std::unordered_map<std::string, std::vector<MaterialRecord>>;

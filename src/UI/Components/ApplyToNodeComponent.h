@@ -1,8 +1,7 @@
 #pragma once
 
 #include "MaterialLoader.h"
-#include "MaterialWriter.h"
-#include "NifHelpers.h"
+#include "StringHelpers.h"
 #include "ShaderMaterialFile.h"
 #include "UI/ImGui_Sugar.h"
 
@@ -19,12 +18,12 @@ inline void ApplyToNodeComponent(const ApplyToNodeProps& props) {
       continue;
     }
     if (auto armor = biped->objects[slot].item->As<RE::TESObjectARMO>()) {
-      ImGui::Text("Armor Slot: %s", Helpers::GetSlotName(slot));
+      ImGui::Text("Armor Slot: %s", StringHelpers::GetSlotName(slot));
     }
   }
   
   if (props.material) {
-    const auto loadedMaterial =
+    /*const auto loadedMaterial =
         MaterialLoader::LoadMaterial(*props.material);
     if (const auto effectMaterial = loadedMaterial->As<BGEMFile>()) {
       ImGui::Text("Material Name: %s", props.material->c_str());
@@ -50,7 +49,7 @@ inline void ApplyToNodeComponent(const ApplyToNodeProps& props) {
                   lightingMaterial->emittance_color.z);
     } else {
       ImGui::Text("Unknown material type.");
-    }
+    }*/
   }
 }
 }  // namespace MaterialSwapperFramework::UI::Components

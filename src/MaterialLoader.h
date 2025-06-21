@@ -5,7 +5,7 @@
 #include "Filesystem.h"
 #include "MaterialConfig.h"
 #include "MaterialFileReader.h"
-#include "NifHelpers.h"
+#include "StringHelpers.h"
 #include "ShaderMaterialFile.h"
 
 namespace fs = std::filesystem;
@@ -14,10 +14,11 @@ class MaterialLoader {
  public:
   void static ReadMaterialsFromDisk(bool clearExisting) {
     if (clearExisting) {
-      materialFiles_.clear();
+      materialConfigs_.clear();
     }
+    std::hash<std::string> hash{};
     for (auto& jsonFile : Filesystem::EnumerateMaterialConfigDir()) {
-      auto loweredPath = Helpers::ToLower(jsonFile.path().string());
+      auto loweredPath = StringHelpers::ToLower(jsonFile.path().string());
       if (!loweredPath.ends_with(".json")) {
         continue;
       }
@@ -29,83 +30,131 @@ class MaterialLoader {
                       cleanedError);
         continue;
       }
-      for (auto& [formID, armorConfig] : config.armors) {
+      for (auto& [formID, entry] : config) {
         auto realFormID = Helpers::GetFormID(formID);
-        for (auto& material : armorConfig.materials) {
-          auto materialName = Helpers::ToLower(material.name);
-          if (materialName.empty()) {
-            continue;
+        if (realFormID == 0) {
+          logger::error("Invalid form ID in material config: {}", formID);
+          continue;
+        }
+        if (auto it = materialConfigs_.find(realFormID);
+            it != materialConfigs_.end()) {
+          it->second.insert_range(it->second.end(), entry);
+        } else {
+          materialConfigs_[realFormID] = entry;
+        }
+        for (const auto& material : entry) {
+          if (!material.filename.empty()) {
+            auto filenameHash = hash(material.filename);
+            filenameHashes[filenameHash] = material.filename;
           }
-          auto materialFilePath = fs::path("Data") / material.filename;
-          if (!fs::exists(materialFilePath)) {
-            logger::error("Material file does not exist: {}",
-                          materialFilePath.string());
-            continue;
-          }
-          auto loweredMaterialFilePath =
-              Helpers::ToLower(materialFilePath.string());
-          materialFiles_.push_back(loweredMaterialFilePath);
-          formIdToMaterialFileCache_[realFormID].push_back(
-              materialFiles_.size() - 1);
         }
       }
     }
-
-    logger::debug("Found {} material files", materialFiles_.size());
   }
 
   _NODISCARD static std::shared_ptr<ShaderMaterialFile> LoadMaterial(
-      const std::string& name) {
-    auto lowered = Helpers::ToLower(name);
-    auto realPathName = lowered.starts_with("data\\")
-                            ? lowered
-                            : fs::path("data\\materials") / lowered;
-    if (const auto it = std::ranges::find(materialFiles_, realPathName);
-        it != materialFiles_.end()) {
-      MaterialFileReader reader;
-      auto filename = fs::path(realPathName);
-      auto stream = std::make_unique<std::ifstream>(filename, std::ios::binary);
-      if (!stream->is_open()) {
-        throw std::runtime_error(
-            fmt::format("Failed to open file: {}", filename.string()));
-      }
-      stream->exceptions(std::ios::badbit);
-      reader.read(std::move(stream));
-      return reader.file();
+      const MaterialRecord& materialConfig) {
+    auto path = fs::path("Data") / materialConfig.filename;
+    return LoadMaterialFromDisk(path.string());
+  }
+
+  _NODISCARD static std::shared_ptr<ShaderMaterialFile> LoadMaterial(
+      size_t filenameHash) {
+    auto it = filenameHashes.find(filenameHash);
+    if (it != filenameHashes.end()) {
+      return LoadMaterialFromDisk(it->second);
     }
+    logger::warn("No material file found for hash: {}", filenameHash);
     return nullptr;
   }
 
   _NODISCARD static std::shared_ptr<ShaderMaterialFile> LoadMaterial(
-      const int32_t loaderHashCode) {
-    if (const auto it = formIdToMaterialFileCache_.find(loaderHashCode);
-        it != formIdToMaterialFileCache_.end()) {
-      if (const auto& materialFileIndices = it->second;
-          !materialFileIndices.empty()) {
-        return LoadMaterial(materialFiles_[materialFileIndices[0]]);
-      }
+      const std::string& filename) {
+    if (filename.empty()) {
+      logger::error("Filename is empty");
+      return nullptr;
     }
-    return nullptr;
+    auto path = fs::path("Data") / filename;
+    return LoadMaterialFromDisk(path.string());
   }
 
-  static void VisitMaterialFiles(
-      const std::function<void(const std::string&)>& visitor) {
-    for (const auto& materialFile : materialFiles_) {
-      visitor(materialFile);
+  _NODISCARD static MaterialRecord& GetMaterial(const size_t filenameHash) {
+    if (const auto it = filenameHashes.find(filenameHash);
+        it != filenameHashes.end()) {
+      auto lowered = StringHelpers::ToLower(it->second);
+      for (auto& records : materialConfigs_ | std::views::values) {
+        for (auto& record : records) {
+          if (StringHelpers::ToLower(record.filename) == lowered) {
+            return record;
+          }
+        }
+      }
     }
+    throw std::runtime_error(
+        fmt::format("No material found for hash: {}", filenameHash));
   }
 
-  static void VisitMaterialFilesForFormID(uint32_t formID, const std::function<void(const std::string&)>& visitor) {
-    if (const auto it = formIdToMaterialFileCache_.find(formID);
-        it != formIdToMaterialFileCache_.end()) {
-      for (const auto& index : it->second) {
-        visitor(materialFiles_[index]);
+  _NODISCARD static MaterialRecord& GetMaterial(RE::FormID formID, const std::string& materialName) {
+    auto it = materialConfigs_.find(formID);
+    if (it != materialConfigs_.end()) {
+      for (auto& record : it->second) {
+        if (StringHelpers::ToLower(record.name) == StringHelpers::ToLower(materialName)) {
+          return record;
+        }
       }
+    }
+    throw std::runtime_error(
+        fmt::format("No material found for form ID: {} and name: {}", formID,
+                    materialName));
+  }
+
+  _NODISCARD static MaterialRecord& GetDefaultMaterial(RE::FormID formID) {
+    auto it = materialConfigs_.find(formID);
+    if (it != materialConfigs_.end()) {
+      for (auto& record : it->second) {
+        if (record.isDefault) {
+          return record;
+        }
+      }
+    }
+    throw std::runtime_error(
+        fmt::format("No default material found for form ID: {}", formID));
+  }
+
+  static void VisitMaterialFilesForFormID(
+      uint32_t formID,
+      const std::function<void(const MaterialRecord&)>& visitor) {
+    auto it = materialConfigs_.find(formID);
+    if (it != materialConfigs_.end()) {
+      for (const auto& entry : it->second) {
+        visitor(entry);
+      }
+    } else {
+      logger::warn("No material config found for form ID: {}", formID);
     }
   }
 
  private:
-  static inline std::vector<std::string> materialFiles_;
-  static inline std::unordered_map<uint32_t, std::vector<ptrdiff_t>>
-      formIdToMaterialFileCache_;
+  static std::shared_ptr<ShaderMaterialFile> LoadMaterialFromDisk(
+      const std::string& filename) {
+    if (!fs::exists(filename)) {
+      logger::warn("Material file does not exist: {}", filename);
+      return nullptr;
+    }
+    MaterialFileReader reader;
+    auto stream = std::make_unique<std::ifstream>(filename, std::ios::binary);
+    if (!stream->is_open()) {
+      throw std::runtime_error(
+          fmt::format("Failed to open file: {}", filename));
+    }
+    stream->exceptions(std::ios::badbit);
+    reader.read(std::move(stream));
+    auto file = reader.file();
+    // TODO: load templated materials
+    return file;
+  }
+
+  static inline std::unordered_map<uint32_t, std::vector<MaterialRecord>>
+      materialConfigs_{};
+  static inline std::unordered_map<size_t, std::string> filenameHashes{};
 };
