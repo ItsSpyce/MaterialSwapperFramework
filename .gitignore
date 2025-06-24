@@ -12,3 +12,7 @@ vs*/
 # files
 *.zip
 compile_commands.json
+
+/gui/MaterialSwapperFramework.Gui/bin
+/gui/MaterialSwapperFramework.Gui/obj
+*.user
