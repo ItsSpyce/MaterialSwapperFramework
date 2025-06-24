@@ -1,0 +1,20 @@
+#pragma once
+
+#include "Factory.h"
+#include "Singleton.h"
+
+namespace Factories {
+class AmmunitionFactory : public Factory<RE::TESAmmo>,
+                          public Singleton<AmmunitionFactory> {
+ public:
+  bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESAmmo* form,
+                     const MaterialRecord& material) override {
+    // Ammunition does not support materials
+    return false;
+  }
+  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr, RE::TESAmmo*) override {
+    // Ammunition does not support materials
+    return false;
+  }
+};
+}  // namespace Factories

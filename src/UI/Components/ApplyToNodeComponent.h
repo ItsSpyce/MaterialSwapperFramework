@@ -2,7 +2,7 @@
 
 #include "MaterialLoader.h"
 #include "StringHelpers.h"
-#include "ShaderMaterialFile.h"
+#include "Models/MaterialFileBase.h"
 #include "UI/ImGui_Sugar.h"
 
 namespace UI::Components {

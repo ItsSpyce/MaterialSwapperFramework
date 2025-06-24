@@ -2,7 +2,7 @@
 
 #include "NifHelpers.h"
 #include "Papyrus.h"
-#include "ShaderMaterialFile.h"
+#include "Models/MaterialFileBase.h"
 
 namespace NiOverride {
 enum : uint32_t {
@@ -80,7 +80,7 @@ MAKE_NI_OVERRIDE_FUNCTION(HasNodeOverride, bool, RE::TESObjectREFR* refr,
 
 static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool isFemale,
                                 const char* node,
-                                ShaderMaterialFile& material) {
+                                MaterialFileBase& material) {
   RETURN_IF_FALSE(refr)
   RETURN_IF_FALSE(node)
 

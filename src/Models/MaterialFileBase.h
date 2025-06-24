@@ -1,8 +1,8 @@
 #pragma once
 #include "Helpers.h"
-#include "MaterialStream.h"
+#include "IO/MaterialStream.h"
 
-struct ShaderMaterialFile;
+struct MaterialFileBase;
 
 enum class ShaderType {
   kLighting,
@@ -12,7 +12,7 @@ enum class ShaderType {
 struct BGSMFile;
 struct BGEMFile;
 
-struct ShaderMaterialFile {
+struct MaterialFileBase {
   ShaderType shader_type;
   uint32_t version;
   uint32_t clamp;
@@ -40,9 +40,9 @@ struct ShaderMaterialFile {
   bool grayscale_to_palette_color;
   uint8_t mask_writes;
 
-  ShaderMaterialFile() = default;
+  MaterialFileBase() = default;
   virtual void read(MaterialStream& stream);
-  virtual ~ShaderMaterialFile() = default;
+  virtual ~MaterialFileBase() = default;
   _NODISCARD virtual size_t GetHashCode() const {
     size_t hash = 0;
     uint16_t flags = 0;
@@ -84,7 +84,7 @@ struct ShaderMaterialFile {
   }
 };
 
-struct BGSMFile : ShaderMaterialFile {
+struct BGSMFile : MaterialFileBase {
   std::string diffuse_map;
   std::string normal_map;
   std::string smooth_spec_map;
@@ -158,7 +158,7 @@ struct BGSMFile : ShaderMaterialFile {
 
   void read(MaterialStream& stream) override;
   size_t GetHashCode() const override {
-    auto orig = ShaderMaterialFile::GetHashCode();
+    auto orig = MaterialFileBase::GetHashCode();
     uint32_t flags = 0;
     flags |= (enable_editor_alpha_threshold ? 1 : 0) << 0;
     flags |= (translucency ? 1 : 0) << 1;
@@ -235,7 +235,7 @@ struct BGSMFile : ShaderMaterialFile {
   }
 };
 
-struct BGEMFile : ShaderMaterialFile {
+struct BGEMFile : MaterialFileBase {
   std::string base_map;
   std::string grayscale_map;
   std::string env_map;
@@ -264,7 +264,7 @@ struct BGEMFile : ShaderMaterialFile {
   void read(MaterialStream& stream) override;
 
   size_t GetHashCode() const override {
-    auto orig = ShaderMaterialFile::GetHashCode();
+    auto orig = MaterialFileBase::GetHashCode();
     uint32_t flags = 0;
     flags |= (blood ? 1 : 0) << 0;
     flags |= (effect_lighting ? 1 : 0) << 1;

@@ -1,14 +1,8 @@
 #pragma once
 
-namespace Hooks {
-struct UpdatePlayerHook {
-  static void thunk(RE::PlayerCharacter* player, float delta) {
-    func(player, delta);
-  }
+#include "Hooks/UpdatePlayerHook.h"
 
-  static inline REL::Relocation<decltype(thunk)> func;
-  static inline auto idx = 0xAD;
-};
+namespace Hooks {
 
 inline void Install() noexcept {
   stl::write_vfunc<RE::PlayerCharacter, UpdatePlayerHook>();

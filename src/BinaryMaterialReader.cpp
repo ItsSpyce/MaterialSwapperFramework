@@ -1,8 +1,8 @@
-#include "MaterialFileReader.h"
+#include "BinaryMaterialReader.h"
 
-#include "MaterialStream.h"
+#include "IO/MaterialStream.h"
 
-void MaterialFileReader::read(IStreamPtr&& stream) {
+void BinaryMaterialReader::read(IStreamPtr&& stream) {
   MaterialStream m_stream(std::move(stream));
 
   std::array<char, 4> signature;

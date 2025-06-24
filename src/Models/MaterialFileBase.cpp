@@ -1,6 +1,6 @@
-#include "ShaderMaterialFile.h"
+#include "Models/MaterialFileBase.h"
 
-void ShaderMaterialFile::read(MaterialStream& stream) {
+void MaterialFileBase::read(MaterialStream& stream) {
   stream.read(version);
   stream.read(clamp);
   stream.read(uv_offset);
@@ -35,7 +35,7 @@ void ShaderMaterialFile::read(MaterialStream& stream) {
 }
 
 void BGSMFile::read(MaterialStream& stream) {
-  ShaderMaterialFile::read(stream);
+  MaterialFileBase::read(stream);
   stream.read(diffuse_map);
   stream.read(normal_map);
   stream.read(smooth_spec_map);
@@ -143,7 +143,7 @@ void BGSMFile::read(MaterialStream& stream) {
 }
 
 void BGEMFile::read(MaterialStream& stream) {
-  ShaderMaterialFile::read(stream);
+  MaterialFileBase::read(stream);
   stream.read(base_map);
   stream.read(grayscale_map);
   stream.read(env_map);

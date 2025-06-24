@@ -6,6 +6,8 @@
 #include "Hooks.h"
 #include "Events.h"
 #include "MaterialPapyrus.h"
+#include "Factories.h"
+#include "Cond/Conditions.h"
 
 static void InitializeLogging() {
   static bool initialized = false;

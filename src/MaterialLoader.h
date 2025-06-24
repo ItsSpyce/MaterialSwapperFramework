@@ -4,9 +4,9 @@
 
 #include "Filesystem.h"
 #include "MaterialConfig.h"
-#include "MaterialFileReader.h"
+#include "BinaryMaterialReader.h"
 #include "StringHelpers.h"
-#include "ShaderMaterialFile.h"
+#include "Models/MaterialFileBase.h"
 
 namespace fs = std::filesystem;
 
@@ -52,13 +52,13 @@ class MaterialLoader {
     }
   }
 
-  _NODISCARD static std::shared_ptr<ShaderMaterialFile> LoadMaterial(
+  _NODISCARD static std::shared_ptr<MaterialFileBase> LoadMaterial(
       const MaterialRecord& materialConfig) {
     auto path = fs::path("Data") / materialConfig.filename;
     return LoadMaterialFromDisk(path.string());
   }
 
-  _NODISCARD static std::shared_ptr<ShaderMaterialFile> LoadMaterial(
+  _NODISCARD static std::shared_ptr<MaterialFileBase> LoadMaterial(
       size_t filenameHash) {
     auto it = filenameHashes.find(filenameHash);
     if (it != filenameHashes.end()) {
@@ -68,7 +68,7 @@ class MaterialLoader {
     return nullptr;
   }
 
-  _NODISCARD static std::shared_ptr<ShaderMaterialFile> LoadMaterial(
+  _NODISCARD static std::shared_ptr<MaterialFileBase> LoadMaterial(
       const std::string& filename) {
     if (filename.empty()) {
       logger::error("Filename is empty");
@@ -135,13 +135,13 @@ class MaterialLoader {
   }
 
  private:
-  static std::shared_ptr<ShaderMaterialFile> LoadMaterialFromDisk(
+  static std::shared_ptr<MaterialFileBase> LoadMaterialFromDisk(
       const std::string& filename) {
     if (!fs::exists(filename)) {
       logger::warn("Material file does not exist: {}", filename);
       return nullptr;
     }
-    MaterialFileReader reader;
+    BinaryMaterialReader reader;
     auto stream = std::make_unique<std::ifstream>(filename, std::ios::binary);
     if (!stream->is_open()) {
       throw std::runtime_error(
