@@ -128,8 +128,9 @@ bool MaterialWriter::ApplySavedMaterials(RE::TESObjectREFR* refr) {
     if (size_t matIndex = 0; StringHelpers::HasMaterialName(name, matIndex)) {
       auto materialName = std::string(name).substr(
           matIndex + 3, std::strlen(name) - (matIndex + 3) - 1);
-      auto& materialRecord = MaterialLoader::GetMaterial(formID, materialName);
-      materials.emplace_back(materialRecord);
+      if (auto materialRecord = MaterialLoader::GetMaterial(formID, materialName)) {
+        materials.emplace_back(*materialRecord);
+      }
     }
   }
   auto triShapes = NifHelpers::GetAllTriShapes(refr->Get3D());

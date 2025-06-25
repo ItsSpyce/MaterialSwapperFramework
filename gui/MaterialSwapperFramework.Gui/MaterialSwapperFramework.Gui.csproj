@@ -11,6 +11,7 @@
   <ItemGroup>
     <PackageReference Include="Mutagen.Bethesda.Skyrim" Version="0.51.0" />
     <PackageReference Include="Nifly" Version="0.1.0" />
+    <PackageReference Include="ObjectListView.Repack.NET6Plus" Version="2.9.5" />
   </ItemGroup>
 
   <ItemGroup>

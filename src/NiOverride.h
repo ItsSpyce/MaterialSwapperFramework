@@ -89,15 +89,15 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool isFemale,
                          false);
 
   if (const auto lightingMaterial = material.As<BGSMFile>()) {
-    auto diffuseTex = StringHelpers::PrefixTexturesPath(lightingMaterial->diffuse_map);
+    auto diffuseTex = StringHelpers::PrefixTexturesPath(lightingMaterial->diffuseMap);
     auto normalTex =
-        lightingMaterial->normal_map.empty()
+        lightingMaterial->normalMap.empty()
             ? ""
-            : StringHelpers::PrefixTexturesPath(lightingMaterial->normal_map);
+            : StringHelpers::PrefixTexturesPath(lightingMaterial->normalMap);
     auto specularTex =
-        lightingMaterial->specular_map.empty()
+        lightingMaterial->specularMap.empty()
             ? ""
-            : StringHelpers::PrefixTexturesPath(lightingMaterial->specular_map);
+            : StringHelpers::PrefixTexturesPath(lightingMaterial->specularMap);
     logger::debug(
         "Applying lighting material to node: {}, diffuse: {}, "
         "normal: {}, specular: {}",
@@ -114,7 +114,7 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool isFemale,
                             specularTex.c_str(), false);
     AddNodeOverrideFloat()(RE::StaticFunctionTag{}, refr, isFemale, node,
                            kNiOverrideKey_ShaderSpecularStrength, 1,
-                           lightingMaterial->specular_mult, false);
+                           lightingMaterial->specularMult, false);
     return true;
   }
   if (const auto effectMaterial = material.As<BGEMFile>()) {

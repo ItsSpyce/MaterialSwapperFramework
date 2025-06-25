@@ -1,7 +1,7 @@
 #pragma once
 
 namespace Cond {
-enum ConditionType : uint8_t {
+enum class ConditionType : uint8_t {
   kNone,
   // actor specific
   kActorIsInCombat,
@@ -30,6 +30,27 @@ enum ConditionType : uint8_t {
   kActorHasFaction,
   kActorHasRace,
   kActorHasClass,
+  kActorHasEquipped,
+  kActorHasEquippedInSlot,
 
+  // weather
+  kWeatherEquals,
+  kTimeOfDay,
 };
-}
+
+enum class MathOperator : uint8_t {
+  kNone,
+  kEqual,
+  kNotEqual,
+  kGreaterThan,
+  kLessThan,
+  kGreaterThanOrEqual,
+  kLessThanOrEqual,
+};
+
+struct Condition {
+  ConditionType type = ConditionType::kNone;
+  MathOperator op = MathOperator::kNone;
+  bool negate;
+};
+}  // namespace Cond

@@ -6,8 +6,9 @@
 #include "Singleton.h"
 
 namespace Factories {
-class ArmorFactory : public Factory<RE::TESObjectARMO>, public Singleton<ArmorFactory> {
-public:
+class ArmorFactory : public Factory<RE::TESObjectARMO>,
+                     public Singleton<ArmorFactory> {
+ public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectARMO* form,
                      const MaterialRecord& material) override {
     RETURN_IF_FALSE(refr)
@@ -88,9 +89,13 @@ public:
       if (size_t matIndex = 0; StringHelpers::HasMaterialName(name, matIndex)) {
         auto materialName = std::string(name).substr(
             matIndex + 3, std::strlen(name) - (matIndex + 3) - 1);
-        auto& materialRecord =
-            MaterialLoader::GetMaterial(formID, materialName);
-        materials.emplace_back(materialRecord);
+        if (auto materialRecord = MaterialLoader::GetMaterial(formID, materialName)) {
+          logger::debug("Found material record: {}", materialRecord->name);
+          materials.push_back(*materialRecord);
+        } else {
+          logger::warn("No material record found for form ID: {}, name: {}",
+                       formID, materialName);
+        }
       }
     }
     auto triShapes = NifHelpers::GetAllTriShapes(refr->Get3D());
@@ -128,9 +133,8 @@ public:
     return true;
   }
 
-private:
-
-  static consteval RE::BIPED_OBJECTS::BIPED_OBJECT ConvertSlotMask(
+ private:
+  static constexpr RE::BIPED_OBJECTS::BIPED_OBJECT ConvertSlotMask(
       const RE::BGSBipedObjectForm::BipedObjectSlot slot) {
     // this is a lot easier to do in the inverse direction...
     switch (slot) {

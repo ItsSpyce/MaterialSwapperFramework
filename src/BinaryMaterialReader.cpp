@@ -10,12 +10,12 @@ void BinaryMaterialReader::read(IStreamPtr&& stream) {
   std::string shader_type(signature.data(), 4);
   if (shader_type == "BGEM") {
     file_ = std::make_shared<BGEMFile>();
-    file_->shader_type = ShaderType::kEffect;
+    file_->shaderType = ShaderType::kEffect;
   } else if (shader_type == "BGSM") {
     file_ = std::make_shared<BGSMFile>();
-    file_->shader_type = ShaderType::kLighting;
+    file_->shaderType = ShaderType::kLighting;
   } else {
     throw std::runtime_error("Invalid material file");
   }
-  file_->read(m_stream);
+  file_->Read(m_stream);
 }

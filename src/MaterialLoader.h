@@ -94,31 +94,28 @@ class MaterialLoader {
         fmt::format("No material found for hash: {}", filenameHash));
   }
 
-  _NODISCARD static MaterialRecord& GetMaterial(RE::FormID formID, const std::string& materialName) {
+  _NODISCARD static MaterialRecord* GetMaterial(RE::FormID formID, const std::string& materialName) {
     auto it = materialConfigs_.find(formID);
     if (it != materialConfigs_.end()) {
       for (auto& record : it->second) {
         if (StringHelpers::ToLower(record.name) == StringHelpers::ToLower(materialName)) {
-          return record;
+          return &record;
         }
       }
     }
-    throw std::runtime_error(
-        fmt::format("No material found for form ID: {} and name: {}", formID,
-                    materialName));
+    return nullptr;
   }
 
-  _NODISCARD static MaterialRecord& GetDefaultMaterial(RE::FormID formID) {
+  _NODISCARD static MaterialRecord* GetDefaultMaterial(RE::FormID formID) {
     auto it = materialConfigs_.find(formID);
     if (it != materialConfigs_.end()) {
       for (auto& record : it->second) {
         if (!record.modifyName) {
-          return record;
+          return &record;
         }
       }
     }
-    throw std::runtime_error(
-        fmt::format("No default material found for form ID: {}", formID));
+    return nullptr;
   }
 
   static void VisitMaterialFilesForFormID(

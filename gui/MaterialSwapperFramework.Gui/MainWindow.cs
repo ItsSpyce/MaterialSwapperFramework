@@ -155,7 +155,7 @@ public partial class MainWindow : Form
         return;
       }
       _statusService.UpdateStatus($"Loaded record {form.EditorID ?? form.FormKey.IDString()}");
-      materialView.ContextMenuStrip = new()
+      objectListView1.ContextMenuStrip = new()
       {
         Items =
         {
@@ -164,21 +164,10 @@ public partial class MainWindow : Form
       };
       if (!_editedMaterials.ContainsKey(form.FormKey.ToString()))
       {
-        var noMatNode = new TreeNode("No materials edited for this record");
-        materialView.Nodes.Add(noMatNode);
+        objectListView1.SetObjects(new string[] { "No materials found" });
         return;
       }
-      foreach (var config in _editedMaterials[form.FormKey.ToString()])
-      {
-        var materialNode = new TreeNode(config.MaterialName)
-        {
-          Tag = config,
-          ForeColor = Color.Blue
-        };
-        materialNode.Nodes.AddRange(config.Shapes.Select(shape => new TreeNode(shape)).ToArray());
-        materialNode.Nodes.AddRange(config.Flags.Select(flag => new TreeNode(flag)).ToArray());
-        materialView.Nodes.Add(materialNode);
-      }
+      
     }
     catch (Exception e)
     {

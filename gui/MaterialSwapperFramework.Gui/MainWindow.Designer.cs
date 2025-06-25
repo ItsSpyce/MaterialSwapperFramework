@@ -28,7 +28,6 @@
     /// </summary>
     private void InitializeComponent()
     {
-      components = new System.ComponentModel.Container();
       ToolbarMenu = new MenuStrip();
       fileToolStripMenuItem = new ToolStripMenuItem();
       newToolStripMenuItem = new ToolStripMenuItem();
@@ -53,7 +52,7 @@
       statusLabel = new ToolStripStatusLabel();
       splitContainer1 = new SplitContainer();
       pluginTreeView = new TreeView();
-      materialView = new TreeView();
+      objectListView1 = new BrightIdeasSoftware.ObjectListView();
       ToolbarMenu.SuspendLayout();
       tableLayoutPanel1.SuspendLayout();
       statusStrip1.SuspendLayout();
@@ -61,6 +60,7 @@
       splitContainer1.Panel1.SuspendLayout();
       splitContainer1.Panel2.SuspendLayout();
       splitContainer1.SuspendLayout();
+      ((System.ComponentModel.ISupportInitialize)objectListView1).BeginInit();
       SuspendLayout();
       // 
       // ToolbarMenu
@@ -225,7 +225,7 @@
       // 
       // splitContainer1.Panel2
       // 
-      splitContainer1.Panel2.Controls.Add(materialView);
+      splitContainer1.Panel2.Controls.Add(objectListView1);
       splitContainer1.Size = new Size(794, 400);
       splitContainer1.SplitterDistance = 244;
       splitContainer1.TabIndex = 3;
@@ -240,15 +240,16 @@
       pluginTreeView.Size = new Size(241, 400);
       pluginTreeView.TabIndex = 0;
       // 
-      // materialView
+      // objectListView1
       // 
-      materialView.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-      materialView.Font = new Font("Consolas", 9F);
-      materialView.Location = new Point(0, 0);
-      materialView.Margin = new Padding(0);
-      materialView.Name = "materialView";
-      materialView.Size = new Size(543, 400);
-      materialView.TabIndex = 0;
+      objectListView1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+      objectListView1.Font = new Font("Consolas", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
+      objectListView1.Location = new Point(0, 0);
+      objectListView1.Margin = new Padding(0);
+      objectListView1.Name = "objectListView1";
+      objectListView1.Size = new Size(543, 400);
+      objectListView1.TabIndex = 1;
+      objectListView1.View = View.Details;
       // 
       // MainWindow
       // 
@@ -272,6 +273,7 @@
       splitContainer1.Panel2.ResumeLayout(false);
       ((System.ComponentModel.ISupportInitialize)splitContainer1).EndInit();
       splitContainer1.ResumeLayout(false);
+      ((System.ComponentModel.ISupportInitialize)objectListView1).EndInit();
       ResumeLayout(false);
       PerformLayout();
     }
@@ -302,6 +304,6 @@
     private ToolStripMenuItem changeDataDirectoryToolStripMenuItem;
     private SplitContainer splitContainer1;
     private TreeView pluginTreeView;
-    private TreeView materialView;
+    private BrightIdeasSoftware.ObjectListView objectListView1;
   }
 }
