@@ -1,9 +1,7 @@
 #include "UI/Pages/MaterialsPage.h"
 
 #include "MaterialLoader.h"
-#include "MaterialWriter.h"
 #include "StringHelpers.h"
-#include "UI/Components/ApplyToNodeComponent.h"
 #include "UI/Components/MaterialInfoComponent.h"
 #include "UI/ImGui_Sugar.h"
 

@@ -2,8 +2,7 @@
 
 struct MaterialRecord {
   std::string name;
-  std::string filename;
-  std::vector<std::string> shapes{};
+  std::unordered_map<std::string, std::string> applies;
   bool isHidden;
   bool modifyName = true;
 };

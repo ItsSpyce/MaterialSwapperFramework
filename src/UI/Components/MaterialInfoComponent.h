@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Factories.h"
 #include "MaterialConfig.h"
-#include "MaterialWriter.h"
 #include "UI/ImGui_Sugar.h"
 
 namespace UI::Components {
@@ -21,11 +21,13 @@ inline void MaterialInfoComponent(const MaterialInfoComponentProps& props) {
     if (ImGui::IsItemHovered()) {
       ImGui::SetTooltip("Click to apply this material to the selected item.");
     }
-    MaterialWriter::ApplyMaterial(RE::PlayerCharacter::GetSingleton(),
-                                  props.selectedSlot, props.material);
+    Factories::ArmorFactory::GetSingleton().ApplyMaterial(
+        RE::PlayerCharacter::GetSingleton(),
+        props.selectedSlot,
+        props.material);
   }
 
   ImGui::PopStyleColor(2);
   ImGui::PopStyleVar(2);
 }
-}  // namespace MaterialSwapperFramework::UI::Components
+}  // namespace UI::Components

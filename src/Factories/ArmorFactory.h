@@ -8,16 +8,20 @@
 namespace Factories {
 class ArmorFactory : public Factory<RE::TESObjectARMO>,
                      public Singleton<ArmorFactory> {
- public:
+public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectARMO* form,
                      const MaterialRecord& material) override {
     RETURN_IF_FALSE(refr)
-    auto materialFile = MaterialLoader::LoadMaterial(material);
-    RETURN_IF_FALSE(materialFile)
-    logger::debug("Material info: name ({}), filename ({})", material.name,
-                  material.filename);
-    auto& bipedObject =
-        refr->GetCurrentBiped()->objects[ConvertSlotMask(form->GetSlotMask())];
+    RETURN_IF_FALSE(form)
+    auto slotMask = ConvertSlotMask(form->GetSlotMask());
+    auto currentBiped = refr->GetCurrentBiped();
+    if (!currentBiped) {
+      logger::warn("No current biped found for reference: {}",
+                   refr->GetFormID());
+      return false;
+    }
+
+    auto& bipedObject = currentBiped->objects[slotMask];
     RETURN_IF_FALSE(bipedObject.item)
     auto armo = bipedObject.item->As<RE::TESObjectARMO>();
     auto inventoryItem =
@@ -34,8 +38,9 @@ class ArmorFactory : public Factory<RE::TESObjectARMO>,
         auto actor3d = actor->Get3D();
         auto shapes = NifHelpers::GetAllTriShapes(actor3d);
         for (auto& shape : shapes) {
-          if (std::ranges::find(material.shapes, std::string{shape->name}) !=
-              material.shapes.end()) {
+          if (auto it = material.applies.find(std::string{shape->name});
+              it != material.applies.end()) {
+            auto materialFile = MaterialLoader::LoadMaterial(it->second);
             logger::debug("Applying material to tri shape: {}", shape->name);
             NiOverride::ApplyMaterialToNode(refr, true, shape->name.c_str(),
                                             *materialFile);
@@ -89,7 +94,8 @@ class ArmorFactory : public Factory<RE::TESObjectARMO>,
       if (size_t matIndex = 0; StringHelpers::HasMaterialName(name, matIndex)) {
         auto materialName = std::string(name).substr(
             matIndex + 3, std::strlen(name) - (matIndex + 3) - 1);
-        if (auto materialRecord = MaterialLoader::GetMaterial(formID, materialName)) {
+        if (auto materialRecord =
+                MaterialLoader::GetMaterial(formID, materialName)) {
           logger::debug("Found material record: {}", materialRecord->name);
           materials.push_back(*materialRecord);
         } else {
@@ -106,7 +112,7 @@ class ArmorFactory : public Factory<RE::TESObjectARMO>,
       }
       auto nodeName = triShape->name.c_str();
       auto it = std::ranges::find_if(materials, [&](const MaterialRecord& mat) {
-        return std::ranges::find(mat.shapes, nodeName) != mat.shapes.end();
+        return mat.applies.contains(nodeName);
       });
       if (it == materials.end()) {
         if (NifHelpers::HasBuiltInMaterial(material)) {
@@ -122,15 +128,61 @@ class ArmorFactory : public Factory<RE::TESObjectARMO>,
           NiOverride::ApplyMaterialToNode(refr, true, nodeName, *materialFile);
         }
       } else {
-        auto materialFile = MaterialLoader::LoadMaterial(*it);
+        auto filename = it->applies[nodeName];
+        if (filename.empty()) {
+          logger::warn("No material file specified for node: {}, material: {}",
+                       nodeName, it->name);
+          continue;
+        }
+        auto materialFile = MaterialLoader::LoadMaterial(filename);
         if (!materialFile) {
-          logger::error("Failed to load material file: {}", it->filename);
+          logger::error("Failed to load material file: {}", filename);
           continue;
         }
         NiOverride::ApplyMaterialToNode(refr, true, nodeName, *materialFile);
       }
     }
     return true;
+  }
+
+  bool ApplyMaterial(RE::Actor* refr, RE::BIPED_OBJECTS::BIPED_OBJECT slot,
+                     const MaterialRecord& material) {
+    RETURN_IF_FALSE(refr)
+    auto currentBiped = refr->GetCurrentBiped();
+    if (!currentBiped) {
+      logger::warn("No current biped found for reference: {}",
+                   refr->GetFormID());
+      return false;
+    }
+
+    auto& bipedObject = currentBiped->objects[slot];
+    RETURN_IF_FALSE(bipedObject.item)
+    auto armo = bipedObject.item->As<RE::TESObjectARMO>();
+    auto inventoryItem =
+        Helpers::GetInventoryItemWithFormID(refr, armo->GetFormID());
+    RETURN_IF_FALSE(inventoryItem.data)
+    if (!material.modifyName) {
+      ClearItemDisplayName(inventoryItem.data);
+    } else {
+      const auto newDisplayName = AppendMaterialName(armo, material);
+      SetItemDisplayName(inventoryItem.data, newDisplayName);
+    }
+    if (inventoryItem.data->extraLists) {
+      if (auto actor = refr->As<RE::Actor>()) {
+        auto actor3d = actor->Get3D();
+        auto shapes = NifHelpers::GetAllTriShapes(actor3d);
+        for (auto& shape : shapes) {
+          if (auto it = material.applies.find(std::string{shape->name});
+              it != material.applies.end()) {
+            auto materialFile = MaterialLoader::LoadMaterial(it->second);
+            logger::debug("Applying material to tri shape: {}", shape->name);
+            NiOverride::ApplyMaterialToNode(refr, true, shape->name.c_str(),
+                                            *materialFile);
+          }
+        }
+      }
+    }
+    return false;
   }
 
  private:

@@ -1,12 +1,17 @@
 #include "BinaryMaterialReader.h"
 
-#include "IO/MaterialStream.h"
+#include "MaterialStream.h"
 
-void BinaryMaterialReader::read(IStreamPtr&& stream) {
-  MaterialStream m_stream(std::move(stream));
+void IO::BinaryMaterialReader::Read(const std::string& filename) {
+  auto stream = std::make_unique<std::ifstream>(filename, std::ios::binary);
+  if (!stream->is_open()) {
+    throw std::runtime_error(fmt::format("Failed to open file: {}", filename));
+  }
+  stream->exceptions(std::ios::badbit);
+  MaterialStream mStream(std::move(stream));
 
   std::array<char, 4> signature;
-  m_stream.read_array(signature);
+  mStream.ReadArray(signature);
   std::string shader_type(signature.data(), 4);
   if (shader_type == "BGEM") {
     file_ = std::make_shared<BGEMFile>();
@@ -17,5 +22,5 @@ void BinaryMaterialReader::read(IStreamPtr&& stream) {
   } else {
     throw std::runtime_error("Invalid material file");
   }
-  file_->Read(m_stream);
+  file_->Read(mStream);
 }

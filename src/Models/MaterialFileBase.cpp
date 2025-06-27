@@ -1,185 +1,185 @@
 #include "Models/MaterialFileBase.h"
 
 void MaterialFileBase::Read(MaterialStream& stream) {
-  stream.read(version);
-  stream.read(clamp);
-  stream.read(uvOffset);
-  stream.read(uvScale);
-  stream.read(transparency);
-  stream.read(alphaBlend);
-  stream.read(sourceBlendMode);
-  stream.read(destinationBlendMode);
-  stream.read(alphaTestThreshold);
-  stream.read(alphaTest);
-  stream.read(depthWrite);
-  stream.read(depthTest);
-  stream.read(ssr);
-  stream.read(wetnessControlSsr);
-  stream.read(decal);
-  stream.read(twoSided);
-  stream.read(decalNoFade);
-  stream.read(nonOccluder);
-  stream.read(refraction);
-  stream.read(refractionalFalloff);
-  stream.read(refractionPower);
+  stream.Read(version);
+  stream.Read(clamp);
+  stream.Read(uvOffset);
+  stream.Read(uvScale);
+  stream.Read(transparency);
+  stream.Read(alphaBlend);
+  stream.Read(sourceBlendMode);
+  stream.Read(destinationBlendMode);
+  stream.Read(alphaTestThreshold);
+  stream.Read(alphaTest);
+  stream.Read(depthWrite);
+  stream.Read(depthTest);
+  stream.Read(ssr);
+  stream.Read(wetnessControlSsr);
+  stream.Read(decal);
+  stream.Read(twoSided);
+  stream.Read(decalNoFade);
+  stream.Read(nonOccluder);
+  stream.Read(refraction);
+  stream.Read(refractionalFalloff);
+  stream.Read(refractionPower);
   if (version < 10) {
-    stream.read(envMapEnabled);
-    stream.read(envMapMaskScale);
+    stream.Read(envMapEnabled);
+    stream.Read(envMapMaskScale);
   } else {
-    stream.read(depthBias);
+    stream.Read(depthBias);
   }
-  stream.read(grayscaleToPaletteColor);
+  stream.Read(grayscaleToPaletteColor);
   if (version >= 6) {
-    stream.read(maskWrites);
+    stream.Read(maskWrites);
   }
 }
 
 void BGSMFile::Read(MaterialStream& stream) {
   MaterialFileBase::Read(stream);
-  stream.read(diffuseMap);
-  stream.read(normalMap);
-  stream.read(smoothSpecMap);
-  stream.read(grayscaleMap);
+  stream.Read(diffuseMap);
+  stream.Read(normalMap);
+  stream.Read(smoothSpecMap);
+  stream.Read(grayscaleMap);
   if (version >= 3) {
-    stream.read(glowMap);
-    stream.read(wrinkleMap);
-    stream.read(specularMap);
-    stream.read(lightingMap);
-    stream.read(flowMap);
+    stream.Read(glowMap);
+    stream.Read(wrinkleMap);
+    stream.Read(specularMap);
+    stream.Read(lightingMap);
+    stream.Read(flowMap);
     if (version >= 17) {
-      stream.read(distanceFieldAlphaMap);
+      stream.Read(distanceFieldAlphaMap);
     }
   } else {
-    stream.read(envMap);
-    stream.read(glowMap);
-    stream.read(innerLayerMap);
-    stream.read(wrinkleMap);
-    stream.read(displacementMap);
+    stream.Read(envMap);
+    stream.Read(glowMap);
+    stream.Read(innerLayerMap);
+    stream.Read(wrinkleMap);
+    stream.Read(displacementMap);
   }
-  stream.read(enableEditorAlphaThreshold);
+  stream.Read(enableEditorAlphaThreshold);
   if (version >= 8) {
-    stream.read(translucency);
-    stream.read(translucencyThickObject);
-    stream.read(translucencyMixAlbedoWithSubsurfaceColor);
-    stream.read(translucencySubsurfaceColor);
-    stream.read(translucencyTransmissiveScale);
-    stream.read(translucencyTurbulence);
+    stream.Read(translucency);
+    stream.Read(translucencyThickObject);
+    stream.Read(translucencyMixAlbedoWithSubsurfaceColor);
+    stream.Read(translucencySubsurfaceColor);
+    stream.Read(translucencyTransmissiveScale);
+    stream.Read(translucencyTurbulence);
   } else {
-    stream.read(rimLighting);
-    stream.read(rimPower);
-    stream.read(backLightPower);
-    stream.read(subsurfaceLighting);
-    stream.read(subsurfaceLightingRolloff);
+    stream.Read(rimLighting);
+    stream.Read(rimPower);
+    stream.Read(backLightPower);
+    stream.Read(subsurfaceLighting);
+    stream.Read(subsurfaceLightingRolloff);
   }
-  stream.read(specularEnabled);
-  stream.read(specularColor);
-  stream.read(specularMult);
-  stream.read(smoothness);
-  stream.read(fresnelPower);
-  stream.read(wetnessControlSpecScale);
-  stream.read(wetnessControlSpecPowerScale);
-  stream.read(wetnessControlSpecMinvar);
+  stream.Read(specularEnabled);
+  stream.Read(specularColor);
+  stream.Read(specularMult);
+  stream.Read(smoothness);
+  stream.Read(fresnelPower);
+  stream.Read(wetnessControlSpecScale);
+  stream.Read(wetnessControlSpecPowerScale);
+  stream.Read(wetnessControlSpecMinvar);
   if (version < 10) {
-    stream.read(wetnessControlEnvMapScale);
+    stream.Read(wetnessControlEnvMapScale);
   }
-  stream.read(wetnessControlFresnelPower);
-  stream.read(wetnessControlMetalness);
+  stream.Read(wetnessControlFresnelPower);
+  stream.Read(wetnessControlMetalness);
   if (version >= 3) {
-    stream.read(pbr);
+    stream.Read(pbr);
     if (version >= 9) {
-      stream.read(customPorosity);
-      stream.read(porosityValue);
+      stream.Read(customPorosity);
+      stream.Read(porosityValue);
     }
   }
-  stream.read(rootMaterialPath);
-  stream.read(anisoLighting);
-  stream.read(emitEnabled);
+  stream.Read(rootMaterialPath);
+  stream.Read(anisoLighting);
+  stream.Read(emitEnabled);
   if (emitEnabled) {
-    stream.read(emitColor);
+    stream.Read(emitColor);
   }
-  stream.read(emitMult);
-  stream.read(modelSpaceNormals);
-  stream.read(externalEmit);
+  stream.Read(emitMult);
+  stream.Read(modelSpaceNormals);
+  stream.Read(externalEmit);
   if (version >= 12) {
-    stream.read(lumEmit);
+    stream.Read(lumEmit);
     if (version >= 13) {
-      stream.read(useAdaptiveEmissive);
-      stream.read(adaptiveEmissiveExposureParams);
+      stream.Read(useAdaptiveEmissive);
+      stream.Read(adaptiveEmissiveExposureParams);
     }
   } else if (version < 8) {
-    stream.read(backLighting);
+    stream.Read(backLighting);
   }
-  stream.read(receiveShadows);
-  stream.read(hideSecret);
-  stream.read(castShadows);
-  stream.read(dissolveFade);
-  stream.read(assumeShadowmask);
-  stream.read(glowMapEnabled);
+  stream.Read(receiveShadows);
+  stream.Read(hideSecret);
+  stream.Read(castShadows);
+  stream.Read(dissolveFade);
+  stream.Read(assumeShadowmask);
+  stream.Read(glowMapEnabled);
   if (version < 7) {
-    stream.read(envMapWindow);
-    stream.read(envMapEye);
+    stream.Read(envMapWindow);
+    stream.Read(envMapEye);
   }
-  stream.read(hair);
-  stream.read(hairTintColor);
-  stream.read(tree);
-  stream.read(facegen);
-  stream.read(skinTint);
-  stream.read(tessellate);
+  stream.Read(hair);
+  stream.Read(hairTintColor);
+  stream.Read(tree);
+  stream.Read(facegen);
+  stream.Read(skinTint);
+  stream.Read(tessellate);
   if (version < 3) {
-    stream.read(displacementMapParams);
-    stream.read(tessellationParams);
+    stream.Read(displacementMapParams);
+    stream.Read(tessellationParams);
   }
-  stream.read(grayscaleToPaletteScale);
+  stream.Read(grayscaleToPaletteScale);
   if (version >= 1) {
-    stream.read(skewSpecularAlpha);
-    stream.read(terrain);
+    stream.Read(skewSpecularAlpha);
+    stream.Read(terrain);
     if (terrain) {
       if (version == 3) {
-        stream.skip(4);
+        stream.Skip(4);
       }
-      stream.read(terrainParams);
+      stream.Read(terrainParams);
     }
   }
 }
 
 void BGEMFile::Read(MaterialStream& stream) {
   MaterialFileBase::Read(stream);
-  stream.read(baseMap);
-  stream.read(grayscaleMap);
-  stream.read(envMap);
-  stream.read(normalMap);
-  stream.read(envMapMask);
+  stream.Read(baseMap);
+  stream.Read(grayscaleMap);
+  stream.Read(envMap);
+  stream.Read(normalMap);
+  stream.Read(envMapMask);
   if (version >= 11) {
-    stream.read(specularMap);
-    stream.read(lightingMap);
-    stream.read(glowMap);
+    stream.Read(specularMap);
+    stream.Read(lightingMap);
+    stream.Read(glowMap);
   }
   if (version >= 10) {
-    stream.read(envMapEnabled);
-    stream.read(envMapMaskScale);
+    stream.Read(envMapEnabled);
+    stream.Read(envMapMaskScale);
   }
-  stream.read(blood);
-  stream.read(effectLighting);
-  stream.read(falloff);
-  stream.read(falloffColor);
-  stream.read(grayscaleToPaletteAlpha);
-  stream.read(soft);
-  stream.read(baseColor);
-  stream.read(baseColorScale);
-  stream.read(falloffParams);
-  stream.read(lightingInfluence);
-  stream.read(envMapMinLod);
-  stream.read(softDepth);
+  stream.Read(blood);
+  stream.Read(effectLighting);
+  stream.Read(falloff);
+  stream.Read(falloffColor);
+  stream.Read(grayscaleToPaletteAlpha);
+  stream.Read(soft);
+  stream.Read(baseColor);
+  stream.Read(baseColorScale);
+  stream.Read(falloffParams);
+  stream.Read(lightingInfluence);
+  stream.Read(envMapMinLod);
+  stream.Read(softDepth);
   if (version >= 11) {
-    stream.read(emitColor);
+    stream.Read(emitColor);
   }
   if (version >= 15) {
-    stream.read(adaptiveEmissiveExposureParams);
+    stream.Read(adaptiveEmissiveExposureParams);
   }
   if (version >= 16) {
-    stream.read(glowMapEnabled);
+    stream.Read(glowMapEnabled);
   }
   if (version >= 20) {
-    stream.read(effectPbrSpecular);
+    stream.Read(effectPbrSpecular);
   }
 }
