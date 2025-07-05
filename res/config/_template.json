@@ -2,19 +2,22 @@
   "My Armor Plugin.esp|123456": [
     {
       "name": "Default Material",
-      "shapes": [ "my-shape" ],
-      "filename": "Materials/MyDefaultMaterial.bgsm",
+      "applies": {
+        "shape01": "Materials/DefaultMaterial.BGSM"
+      },
       "modifyName": false
     },
     {
       "name": "My New Material",
-      "shapes": [ "my-shape" ],
-      "filename": "Materials/MyNewMaterial.bgsm"
+      "applies": {
+        "shape01": "Materials/MyNewMaterial.BGSM"
+      }
     },
     {
       "name": "A secret material!",
-      "shapes": [ "hands" ],
-      "filename": "Materials/Shhh.BGSM",
+      "applies": {
+        "shape01": "Materials/SecretMaterial.BGSM"
+      },
       "isHidden": true,
       "modifyName": false
     }

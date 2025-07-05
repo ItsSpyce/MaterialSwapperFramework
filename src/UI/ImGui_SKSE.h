@@ -458,7 +458,9 @@ class WindowManager {
       EndFrame();
       Render();
       ImGui_ImplDX11_RenderDrawData(GetDrawData());
-      RE::Main::GetSingleton()->freezeTime = didDrawMenu && PauseTimeInMenus;
+      if (!RE::Main::GetSingleton()->freezeTime) {
+        RE::Main::GetSingleton()->freezeTime = didDrawMenu && PauseTimeInMenus;
+      }
     }
     static inline REL::Relocation<decltype(thunk)> func;
   };

@@ -20,7 +20,8 @@ class MaterialLoader {
     std::hash<std::string> hash{};
     for (auto& jsonFile : Filesystem::EnumerateMaterialConfigDir()) {
       auto loweredPath = StringHelpers::ToLower(jsonFile.path().string());
-      if (!loweredPath.ends_with(".json")) {
+      auto filename = StringHelpers::ToLower(jsonFile.path().filename().string());
+      if (!filename.ends_with(".json") || filename[0] == '_') {
         continue;
       }
       logger::debug("Reading material config file: {}", loweredPath);

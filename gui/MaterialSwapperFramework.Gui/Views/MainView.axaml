@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:MaterialSwapperFramework.Gui.ViewModels"
+             xmlns:v="clr-namespace:MaterialSwapperFramework.Gui.Views"
+             xmlns:gui="clr-namespace:MaterialSwapperFramework.Gui"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="450"
+             x:Class="MaterialSwapperFramework.Gui.Views.MainView"
+             x:DataType="vm:MainViewModel">
+  <Design.DataContext>
+    <vm:MainViewModel />
+  </Design.DataContext>
+  <Grid RowDefinitions="Auto,*">
+    <DockPanel VerticalAlignment="Top" Grid.Row="0">
+      <Menu DockPanel.Dock="Top" Background="DarkSlateGray">
+        <MenuItem Header="_File">
+          <MenuItem Header="_New"></MenuItem>
+          <MenuItem Header="_Open..." Name="FileOpen" IsEnabled="True">
+            <MenuItem Header="_ESM/ESP/ESL..." Click="OnOpenPluginClicked"></MenuItem>
+            <MenuItem Header="_Directory" Click="OnOpenFolderClicked"></MenuItem>
+            <MenuItem Header="MSF JSON"></MenuItem>
+          </MenuItem>
+          <MenuItem Header="_Save"></MenuItem>
+          <MenuItem Header="_Save As..."></MenuItem>
+          <Separator></Separator>
+          <MenuItem Header="_Recent Files..." ItemsSource="{Binding RecentFiles}">
+            <MenuItem.ItemTemplate>
+              <DataTemplate>
+                <MenuItem Header="{Binding}"></MenuItem>
+              </DataTemplate>
+            </MenuItem.ItemTemplate>
+          </MenuItem>
+        </MenuItem>
+        <MenuItem Header="_Edit"></MenuItem>
+        <MenuItem Header="_Help"></MenuItem>
+      </Menu>
+    </DockPanel>
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*" RowDefinitions="*">
+      <ScrollViewer Grid.Column="0" Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <TreeView AutoScrollToSelectedItem="True" SelectionMode="Single" ItemsSource="{Binding PluginNodes}" Padding="0" Margin="0" FontFamily="Consolas">
+          <TreeView.ItemTemplate>
+            <TreeDataTemplate ItemsSource="{Binding Nodes}">
+              <HyperlinkButton
+                Content="{Binding Label}"
+                Foreground="WhiteSmoke"
+                Command="{Binding $parent[TreeView].((vm:MainViewModel)DataContext).PluginMenuClickCommand}"
+                CommandParameter="{Binding Value}"
+                />
+            </TreeDataTemplate>
+          </TreeView.ItemTemplate>
+        </TreeView>
+      </ScrollViewer>
+      <ScrollViewer Grid.Column="1" Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ListBox ItemsSource="{Binding MaterialsForRecord}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <HyperlinkButton
+                Content="{Binding Name}"
+                Foreground="WhiteSmoke"
+                Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).SelectMaterialEntryCommand}"
+                CommandParameter="{Binding}"
+                />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </ScrollViewer>
+      <ScrollViewer Grid.Column="2" Grid.Row="0">
+        <TextBlock Text="{Binding SelectedMaterial.Name}" />
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</UserControl>
