@@ -1,150 +1,151 @@
 ﻿using System.IO;
 using MaterialSwapperFramework.Gui.Extensions;
-using Newtonsoft.Json;
 using System.Numerics;
+using System.Text.Json.Serialization;
 
 namespace MaterialSwapperFramework.Gui.Models;
 
 public class BGSMFile : MaterialFileBase
 {
-  [JsonProperty]
+  [JsonPropertyName("diffuseMap")]
   public string? DiffuseMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("normalMap")]
   public string? NormalMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("smoothSpecularMap")]
   public string? SmoothSpecularMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("grayscaleMap")]
   public string? GrayscaleMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("glowMap")]
   public string? GlowMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("wrinkleMap")]
   public string? WrinkleMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("specularMap")]
   public string? SpecularMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("lightingMap")]
   public string? LightingMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("flowMap")]
   public string? FlowMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("distanceFieldAlphaMap")]
   public string? DistanceFieldAlphaMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("envMap")]
   public string? EnvMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("innerLayerMap")]
   public string? InnerLayerMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("displacementMap")]
   public string? DisplacementMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("enableEditorAlphaThreshold")]
   public bool EnableEditorAlphaThreshold { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("translucency")]
   public bool Translucency { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("translucencyThickObject")]
   public bool TranslucencyThickObject { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("translucencyMixAlbedoWithSubsurfaceColor")]
   public bool TranslucencyMixAlbedoWithSubsurfaceColor { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("translucencySubsurfaceColor")]
   public Vector3 TranslucencySubsurfaceColor { get; set; } = Vector3.Zero;
-  [JsonProperty]
+  [JsonPropertyName("translucencyTransmissiveScale")]
   public float TranslucencyTransmissiveScale { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("translucencyTurbulence")]
   public float TranslucencyTurbulence { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("rimLighting")]
   public bool RimLighting { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("rimPower")]
   public float RimPower { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("backLightPower")]
   public float BackLightPower { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("subsurfaceLighting")]
   public bool SubsurfaceLighting { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("subsurfaceLightingRollOff")]
   public float SubsurfaceLightingRollOff { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("specularEnabled")]
   public bool SpecularEnabled { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("specularColor")]
   public Vector3 SpecularColor { get; set; } = Vector3.Zero;
-  [JsonProperty]
+  [JsonPropertyName("specularMult")]
   public float SpecularMult { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("smoothness")]
   public float Smoothness { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("fresnelPower")]
   public float FresnelPower { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("wetnessControlSpecScale")]
   public float WetnessControlSpecScale { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("wetnessControlSpecPowerScale")]
   public float WetnessControlSpecPowerScale { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("wetnessControlSpecMinVar")]
   public float WetnessControlSpecMinVar { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("wetnessControlEnvMapScale")]
   public float WetnessControlEnvMapScale { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("wetnessControlFresnelPower")]
   public float WetnessControlFresnelPower { get; set; }
+  [JsonPropertyName("wetnessControlMetalness")]
   public float WetnessControlMetalness { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("pbr")]
   public bool PBR { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("customPorosity")]
   public bool CustomPorosity { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("porosityValue")]
   public float PorosityValue { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("rootMaterialPath")]
   public string? RootMaterialPath { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("anisoLighting")]
   public bool AnisoLighting { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("emitEnabled")]
   public bool EmitEnabled { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("emitColor")]
   public Vector3 EmitColor { get; set; } = Vector3.Zero;
-  [JsonProperty]
+  [JsonPropertyName("emitMult")]
   public float EmitMult { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("modelSpaceNormals")]
   public bool ModelSpaceNormals { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("externalEmit")]
   public bool ExternalEmit { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("lumEmit")]
   public float LumEmit { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("useAdaptiveEmissive")]
   public bool UseAdaptiveEmissive { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("adaptiveEmissiveExposureParams")]
   public Vector3 AdaptiveEmissiveExposureParams { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("backLighting")]
   public bool BackLighting { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("receiveShadows")]
   public bool ReceiveShadows { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("hideSecret")]
   public bool HideSecret { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("castShadows")]
   public bool CastShadows { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("dissolveFade")]
   public bool DissolveFade { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("assumeShadowMask")]
   public bool AssumeShadowMask { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("glowMapEnabled")]
   public bool GlowMapEnabled { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("envMapWindow")]
   public bool EnvMapWindow { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("envMapEye")]
   public bool EnvMapEye { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("hair")]
   public bool Hair { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("hairTintColor")]
   public Vector3 HairTintColor { get; set; } = Vector3.Zero;
-  [JsonProperty]
+  [JsonPropertyName("tree")]
   public bool Tree { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("faceGen")]
   public bool FaceGen { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("skinTint")]
   public bool SkinTint { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("tessellate")]
   public bool Tessellate { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("displacementMapParams")]
   public Vector2 DisplacementMapParams { get; set; } = Vector2.Zero;
-  [JsonProperty]
+  [JsonPropertyName("tessellationParams")]
   public Vector3 TessellationParams { get; set; } = Vector3.Zero;
-  [JsonProperty]
+  [JsonPropertyName("grayscaleToPaletteColor")]
   public new float GrayscaleToPaletteColor { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("skewSpecularAlpha")]
   public bool SkewSpecularAlpha { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("terrain")]
   public bool Terrain { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("terrainParams")]
   public Vector3 TerrainParams { get; set; } = Vector3.Zero;
 
   public override void ReadFromStream(BinaryReader reader)

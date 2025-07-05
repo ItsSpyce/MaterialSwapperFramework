@@ -1,9 +1,8 @@
 ﻿using System.IO;
 using System.Numerics;
-using FluentResults;
+using System.Text.Json.Serialization;
 using MaterialSwapperFramework.Gui.Extensions;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace MaterialSwapperFramework.Gui.Models;
 
@@ -16,59 +15,59 @@ public abstract class MaterialFileBase
     Effect,
   }
 
-  [JsonProperty]
+  [JsonPropertyName("type")]
   public ShaderType Type { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("version")]
   public uint Version { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("clamp")]
   public uint Clamp { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("uvOffset")]
   public Vector2 UVOffset { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("uvScale")]
   public Vector2 UVScale { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("transparency")]
   public float Transparency { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("alphaBlend")]
   public bool AlphaBlend { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("sourceBlendMode")]
   public uint SourceBlendMode { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("destinationBlendMode")]
   public uint DestinationBlendMode { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("alphaTestThreshold")]
   public byte AlphaTestThreshold { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("alphaTest")]
   public bool AlphaTest { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("depthWrite")]
   public bool DepthWrite { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("depthTest")]
   public bool DepthTest { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("ssr")]
   public bool SSR { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("wetnessControlSsr")]
   public bool WetnessControlSSR { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("decal")]
   public bool Decal { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("twoSided")]
   public bool TwoSided { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("decalNoFade")]
   public bool DecalNoFade { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("nonOccluder")]
   public bool NonOccluder { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("refraction")]
   public bool Refraction { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("refractionalFallOff")]
   public bool RefractionalFallOff { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("refractionPower")]
   public float RefractionPower { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("envMapEnabled")]
   public bool EnvMapEnabled { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("envMapMaskScale")]
   public float EnvMapMaskScale { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("depthBias")]
   public bool DepthBias { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("grayscaleToPaletteColor")]
   public bool GrayscaleToPaletteColor { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("maskWrites")]
   public byte MaskWrites { get; set; }
 
   public virtual void ReadFromStream(BinaryReader reader)

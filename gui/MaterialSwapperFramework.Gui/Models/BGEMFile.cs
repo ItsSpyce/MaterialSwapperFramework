@@ -2,58 +2,59 @@
 using Newtonsoft.Json;
 using System.IO;
 using System.Numerics;
+using System.Text.Json.Serialization;
 
 namespace MaterialSwapperFramework.Gui.Models;
 
 public class BGEMFile : MaterialFileBase
 {
-  [JsonProperty]
+  [JsonPropertyName("baseMap")]
   public string? BaseMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("grayscaleMap")]
   public string? GrayscaleMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("envMap")]
   public string? EnvMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("normalMap")]
   public string? NormalMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("envMapMask")]
   public string? EnvMapMask { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("specularMap")]
   public string? SpecularMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("lightingMap")]
   public string? LightingMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("glowMap")]
   public string? GlowMap { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("blood")]
   public bool Blood { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("effectLighting")]
   public bool EffectLighting { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("fallOff")]
   public bool FallOff { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("fallOffColor")]
   public bool FallOffColor { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("grayscaleToPaletteAlpha")]
   public bool GrayscaleToPaletteAlpha { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("soft")]
   public bool Soft { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("baseColor")]
   public Vector3 BaseColor { get; set; } = Vector3.Zero;
-  [JsonProperty]
+  [JsonPropertyName("baseColorScale")]
   public float BaseColorScale { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("fallOffParams")]
   public Vector4 FallOffParams { get; set; } = Vector4.Zero;
-  [JsonProperty]
+  [JsonPropertyName("lightingInfluence")]
   public float LightingInfluence { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("envMapMinLOD")]
   public byte EnvMapMinLOD { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("softDepth")]
   public float SoftDepth { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("emitColor")]
   public Vector3 EmitColor { get; set; } = Vector3.Zero;
-  [JsonProperty]
+  [JsonPropertyName("adaptiveEmissiveExposureParams")]
   public Vector3 AdaptiveEmissiveExposureParams { get; set; } = Vector3.Zero;
-  [JsonProperty]
+  [JsonPropertyName("glowMapEnabled")]
   public bool GlowMapEnabled { get; set; }
-  [JsonProperty]
+  [JsonPropertyName("effectPBRSpecular")]
   public bool EffectPBRSpecular { get; set; }
 
   public override void ReadFromStream(BinaryReader reader)
