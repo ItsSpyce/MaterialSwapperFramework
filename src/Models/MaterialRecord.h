@@ -1,29 +1,16 @@
 #pragma once
-#include "Helpers.h"
-#include "IO/MaterialStream.h"
-#include <glaze/glaze.hpp>
-#include "MaterialRecord.h"
 
-struct MaterialFileBase;
-
-enum class ShaderType {
-  kLighting,
-  kEffect,
-};
-
-struct BGSMFile;
-struct BGEMFile;
-
-struct MaterialFileBase {
-  ShaderType shaderType;
-  uint32_t version;
+struct MaterialRecord {
+  uint8_t shaderType;
+  std::string inherits;
   uint32_t clamp;
-  Vector2 uvOffset, uvScale;
-  float transparency;
-  bool alphaBlend;
+  std::array<float, 2> uvOffset = {0, 0};
+  std::array<float, 2> uvScale = {1, 1};
+  float transparency = 1;
+  bool alphaBlend = false;
   uint32_t sourceBlendMode;
   uint32_t destinationBlendMode;
-  uint8_t alphaTestThreshold;
+  uint8_t alphaTestThreshold = 128;
   bool alphaTest;
   bool depthWrite;
   bool depthTest;
@@ -37,22 +24,12 @@ struct MaterialFileBase {
   bool refractionalFalloff;
   float refractionPower;
   bool envMapEnabled;
-  float envMapMaskScale;
+  float envMapMaskScale = 1.f;
   bool depthBias;
   bool grayscaleToPaletteColor;
   uint8_t maskWrites;
 
-  MaterialFileBase() = default;
-  virtual void Read(MaterialStream& stream);
-  virtual ~MaterialFileBase() = default;
-
-  template <typename T>
-  _NODISCARD T* As() {
-    return dynamic_cast<T*>(this);
-  }
-};
-
-struct BGSMFile : MaterialFileBase {
+  // BGSM specific fields
   std::string diffuseMap;
   std::string normalMap;
   std::string smoothSpecMap;
@@ -66,11 +43,13 @@ struct BGSMFile : MaterialFileBase {
   std::string envMap;
   std::string innerLayerMap;
   std::string displacementMap;
+  std::string baseMap;
+  std::string envMapMask;
   bool enableEditorAlphaThreshold;
   bool translucency;
   bool translucencyThickObject;
   bool translucencyMixAlbedoWithSubsurfaceColor;
-  Vector3 translucencySubsurfaceColor;
+  std::array<uint8_t, 4> translucencySubsurfaceColor;
   float translucencyTransmissiveScale;
   float translucencyTurbulence;
   bool rimLighting;
@@ -78,9 +57,9 @@ struct BGSMFile : MaterialFileBase {
   float backLightPower;
   bool subsurfaceLighting;
   float subsurfaceLightingRolloff;
-  bool specularEnabled;
-  Vector3 specularColor;
-  float specularMult;
+  bool specularEnabled = true;
+  std::array<uint8_t, 3> specularColor = {255, 255, 255};
+  float specularMult = 1.f;
   float smoothness;
   float fresnelPower;
   float wetnessControlSpecScale;
@@ -95,63 +74,47 @@ struct BGSMFile : MaterialFileBase {
   std::string rootMaterialPath;
   bool anisoLighting;
   bool emitEnabled;
-  Vector3 emitColor;
-  float emitMult;
+  std::array<uint8_t, 4> emitColor = {255, 255, 255, 255};
+  float emitMult = 1;
   bool modelSpaceNormals;
   bool externalEmit;
   float lumEmit;
   bool useAdaptiveEmissive;
-  Vector3 adaptiveEmissiveExposureParams;
+  std::array<float, 3> adaptiveEmissiveExposureParams;
   bool backLighting;
-  bool receiveShadows;
+  bool receiveShadows = true;
   bool hideSecret;
-  bool castShadows;
+  bool castShadows = true;
   bool dissolveFade;
   bool assumeShadowmask;
   bool glowMapEnabled;
   bool envMapWindow;
   bool envMapEye;
   bool hair;
-  Vector3 hairTintColor;
+  std::array<float, 3> hairTintColor = {128, 128, 128};
   bool tree;
   bool facegen;
   bool skinTint;
   bool tessellate;
-  Vector2 displacementMapParams;
-  Vector3 tessellationParams;
+  std::array<float, 2> displacementMapParams;
+  std::array<float, 3> tessellationParams;
   float grayscaleToPaletteScale;
   bool skewSpecularAlpha;
   bool terrain;
-  Vector3 terrainParams;
+  std::array<float, 3> terrainParams;
 
-  void Read(MaterialStream& stream) override;
-};
-
-struct BGEMFile : MaterialFileBase {
-  std::string baseMap;
-  std::string grayscaleMap;
-  std::string envMap;
-  std::string normalMap;
-  std::string envMapMask;
-  std::string specularMap;
-  std::string lightingMap;
-  std::string glowMap;
+  // BGEM specific fields
   bool blood;
   bool effectLighting;
   bool falloff;
   bool falloffColor;
   bool grayscaleToPaletteAlpha;
   bool soft;
-  Vector3 baseColor;
-  float baseColorScale;
-  Vector4 falloffParams;
+  std::array<float, 3> baseColor = {1, 1, 1};
+  float baseColorScale = 1.f;
+  std::array<float, 4> falloffParams;
   float lightingInfluence;
   uint8_t envMapMinLod;
   float softDepth;
-  Vector3 emitColor;
-  Vector3 adaptiveEmissiveExposureParams;
-  bool glowMapEnabled;
   bool effectPbrSpecular;
-
-  void Read(MaterialStream& stream) override;
 };

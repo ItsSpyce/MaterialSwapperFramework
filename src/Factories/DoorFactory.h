@@ -8,7 +8,7 @@ class DoorFactory : public Factory<RE::TESObjectDOOR>,
                     public Singleton<DoorFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectDOOR* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to door forms can be added here
     return false;

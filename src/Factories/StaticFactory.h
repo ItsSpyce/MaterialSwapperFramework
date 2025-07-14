@@ -8,7 +8,7 @@ class StaticFactory : public Factory<RE::TESObjectSTAT>,
                       public Singleton<StaticFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectSTAT* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to static forms can be added here
     return false;

@@ -8,7 +8,7 @@ class TreeFactory : public Factory<RE::TESObjectTREE>,
                     public Singleton<TreeFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectTREE* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to tree forms can be added here
     return false;

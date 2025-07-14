@@ -8,7 +8,7 @@ class ExplosionFactory : public Factory<RE::BGSExplosion>,
                          public Singleton<ExplosionFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::BGSExplosion* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to explosion forms can be added here
     return false;

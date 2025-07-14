@@ -8,7 +8,7 @@ class BookFactory : public Factory<RE::TESObjectBOOK>,
                     public Singleton<BookFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectBOOK* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     return false;
   }
   bool ApplyDefaultMaterial(RE::TESObjectREFR* refr,

@@ -2,65 +2,62 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using DynamicData.Binding;
 using MaterialSwapperFramework.Gui.Models;
+using MaterialSwapperFramework.Gui.Services;
 using MaterialSwapperFramework.Gui.ViewModels;
-using Mutagen.Bethesda.Skyrim;
+using Noggog;
 
 namespace MaterialSwapperFramework.Gui.Views;
 
 public partial class MainView : UserControl
 {
-  public MainViewModel Model => DataContext as MainViewModel;
-
-  private static readonly FilePickerFileType PluginFilePickerType = new("Plugin files")
+  private IEnumerable<string> _espFiles = [];
+  public IEnumerable<string> EspFiles
   {
-    Patterns = ["*.esm", "*.esp", "*.esl"],
-    AppleUniformTypeIdentifiers = ["public.plugin"],
-    MimeTypes = []
-  };
-
-  private static readonly IEnumerable<string> MaterialFileExtensions = [".json", ".bgem", ".bgsm"];
-
-  private IEnumerable<string> _materialFiles = [];
-  private List<MsfConfigJson> _configFiles = [];
+    get => Model.ModFiles;
+    set => Model.ModFiles = new(value);
+  }
+  public MainViewModel Model => (MainViewModel)DataContext;
 
   public MainView()
   {
+    DataContext = new MainViewModel();
     InitializeComponent();
   }
 
-  public async void OnOpenPluginClicked(object sender, RoutedEventArgs args)
+  private void CurrentMaterialSelectionChanged(object? sender, SelectionChangedEventArgs e)
   {
-    var topLevel = TopLevel.GetTopLevel(this)!;
-    var files = await topLevel.StorageProvider.OpenFilePickerAsync(new()
+    if (e.AddedItems.Any())
     {
-      Title = "Select ESM/ESM/ESL",
-      AllowMultiple = false,
-      FileTypeFilter = [PluginFilePickerType]
-    });
-    if (files.Any())
-    {
-      var path = files[0].Path.LocalPath;
-      Model.LoadedModFiles = [path];
+      if (e.AddedItems[0] is MaterialRecord item) Model.ModifyCurrentRecordView.SetCurrentlyEditing(item);
     }
   }
 
-  public async void OnOpenFolderClicked(object sender, RoutedEventArgs args)
+  private void AddButtonClick(object? sender, RoutedEventArgs e)
   {
-    var topLevel = TopLevel.GetTopLevel(this)!;
-    var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new()
+    if (e.Source is not Button btn) return;
+    StyledElement? dataGridCellPresenter = btn.Parent;
+    while (dataGridCellPresenter is not null)
     {
-      Title = "Select the Data directory",
-      AllowMultiple = false,
-    });
-    if (folders.Any())
-    {
-      var baseDirectory = folders[0].Path.LocalPath;
-      var files = Directory.EnumerateFiles(baseDirectory, "*.es*").OrderByDescending(File.GetCreationTime);
-      Model.LoadedModFiles = [..files];
+      if (dataGridCellPresenter is DataGridCellsPresenter) break;
+      dataGridCellPresenter = dataGridCellPresenter.Parent;
     }
+
+    if (dataGridCellPresenter is not DataGridCellsPresenter presenter) return;
+    var shapeName = ((ComboBox)((DataGridCell)presenter.Children[0]).Content).SelectedValue as string;
+    var material = ((ComboBox)((DataGridCell)presenter.Children[1]).Content).SelectedValue as string;
+    if (string.IsNullOrEmpty(shapeName) || string.IsNullOrEmpty(material)) return;
+    Model.ModifyCurrentRecordView.CurrentlyEditing.Applies =
+    [
+      ..Model.ModifyCurrentRecordView.CurrentlyEditing.Applies.TakeWhile(x => !string.IsNullOrEmpty(x.ShapeName)),
+      new(shapeName, material, false, Model.ModifyCurrentRecordView.CurrentlyEditing),
+      new(string.Empty, string.Empty, true, Model.ModifyCurrentRecordView.CurrentlyEditing),
+    ];
   }
 }

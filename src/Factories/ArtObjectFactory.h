@@ -8,7 +8,7 @@ class ArtObjectFactory : public Factory<RE::BGSArtObject>,
                          public Singleton<ArtObjectFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::BGSArtObject* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     // Art objects do not support materials
     return false;
   }

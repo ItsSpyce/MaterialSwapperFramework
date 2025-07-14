@@ -8,7 +8,7 @@ class WaterFactory : public Factory<RE::TESWaterForm>,
                      public Singleton<WaterFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESWaterForm* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to water forms can be added here
     return false;

@@ -8,7 +8,7 @@ class HeadPartFactory : public Factory<RE::BGSHeadPart>,
                         public Singleton<HeadPartFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::BGSHeadPart* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to head part forms can be added here
     return false;

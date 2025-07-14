@@ -8,7 +8,7 @@ class LightFactory : public Factory<RE::TESObjectLIGH>,
                      public Singleton<LightFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectLIGH* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to light forms can be added here
     return false;

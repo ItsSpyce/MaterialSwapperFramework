@@ -39,6 +39,8 @@ void IO::JsonMaterialReader::Read(const std::string& filename) {
     file.specularMap = json.contains("specularMap") ? json["specularMap"].get_string() : "";
     file.lightingMap = json.contains("lightingMap") ? json["lightingMap"].get_string() : "";
     file.envMap = json.contains("envMap") ? json["envMap"].get_string() : "";
+    /*file.envMapMask =
+        json.contains("envMapMask") ? json["envMapMask"].get_string() : "";*/
     file_ = std::make_shared<BGSMFile>(std::move(file));
   } else {
     BGEMFile file;

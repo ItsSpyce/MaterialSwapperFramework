@@ -1,6 +1,6 @@
 #pragma once
 
-struct MaterialRecord {
+struct MaterialConfig {
   std::string name;
   std::unordered_map<std::string, std::string> applies;
   bool isHidden;
@@ -8,7 +8,7 @@ struct MaterialRecord {
 };
 
 struct FormIDConfigEntry {
-  std::vector<MaterialRecord> materials{};
+  std::vector<MaterialConfig> materials{};
 };
 
-using MaterialConfig = std::unordered_map<std::string, std::vector<MaterialRecord>>;
+using MaterialConfigMap = std::unordered_map<std::string, std::vector<MaterialConfig>>;

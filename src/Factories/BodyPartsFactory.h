@@ -7,7 +7,7 @@ class BodyPartsFactory : public Factory<RE::BGSBodyPart>,
                          public Singleton<BodyPartsFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::BGSBodyPart* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     // Body parts do not support materials
     return false;
   }

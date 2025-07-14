@@ -8,7 +8,7 @@ class AddonNodeFactory : public Factory<RE::BGSAddonNode>,
                          public Singleton<AddonNodeFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::BGSAddonNode* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     // Implementation for applying material to an AddonNode
     return false;
   }

@@ -8,7 +8,7 @@ class HazardFactory : public Factory<RE::BGSHazard>,
                       public Singleton<HazardFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::BGSHazard* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to hazard forms can be added here
     return false;

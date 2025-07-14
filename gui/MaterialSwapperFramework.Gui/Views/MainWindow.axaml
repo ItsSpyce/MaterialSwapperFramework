@@ -8,21 +8,55 @@
         x:Class="MaterialSwapperFramework.Gui.Views.MainWindow"
         Icon="/Assets/avalonia-logo.ico"
         Title="MaterialSwapperFramework.Gui"
+        x:DataType="vm:MainViewModel"
         Width="1200"
-        Height="800">
-        <Panel>
-          <ExperimentalAcrylicBorder IsHitTestVisible="False">
-            <ExperimentalAcrylicBorder.Material>
-              <ExperimentalAcrylicMaterial
-                BackgroundSource="Digger"
-                TintColor="Black"
-                TintOpacity="1"
-                MaterialOpacity="0.65"
+        Height="800"
+        Activated="OnActivated">
+  <Design.DataContext>
+    <vm:MainViewModel />
+  </Design.DataContext>
+  <Panel>
+    <ExperimentalAcrylicBorder IsHitTestVisible="False">
+      <ExperimentalAcrylicBorder.Material>
+        <ExperimentalAcrylicMaterial
+          BackgroundSource="Digger"
+          TintColor="Black"
+          TintOpacity="1"
+          MaterialOpacity="0.65"
                 />
-            </ExperimentalAcrylicBorder.Material>
-          </ExperimentalAcrylicBorder>
-          <Panel>
-            <views:MainView />
-          </Panel>
-        </Panel>
+      </ExperimentalAcrylicBorder.Material>
+    </ExperimentalAcrylicBorder>
+    <Grid RowDefinitions="Auto,*" RowSpacing="8">
+      <DockPanel VerticalAlignment="Top" Grid.Row="0">
+        <Menu DockPanel.Dock="Top" Background="DarkSlateGray">
+          <MenuItem Header="_File">
+            <MenuItem Header="_New"></MenuItem>
+            <MenuItem Header="_Open..." Name="FileOpen" IsEnabled="True">
+              <MenuItem Header="_ESM/ESP/ESL..." Click="OnOpenPluginClicked"></MenuItem>
+              <MenuItem Header="_Directory" Click="OnOpenFolderClicked"></MenuItem>
+              <MenuItem Header="MSF JSON"></MenuItem>
+            </MenuItem>
+            <MenuItem Header="_Save"></MenuItem>
+            <MenuItem Header="_Save As..."></MenuItem>
+            <Separator></Separator>
+            <MenuItem Header="_Recent Files..." ItemsSource="{Binding RecentFiles}">
+              <MenuItem.ItemTemplate>
+                <DataTemplate>
+                  <MenuItem Header="{Binding}" />
+                </DataTemplate>
+              </MenuItem.ItemTemplate>
+            </MenuItem>
+          </MenuItem>
+          <MenuItem Header="_Edit"></MenuItem>
+          <MenuItem Header="_Tools">
+            <MenuItem Header="_Consolidation Wizard..." Click="OnOpenConsolidationWizard" />
+            <MenuItem Header="_Texture Set To Material..." />
+            <MenuItem Header="_Convert BGSM/BGEM to JSON..." Click="OnConvertMaterialFileClicked"/>
+          </MenuItem>
+          <MenuItem Header="_Help"></MenuItem>
+        </Menu>
+      </DockPanel>
+      <views:MainView x:Name="MainViewInstance" Grid.Row="1" />
+    </Grid>
+  </Panel>
 </Window>

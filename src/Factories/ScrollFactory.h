@@ -8,7 +8,7 @@ class ScrollFactory : public Factory<RE::ScrollItem>,
                       public Singleton<ScrollFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::ScrollItem* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to scroll forms can be added here
     return false;

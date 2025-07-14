@@ -8,7 +8,7 @@ class FurnitureFactory : public Factory<RE::TESFurniture>,
                          public Singleton<FurnitureFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESFurniture* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to furniture forms can be added here
     return false;

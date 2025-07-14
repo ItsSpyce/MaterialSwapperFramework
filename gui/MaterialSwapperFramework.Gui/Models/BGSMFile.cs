@@ -1,278 +1,705 @@
 ﻿using System.IO;
-using MaterialSwapperFramework.Gui.Extensions;
-using System.Numerics;
-using System.Text.Json.Serialization;
+using System.Runtime.Serialization;
+using MaterialSwapperFramework.Gui.Converters;
+using Newtonsoft.Json;
 
-namespace MaterialSwapperFramework.Gui.Models;
-
-public class BGSMFile : MaterialFileBase
+namespace MaterialSwapperFramework.Gui.Models
 {
-  [JsonPropertyName("diffuseMap")]
-  public string? DiffuseMap { get; set; }
-  [JsonPropertyName("normalMap")]
-  public string? NormalMap { get; set; }
-  [JsonPropertyName("smoothSpecularMap")]
-  public string? SmoothSpecularMap { get; set; }
-  [JsonPropertyName("grayscaleMap")]
-  public string? GrayscaleMap { get; set; }
-  [JsonPropertyName("glowMap")]
-  public string? GlowMap { get; set; }
-  [JsonPropertyName("wrinkleMap")]
-  public string? WrinkleMap { get; set; }
-  [JsonPropertyName("specularMap")]
-  public string? SpecularMap { get; set; }
-  [JsonPropertyName("lightingMap")]
-  public string? LightingMap { get; set; }
-  [JsonPropertyName("flowMap")]
-  public string? FlowMap { get; set; }
-  [JsonPropertyName("distanceFieldAlphaMap")]
-  public string? DistanceFieldAlphaMap { get; set; }
-  [JsonPropertyName("envMap")]
-  public string? EnvMap { get; set; }
-  [JsonPropertyName("innerLayerMap")]
-  public string? InnerLayerMap { get; set; }
-  [JsonPropertyName("displacementMap")]
-  public string? DisplacementMap { get; set; }
-  [JsonPropertyName("enableEditorAlphaThreshold")]
-  public bool EnableEditorAlphaThreshold { get; set; }
-  [JsonPropertyName("translucency")]
-  public bool Translucency { get; set; }
-  [JsonPropertyName("translucencyThickObject")]
-  public bool TranslucencyThickObject { get; set; }
-  [JsonPropertyName("translucencyMixAlbedoWithSubsurfaceColor")]
-  public bool TranslucencyMixAlbedoWithSubsurfaceColor { get; set; }
-  [JsonPropertyName("translucencySubsurfaceColor")]
-  public Vector3 TranslucencySubsurfaceColor { get; set; } = Vector3.Zero;
-  [JsonPropertyName("translucencyTransmissiveScale")]
-  public float TranslucencyTransmissiveScale { get; set; }
-  [JsonPropertyName("translucencyTurbulence")]
-  public float TranslucencyTurbulence { get; set; }
-  [JsonPropertyName("rimLighting")]
-  public bool RimLighting { get; set; }
-  [JsonPropertyName("rimPower")]
-  public float RimPower { get; set; }
-  [JsonPropertyName("backLightPower")]
-  public float BackLightPower { get; set; }
-  [JsonPropertyName("subsurfaceLighting")]
-  public bool SubsurfaceLighting { get; set; }
-  [JsonPropertyName("subsurfaceLightingRollOff")]
-  public float SubsurfaceLightingRollOff { get; set; }
-  [JsonPropertyName("specularEnabled")]
-  public bool SpecularEnabled { get; set; }
-  [JsonPropertyName("specularColor")]
-  public Vector3 SpecularColor { get; set; } = Vector3.Zero;
-  [JsonPropertyName("specularMult")]
-  public float SpecularMult { get; set; }
-  [JsonPropertyName("smoothness")]
-  public float Smoothness { get; set; }
-  [JsonPropertyName("fresnelPower")]
-  public float FresnelPower { get; set; }
-  [JsonPropertyName("wetnessControlSpecScale")]
-  public float WetnessControlSpecScale { get; set; }
-  [JsonPropertyName("wetnessControlSpecPowerScale")]
-  public float WetnessControlSpecPowerScale { get; set; }
-  [JsonPropertyName("wetnessControlSpecMinVar")]
-  public float WetnessControlSpecMinVar { get; set; }
-  [JsonPropertyName("wetnessControlEnvMapScale")]
-  public float WetnessControlEnvMapScale { get; set; }
-  [JsonPropertyName("wetnessControlFresnelPower")]
-  public float WetnessControlFresnelPower { get; set; }
-  [JsonPropertyName("wetnessControlMetalness")]
-  public float WetnessControlMetalness { get; set; }
-  [JsonPropertyName("pbr")]
-  public bool PBR { get; set; }
-  [JsonPropertyName("customPorosity")]
-  public bool CustomPorosity { get; set; }
-  [JsonPropertyName("porosityValue")]
-  public float PorosityValue { get; set; }
-  [JsonPropertyName("rootMaterialPath")]
-  public string? RootMaterialPath { get; set; }
-  [JsonPropertyName("anisoLighting")]
-  public bool AnisoLighting { get; set; }
-  [JsonPropertyName("emitEnabled")]
-  public bool EmitEnabled { get; set; }
-  [JsonPropertyName("emitColor")]
-  public Vector3 EmitColor { get; set; } = Vector3.Zero;
-  [JsonPropertyName("emitMult")]
-  public float EmitMult { get; set; }
-  [JsonPropertyName("modelSpaceNormals")]
-  public bool ModelSpaceNormals { get; set; }
-  [JsonPropertyName("externalEmit")]
-  public bool ExternalEmit { get; set; }
-  [JsonPropertyName("lumEmit")]
-  public float LumEmit { get; set; }
-  [JsonPropertyName("useAdaptiveEmissive")]
-  public bool UseAdaptiveEmissive { get; set; }
-  [JsonPropertyName("adaptiveEmissiveExposureParams")]
-  public Vector3 AdaptiveEmissiveExposureParams { get; set; }
-  [JsonPropertyName("backLighting")]
-  public bool BackLighting { get; set; }
-  [JsonPropertyName("receiveShadows")]
-  public bool ReceiveShadows { get; set; }
-  [JsonPropertyName("hideSecret")]
-  public bool HideSecret { get; set; }
-  [JsonPropertyName("castShadows")]
-  public bool CastShadows { get; set; }
-  [JsonPropertyName("dissolveFade")]
-  public bool DissolveFade { get; set; }
-  [JsonPropertyName("assumeShadowMask")]
-  public bool AssumeShadowMask { get; set; }
-  [JsonPropertyName("glowMapEnabled")]
-  public bool GlowMapEnabled { get; set; }
-  [JsonPropertyName("envMapWindow")]
-  public bool EnvMapWindow { get; set; }
-  [JsonPropertyName("envMapEye")]
-  public bool EnvMapEye { get; set; }
-  [JsonPropertyName("hair")]
-  public bool Hair { get; set; }
-  [JsonPropertyName("hairTintColor")]
-  public Vector3 HairTintColor { get; set; } = Vector3.Zero;
-  [JsonPropertyName("tree")]
-  public bool Tree { get; set; }
-  [JsonPropertyName("faceGen")]
-  public bool FaceGen { get; set; }
-  [JsonPropertyName("skinTint")]
-  public bool SkinTint { get; set; }
-  [JsonPropertyName("tessellate")]
-  public bool Tessellate { get; set; }
-  [JsonPropertyName("displacementMapParams")]
-  public Vector2 DisplacementMapParams { get; set; } = Vector2.Zero;
-  [JsonPropertyName("tessellationParams")]
-  public Vector3 TessellationParams { get; set; } = Vector3.Zero;
-  [JsonPropertyName("grayscaleToPaletteColor")]
-  public new float GrayscaleToPaletteColor { get; set; }
-  [JsonPropertyName("skewSpecularAlpha")]
-  public bool SkewSpecularAlpha { get; set; }
-  [JsonPropertyName("terrain")]
-  public bool Terrain { get; set; }
-  [JsonPropertyName("terrainParams")]
-  public Vector3 TerrainParams { get; set; } = Vector3.Zero;
-
-  public override void ReadFromStream(BinaryReader reader)
+  [DataContract]
+  public class BGSMFile : MaterialFileBase
   {
-    base.ReadFromStream(reader);
-    DiffuseMap = reader.ReadNullTerminatedString();
-    NormalMap = reader.ReadNullTerminatedString();
-    SmoothSpecularMap = reader.ReadNullTerminatedString();
-    GrayscaleMap = reader.ReadNullTerminatedString();
-    if (Version >= 3)
+    public const uint Signature = 0x4D534742u;
+
+    protected override void SetDefaults()
     {
-      GlowMap = reader.ReadNullTerminatedString();
-      WrinkleMap = reader.ReadNullTerminatedString();
-      SpecularMap = reader.ReadNullTerminatedString();
-      LightingMap = reader.ReadNullTerminatedString();
-      FlowMap = reader.ReadNullTerminatedString();
-      if (Version >= 17)
+      base.SetDefaults();
+
+      DiffuseTexture = "";
+      NormalTexture = "";
+      SmoothSpecTexture = "";
+      GreyscaleTexture = "";
+      EnvmapTexture = "";
+      GlowTexture = "";
+      InnerLayerTexture = "";
+      WrinklesTexture = "";
+      DisplacementTexture = "";
+      SpecularTexture = "";
+      LightingTexture = "";
+      FlowTexture = "";
+      DistanceFieldAlphaTexture = "";
+      RimPower = 2.0f;
+      SubsurfaceLightingRolloff = 0.3f;
+      SpecularColor = 0xFFFFFFFFu;
+      SpecularMult = 1.0f;
+      Smoothness = 1.0f;
+      FresnelPower = 5.0f;
+      WetnessControlSpecScale = -1.0f;
+      WetnessControlSpecPowerScale = -1.0f;
+      WetnessControlSpecMinvar = -1.0f;
+      WetnessControlEnvMapScale = -1.0f;
+      WetnessControlFresnelPower = -1.0f;
+      WetnessControlMetalness = -1.0f;
+      RootMaterialPath = "";
+      EmittanceColor = 0xFFFFFFFFu;
+      EmittanceMult = 1.0f;
+      HairTintColor = 0x808080u;
+      DisplacementTextureBias = -0.5f;
+      DisplacementTextureScale = 10.0f;
+      TessellationPnScale = 1.0f;
+      TessellationBaseFactor = 1.0f;
+      GrayscaleToPaletteScale = 1.0f;
+    }
+
+    public BGSMFile()
+        : base(Signature)
+    {
+    }
+    #region Fields
+
+    public override ShaderType Type => ShaderType.Lighting;
+
+    [JsonProperty("diffuseMap")]
+    public string? DiffuseTexture { get; set; }
+
+    [JsonProperty("normalMap")]
+    public string? NormalTexture { get; set; }
+
+    [JsonProperty("smoothSpecMap")]
+    public string? SmoothSpecTexture { get; set; }
+
+    [JsonProperty("grayscaleMap")]
+    public string? GreyscaleTexture { get; set; }
+
+    [JsonProperty("envMap")]
+    public string? EnvmapTexture { get; set; }
+
+    [JsonProperty("glowMap")]
+    public string? GlowTexture { get; set; }
+
+    [JsonProperty("innerLayerMap")]
+    public string? InnerLayerTexture { get; set; }
+
+    [JsonProperty("wrinklesMap")]
+    public string? WrinklesTexture { get; set; }
+
+    [JsonProperty("displacementMap")]
+    public string? DisplacementTexture { get; set; }
+
+    [JsonProperty("specularMap")]
+    public string? SpecularTexture { get; set; }
+
+    [JsonProperty("lightingMap")]
+    public string? LightingTexture { get; set; }
+
+    [JsonProperty("flowMap")]
+    public string? FlowTexture { get; set; }
+
+    [JsonProperty("distanceFieldAlphaMap")]
+    public string? DistanceFieldAlphaTexture { get; set; }
+
+    [JsonProperty("enableEditorAlphaRef")]
+    public bool EnableEditorAlphaRef { get; set; }
+
+    [JsonProperty("rimLighting")]
+    public bool RimLighting { get; set; }
+
+    [JsonProperty("rimPower")]
+    public float RimPower { get; set; }
+
+    [JsonProperty("backLightPower")]
+    public float BackLightPower { get; set; }
+
+    [JsonProperty("subsurfaceLighting")]
+    public bool SubsurfaceLighting { get; set; }
+
+    [JsonProperty("subsurfaceLightingRolloff")]
+    public float SubsurfaceLightingRolloff { get; set; }
+
+    [JsonProperty("specularEnabled")]
+    public bool SpecularEnabled { get; set; }
+
+    public uint SpecularColor { get; set; }
+
+    [JsonProperty("specularColor")]
+    [JsonConverter(typeof(ByteArrayConverter))]
+    private byte[] SpecularColorVector
+    {
+      get =>
+      [
+        (byte)(SpecularColor >> 16),
+        (byte)(SpecularColor >> 8),
+        (byte)SpecularColor
+      ];
+      set => SpecularColor = 
+      (
+        (uint)value[1] << 16 |
+        (uint)value[2] << 8 |
+        (uint)value[3]
+      );
+    }
+
+    [JsonProperty("specularMult")]
+    public float SpecularMult { get; set; }
+
+    [JsonProperty("smoothness")]
+    public float Smoothness { get; set; }
+
+    [JsonProperty("fresnelPower")]
+    public float FresnelPower { get; set; }
+
+    [JsonProperty("wetnessControlSpecScale")]
+    public float WetnessControlSpecScale { get; set; }
+
+    [JsonProperty("wetnessControlSpecPowerScale")]
+    public float WetnessControlSpecPowerScale { get; set; }
+
+    [JsonProperty("wetnessControlSpecMinvar")]
+    public float WetnessControlSpecMinvar { get; set; }
+
+    [JsonProperty("wetnessControlEnvMapScale")]
+    public float WetnessControlEnvMapScale { get; set; }
+
+    [JsonProperty("wetnessControlFresnelPower")]
+    public float WetnessControlFresnelPower { get; set; }
+
+    [JsonProperty("wetnessControlMetalness")]
+    public float WetnessControlMetalness { get; set; }
+
+    [JsonProperty("rootMaterialPath")]
+    public string? RootMaterialPath { get; set; }
+
+    [JsonProperty("anisoLighting")]
+    public bool AnisoLighting { get; set; }
+
+    [JsonProperty("emitEnabled")]
+    public bool EmitEnabled { get; set; }
+
+    public uint EmittanceColor { get; set; }
+
+    [JsonProperty("emittanceColor")]
+    [JsonConverter(typeof(ByteArrayConverter))]
+    private byte[] EmittanceColorVector
+    {
+      get =>
+      [
+        (byte)(EmittanceColor >> 24),
+        (byte)(EmittanceColor >> 16),
+        (byte)(EmittanceColor >> 8),
+        (byte)EmittanceColor
+      ];
+      set => EmittanceColor = 
+      (
+        (uint)value[0] << 24 |
+        (uint)value[1] << 16 |
+        (uint)value[2] << 8 |
+        (uint)value[3]
+      );
+    }
+
+    [JsonProperty("emittanceMult")]
+    public float EmittanceMult { get; set; }
+
+    [JsonProperty("modelSpaceNormals")]
+    public bool ModelSpaceNormals { get; set; }
+
+    [JsonProperty("externalEmittance")]
+    public bool ExternalEmittance { get; set; }
+
+    [JsonProperty("backLighting")]
+    public bool BackLighting { get; set; }
+
+    [JsonProperty("receiveShadows")]
+    public bool ReceiveShadows { get; set; }
+
+    [JsonProperty("hideSecret")]
+    public bool HideSecret { get; set; }
+
+    [JsonProperty("castShadows")]
+    public bool CastShadows { get; set; }
+
+    [JsonProperty("dissolveFade")]
+    public bool DissolveFade { get; set; }
+
+    [JsonProperty("assumeShadowmask")]
+    public bool AssumeShadowmask { get; set; }
+
+    [JsonProperty("glowmap")]
+    public bool Glowmap { get; set; }
+
+    [JsonProperty("environmentMappingWindow")]
+    public bool EnvironmentMappingWindow { get; set; }
+
+    [JsonProperty("environmentMappingEye")]
+    public bool EnvironmentMappingEye { get; set; }
+
+    [JsonProperty("hair")]
+    public bool Hair { get; set; }
+
+    public uint HairTintColor { get; set; }
+
+    [JsonProperty("hairTintColor")]
+    [JsonConverter(typeof(ByteArrayConverter))]
+    private byte[] HairTintColorVector
+    {
+      get =>
+      [
+        (byte)(HairTintColor >> 16),
+        (byte)(HairTintColor >> 8),
+        (byte)HairTintColor,
+      ];
+      set => HairTintColor = 
+      (
+        (uint)value[0] << 16 |
+        (uint)value[1] << 8 |
+        (uint)value[2]
+      );
+    }
+
+    [JsonProperty("tree")]
+    public bool Tree { get; set; }
+
+    [JsonProperty("facegen")]
+    public bool Facegen { get; set; }
+
+    [JsonProperty("skinTint")]
+    public bool SkinTint { get; set; }
+
+    [JsonProperty("tessellate")]
+    public bool Tessellate { get; set; }
+
+    [JsonProperty("displacementTextureBias")]
+    public float DisplacementTextureBias { get; set; }
+
+    [JsonProperty("displacementTextureScale")]
+    public float DisplacementTextureScale { get; set; }
+
+    [JsonProperty("tessellationPnScale")]
+    public float TessellationPnScale { get; set; }
+
+    [JsonProperty("tessellationBaseFactor")]
+    public float TessellationBaseFactor { get; set; }
+
+    [JsonProperty("tessellationFadeDistance")]
+    public float TessellationFadeDistance { get; set; }
+
+    [JsonProperty("grayscaleToPaletteScale")]
+    public float GrayscaleToPaletteScale { get; set; }
+
+    [JsonProperty("skewSpecularAlpha")]
+    public bool SkewSpecularAlpha { get; set; }
+
+    [JsonProperty("translucency")]
+    public bool Translucency { get; set; }
+
+    public uint TranslucencySubsurfaceColor { get; set; }
+
+    [JsonProperty("translucencySubsurfaceColor")]
+    [JsonConverter(typeof(ByteArrayConverter))]
+    private byte[] TranslucencySubsurfaceColorVector
+    {
+      get =>
+      [
+        (byte)(TranslucencySubsurfaceColor >> 24),
+        (byte)(TranslucencySubsurfaceColor >> 16),
+        (byte)(TranslucencySubsurfaceColor >> 8),
+        (byte)TranslucencySubsurfaceColor,
+      ];
+      set => TranslucencySubsurfaceColor = 
+      (
+        (uint)value[0] << 24 |
+        (uint)value[1] << 16 |
+        (uint)value[2] << 8 |
+        (uint)value[3]
+      );
+    }
+
+    [JsonProperty("translucencyTransmissiveScale")]
+    public float TranslucencyTransmissiveScale { get; set; }
+
+    [JsonProperty("translucencyTurbulence")]
+    public float TranslucencyTurbulence { get; set; }
+
+    [JsonProperty("pbr")]
+    public bool PBR { get; set; }
+
+    [JsonProperty("customPorosity")]
+    public bool CustomPorosity { get; set; }
+
+    [JsonProperty("porosityValue")]
+    public float PorosityValue { get; set; }
+
+    [JsonProperty("lumEmittance")]
+    public float LumEmittance { get; set; }
+
+    [JsonProperty("translucencyThickObject")]
+    public bool TranslucencyThickObject { get; set; }
+
+    [JsonProperty("translucencyMixAlbedoWithSubsurfaceColor")]
+    public bool TranslucencyMixAlbedoWithSubsurfaceColor { get; set; }
+
+    [JsonProperty("useAdaptativeEmissive")]
+    public bool UseAdaptativeEmissive { get; set; }
+
+    [JsonProperty("adaptativeEmissiveExposureOffset")]
+    public float AdaptativeEmissive_ExposureOffset { get; set; }
+
+    [JsonProperty("adaptativeEmissiveFinalExposureMin")]
+    public float AdaptativeEmissive_FinalExposureMin { get; set; }
+
+    [JsonProperty("adaptativeEmissiveFinalExposureMax")]
+    public float AdaptativeEmissive_FinalExposureMax { get; set; }
+
+    [JsonProperty("terrain")]
+    public bool Terrain { get; set; }
+
+    [JsonProperty("terrainThresholdFalloff")]
+    public float TerrainThresholdFalloff { get; set; }
+
+    [JsonProperty("terrainTilingDistance")]
+    public float TerrainTilingDistance { get; set; }
+
+    [JsonProperty("terrainRotationAngle")]
+    public float TerrainRotationAngle { get; set; }
+
+    [JsonProperty("unkInt1")]
+    public uint UnkInt1 { get; set; }
+    #endregion
+
+    public override void Deserialize(BinaryReader input)
+    {
+      base.Deserialize(input);
+
+      DiffuseTexture = ReadString(input);
+      NormalTexture = ReadString(input);
+      SmoothSpecTexture = ReadString(input);
+      GreyscaleTexture = ReadString(input);
+
+      if (Version > 2)
       {
-        DistanceFieldAlphaMap = reader.ReadNullTerminatedString();
+        GlowTexture = ReadString(input);
+        WrinklesTexture = ReadString(input);
+        SpecularTexture = ReadString(input);
+        LightingTexture = ReadString(input);
+        FlowTexture = ReadString(input);
+
+        if (Version >= 17)
+        {
+          DistanceFieldAlphaTexture = ReadString(input);
+        }
       }
-    }
-    else
-    {
-      EnvMap = reader.ReadNullTerminatedString();
-      GlowMap = reader.ReadNullTerminatedString();
-      InnerLayerMap = reader.ReadNullTerminatedString();
-      WrinkleMap = reader.ReadNullTerminatedString();
-      DisplacementMap = reader.ReadNullTerminatedString();
-    }
-    EnableEditorAlphaThreshold = reader.ReadBoolean();
-    if (Version >= 8)
-    {
-      Translucency = reader.ReadBoolean();
-      TranslucencyThickObject = reader.ReadBoolean();
-      TranslucencyMixAlbedoWithSubsurfaceColor = reader.ReadBoolean();
-      TranslucencySubsurfaceColor = reader.ReadVec3();
-      TranslucencyTransmissiveScale = reader.ReadSingle();
-      TranslucencyTurbulence = reader.ReadSingle();
-    }
-    else
-    {
-      RimLighting = reader.ReadBoolean();
-      RimPower = reader.ReadSingle();
-      BackLightPower = reader.ReadSingle();
-      SubsurfaceLighting = reader.ReadBoolean();
-      SubsurfaceLightingRollOff = reader.ReadSingle();
-    }
-    SpecularEnabled = reader.ReadBoolean();
-    SpecularColor = reader.ReadVec3();
-    SpecularMult = reader.ReadSingle();
-    Smoothness = reader.ReadSingle();
-    FresnelPower = reader.ReadSingle();
-    WetnessControlSpecScale = reader.ReadSingle();
-    WetnessControlSpecPowerScale = reader.ReadSingle();
-    WetnessControlSpecMinVar = reader.ReadSingle();
-    if (Version < 10)
-    {
-      WetnessControlEnvMapScale = reader.ReadSingle();
-    }
-    WetnessControlFresnelPower = reader.ReadSingle();
-    WetnessControlMetalness = reader.ReadSingle();
-    if (Version >= 3)
-    {
-      PBR = reader.ReadBoolean();
-      if (Version >= 9)
+      else
       {
-        CustomPorosity = reader.ReadBoolean();
-        PorosityValue = reader.ReadSingle();
+        EnvmapTexture = ReadString(input);
+        GlowTexture = ReadString(input);
+        InnerLayerTexture = ReadString(input);
+        WrinklesTexture = ReadString(input);
+        DisplacementTexture = ReadString(input);
       }
-    }
-    RootMaterialPath = reader.ReadNullTerminatedString();
-    AnisoLighting = reader.ReadBoolean();
-    EmitEnabled = reader.ReadBoolean();
-    if (EmitEnabled)
-    {
-      EmitColor = reader.ReadVec3();
-    }
-    EmitMult = reader.ReadSingle();
-    ModelSpaceNormals = reader.ReadBoolean();
-    ExternalEmit = reader.ReadBoolean();
-    if (Version >= 12)
-    {
-      LumEmit = reader.ReadSingle();
+
+      EnableEditorAlphaRef = input.ReadBoolean();
+
+      if (Version >= 8)
+      {
+        Translucency = input.ReadBoolean();
+        TranslucencyThickObject = input.ReadBoolean();
+        TranslucencyMixAlbedoWithSubsurfaceColor = input.ReadBoolean();
+        TranslucencySubsurfaceColor = Color.Read(input).ToUInt32();
+        TranslucencyTransmissiveScale = input.ReadSingle();
+        TranslucencyTurbulence = input.ReadSingle();
+      }
+      else
+      {
+        RimLighting = input.ReadBoolean();
+        RimPower = input.ReadSingle();
+        BackLightPower = input.ReadSingle();
+
+        SubsurfaceLighting = input.ReadBoolean();
+        SubsurfaceLightingRolloff = input.ReadSingle();
+      }
+
+      SpecularEnabled = input.ReadBoolean();
+      SpecularColor = Color.Read(input).ToUInt32();
+      SpecularMult = input.ReadSingle();
+      Smoothness = input.ReadSingle();
+
+      FresnelPower = input.ReadSingle();
+      WetnessControlSpecScale = input.ReadSingle();
+      WetnessControlSpecPowerScale = input.ReadSingle();
+      WetnessControlSpecMinvar = input.ReadSingle();
+
+      if (Version < 10)
+      {
+        WetnessControlEnvMapScale = input.ReadSingle();
+      }
+
+      WetnessControlFresnelPower = input.ReadSingle();
+      WetnessControlMetalness = input.ReadSingle();
+
+      if (Version > 2)
+      {
+        PBR = input.ReadBoolean();
+
+        if (Version >= 9)
+        {
+          CustomPorosity = input.ReadBoolean();
+          PorosityValue = input.ReadSingle();
+        }
+      }
+
+      RootMaterialPath = ReadString(input);
+
+      AnisoLighting = input.ReadBoolean();
+      EmitEnabled = input.ReadBoolean();
+
+      if (EmitEnabled)
+      {
+        EmittanceColor = Color.Read(input).ToUInt32();
+      }
+
+      EmittanceMult = input.ReadSingle();
+      ModelSpaceNormals = input.ReadBoolean();
+      ExternalEmittance = input.ReadBoolean();
+
+      if (Version >= 12)
+      {
+        LumEmittance = input.ReadSingle();
+      }
+
       if (Version >= 13)
       {
-        UseAdaptiveEmissive = reader.ReadBoolean();
-        AdaptiveEmissiveExposureParams = reader.ReadVec3();
+        UseAdaptativeEmissive = input.ReadBoolean();
+        AdaptativeEmissive_ExposureOffset = input.ReadSingle();
+        AdaptativeEmissive_FinalExposureMin = input.ReadSingle();
+        AdaptativeEmissive_FinalExposureMax = input.ReadSingle();
+      }
+
+      if (Version < 8)
+      {
+        BackLighting = input.ReadBoolean();
+      }
+
+      ReceiveShadows = input.ReadBoolean();
+      HideSecret = input.ReadBoolean();
+      CastShadows = input.ReadBoolean();
+      DissolveFade = input.ReadBoolean();
+      AssumeShadowmask = input.ReadBoolean();
+
+      Glowmap = input.ReadBoolean();
+
+      if (Version < 7)
+      {
+        EnvironmentMappingWindow = input.ReadBoolean();
+        EnvironmentMappingEye = input.ReadBoolean();
+      }
+
+      Hair = input.ReadBoolean();
+      HairTintColor = Color.Read(input).ToUInt32();
+
+      Tree = input.ReadBoolean();
+      Facegen = input.ReadBoolean();
+      SkinTint = input.ReadBoolean();
+      Tessellate = input.ReadBoolean();
+
+      if (Version < 3)
+      {
+        DisplacementTextureBias = input.ReadSingle();
+        DisplacementTextureScale = input.ReadSingle();
+        TessellationPnScale = input.ReadSingle();
+        TessellationBaseFactor = input.ReadSingle();
+        TessellationFadeDistance = input.ReadSingle();
+      }
+
+      GrayscaleToPaletteScale = input.ReadSingle();
+
+      if (Version >= 1)
+      {
+        SkewSpecularAlpha = input.ReadBoolean();
+      }
+
+      if (Version >= 3)
+      {
+        Terrain = input.ReadBoolean();
+
+        if (Terrain)
+        {
+          if (Version == 3)
+          {
+            UnkInt1 = input.ReadUInt32();
+          }
+
+          TerrainThresholdFalloff = input.ReadSingle();
+          TerrainTilingDistance = input.ReadSingle();
+          TerrainRotationAngle = input.ReadSingle();
+        }
       }
     }
-    else if (Version < 8)
+
+    public override void Serialize(BinaryWriter output)
     {
-      BackLighting = reader.ReadBoolean();
-    }
-    ReceiveShadows = reader.ReadBoolean();
-    HideSecret = reader.ReadBoolean();
-    CastShadows = reader.ReadBoolean();
-    DissolveFade = reader.ReadBoolean();
-    AssumeShadowMask = reader.ReadBoolean();
-    GlowMapEnabled = reader.ReadBoolean();
-    if (Version < 7)
-    {
-      EnvMapWindow = reader.ReadBoolean();
-      EnvMapEye = reader.ReadBoolean();
-    }
-    Hair = reader.ReadBoolean();
-    HairTintColor = reader.ReadVec3();
-    Tree = reader.ReadBoolean();
-    FaceGen = reader.ReadBoolean();
-    SkinTint = reader.ReadBoolean();
-    Tessellate = reader.ReadBoolean();
-    if (Version < 3)
-    {
-      DisplacementMapParams = reader.ReadVec2();
-      TessellationParams = reader.ReadVec3();
-    }
-    GrayscaleToPaletteColor = reader.ReadSingle();
-    if (Version >= 1)
-    {
-      SkewSpecularAlpha = reader.ReadBoolean();
-      Terrain = reader.ReadBoolean();
-      if (Terrain)
+      base.Serialize(output);
+
+      WriteString(output, DiffuseTexture);
+      WriteString(output, NormalTexture);
+      WriteString(output, SmoothSpecTexture);
+      WriteString(output, GreyscaleTexture);
+
+      if (Version > 2)
       {
-        if (Version == 3)
+        WriteString(output, GlowTexture);
+        WriteString(output, WrinklesTexture);
+        WriteString(output, SpecularTexture);
+        WriteString(output, LightingTexture);
+        WriteString(output, FlowTexture);
+
+        if (Version >= 17)
         {
-          reader.ReadUInt32(); // Skip unknown uint
+          WriteString(output, DistanceFieldAlphaTexture);
         }
-        TerrainParams = reader.ReadVec3();
+      }
+      else
+      {
+        WriteString(output, EnvmapTexture);
+        WriteString(output, GlowTexture);
+        WriteString(output, InnerLayerTexture);
+        WriteString(output, WrinklesTexture);
+        WriteString(output, DisplacementTexture);
+      }
+
+      output.Write(EnableEditorAlphaRef);
+
+      if (Version >= 8)
+      {
+        output.Write(Translucency);
+        output.Write(TranslucencyThickObject);
+        output.Write(TranslucencyMixAlbedoWithSubsurfaceColor);
+        Color.FromUInt32(TranslucencySubsurfaceColor).Write(output);
+        output.Write(TranslucencyTransmissiveScale);
+        output.Write(TranslucencyTurbulence);
+      }
+      else
+      {
+        output.Write(RimLighting);
+        output.Write(RimPower);
+        output.Write(BackLightPower);
+
+        output.Write(SubsurfaceLighting);
+        output.Write(SubsurfaceLightingRolloff);
+      }
+
+      output.Write(SpecularEnabled);
+      Color.FromUInt32(SpecularColor).Write(output);
+      output.Write(SpecularMult);
+      output.Write(Smoothness);
+
+      output.Write(FresnelPower);
+      output.Write(WetnessControlSpecScale);
+      output.Write(WetnessControlSpecPowerScale);
+      output.Write(WetnessControlSpecMinvar);
+
+      if (Version < 10)
+      {
+        output.Write(WetnessControlEnvMapScale);
+      }
+
+      output.Write(WetnessControlFresnelPower);
+      output.Write(WetnessControlMetalness);
+
+      if (Version > 2)
+      {
+        output.Write(PBR);
+
+        if (Version >= 9)
+        {
+          output.Write(CustomPorosity);
+          output.Write(PorosityValue);
+        }
+      }
+
+      WriteString(output, RootMaterialPath);
+
+      output.Write(AnisoLighting);
+      output.Write(EmitEnabled);
+
+      if (EmitEnabled)
+      {
+        Color.FromUInt32(EmittanceColor).Write(output);
+      }
+
+      output.Write(EmittanceMult);
+      output.Write(ModelSpaceNormals);
+      output.Write(ExternalEmittance);
+
+      if (Version >= 12)
+      {
+        output.Write(LumEmittance);
+      }
+
+      if (Version >= 13)
+      {
+        output.Write(UseAdaptativeEmissive);
+        output.Write(AdaptativeEmissive_ExposureOffset);
+        output.Write(AdaptativeEmissive_FinalExposureMin);
+        output.Write(AdaptativeEmissive_FinalExposureMax);
+      }
+
+      if (Version < 8)
+      {
+        output.Write(BackLighting);
+      }
+
+      output.Write(ReceiveShadows);
+      output.Write(HideSecret);
+      output.Write(CastShadows);
+      output.Write(DissolveFade);
+      output.Write(AssumeShadowmask);
+
+      output.Write(Glowmap);
+
+      if (Version < 7)
+      {
+        output.Write(EnvironmentMappingWindow);
+        output.Write(EnvironmentMappingEye);
+      }
+
+      output.Write(Hair);
+      Color.FromUInt32(HairTintColor).Write(output);
+
+      output.Write(Tree);
+      output.Write(Facegen);
+      output.Write(SkinTint);
+      output.Write(Tessellate);
+
+      if (Version < 3)
+      {
+        output.Write(DisplacementTextureBias);
+        output.Write(DisplacementTextureScale);
+        output.Write(TessellationPnScale);
+        output.Write(TessellationBaseFactor);
+        output.Write(TessellationFadeDistance);
+      }
+
+      output.Write(GrayscaleToPaletteScale);
+
+      if (Version >= 1)
+      {
+        output.Write(SkewSpecularAlpha);
+      }
+
+      if (Version >= 3)
+      {
+        output.Write(Terrain);
+
+        if (Terrain)
+        {
+          if (Version == 3)
+          {
+            output.Write(UnkInt1);
+          }
+
+          output.Write(TerrainThresholdFalloff);
+          output.Write(TerrainTilingDistance);
+          output.Write(TerrainRotationAngle);
+        }
       }
     }
   }

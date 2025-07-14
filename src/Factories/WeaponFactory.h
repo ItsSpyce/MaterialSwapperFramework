@@ -8,7 +8,7 @@ class WeaponFactory : public Factory<RE::TESObjectWEAP>,
                       public Singleton<WeaponFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectWEAP* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to weapon forms can be added here
     return false;

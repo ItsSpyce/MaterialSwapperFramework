@@ -8,7 +8,7 @@ class IngestibleFactory : public Factory<RE::AlchemyItem>,
                           public Singleton<IngestibleFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::AlchemyItem* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to ingestible forms can be added here
     return false;

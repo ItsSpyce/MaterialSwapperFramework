@@ -36,7 +36,7 @@ void MaterialsPage(const MaterialsPageProps&) {
     if (selectedSlot != RE::BIPED_OBJECTS::BIPED_OBJECT::kNone) {
       ImGui_Table("MaterialsTable", 1, ImGuiTableFlags_BordersInnerH) {
         MaterialLoader::VisitMaterialFilesForFormID(
-            bipedObject.item->GetFormID(), [&](const MaterialRecord& material) {
+            bipedObject.item->GetFormID(), [&](const MaterialConfig& material) {
               if (material.isHidden) {
                 return;  // Skip isHidden materials
               }

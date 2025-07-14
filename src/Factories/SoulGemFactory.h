@@ -8,7 +8,7 @@ class SoulGemFactory : public Factory<RE::TESSoulGem>,
                        public Singleton<SoulGemFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESSoulGem* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to soul gem forms can be added here
     return false;

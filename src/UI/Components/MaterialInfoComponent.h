@@ -6,7 +6,7 @@
 
 namespace UI::Components {
 struct MaterialInfoComponentProps {
-  MaterialRecord material;
+  MaterialConfig material;
   RE::BIPED_OBJECTS::BIPED_OBJECT selectedSlot;
 };
 

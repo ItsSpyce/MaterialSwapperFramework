@@ -8,7 +8,7 @@ class AmmunitionFactory : public Factory<RE::TESAmmo>,
                           public Singleton<AmmunitionFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESAmmo* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     // Ammunition does not support materials
     return false;
   }

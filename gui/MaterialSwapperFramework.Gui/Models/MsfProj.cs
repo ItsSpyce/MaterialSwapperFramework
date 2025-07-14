@@ -1,4 +1,6 @@
-﻿using ReactiveUI;
+﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using ReactiveUI;
 
 namespace MaterialSwapperFramework.Gui.Models;
 
@@ -6,25 +8,24 @@ public class MsfProj : ReactiveObject
 {
   public const string Extension = ".msfproj";
 
-  private string _name = string.Empty;
-  private string? _version;
-  private string? _dataDir;
-
-  public string Name
+  private ObservableCollection<string> _modFiles = [];
+  public ObservableCollection<string> ModFiles
   {
-    get => _name;
-    set => this.RaiseAndSetIfChanged(ref _name, value);
+    get => _modFiles;
+    set => this.RaiseAndSetIfChanged(ref _modFiles, value);
   }
 
-  public string? Version
+  private string? _filename;
+  public string? Filename
   {
-    get => _version;
-    set => this.RaiseAndSetIfChanged(ref _version, value);
+    get => _filename;
+    set => this.RaiseAndSetIfChanged(ref _filename, value);
   }
 
-  public string? DataDir
+  private bool _isDirty = false;
+  public bool IsDirty
   {
-    get => _dataDir;
-    set => this.RaiseAndSetIfChanged(ref _dataDir, value);
+    get => _isDirty;
+    set => this.RaiseAndSetIfChanged(ref _isDirty, value);
   }
 }

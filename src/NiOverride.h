@@ -1,8 +1,6 @@
 #pragma once
 
-#include "NifHelpers.h"
 #include "Papyrus.h"
-#include "Models/MaterialFileBase.h"
 
 namespace NiOverride {
 enum : uint32_t {
@@ -21,6 +19,19 @@ enum : uint32_t {
   kNiOverrideKey_ControllerStopTime = 22,
   kNiOverrideKey_ControllerFrequency = 23,
   kNiOverrideKey_ControllerPhase = 24,
+};
+
+enum : uint32_t {
+  kNiOverrideTex_Diffuse,
+  kNiOverrideTex_Normal,
+  kNiOverrideTex_Glow,
+  kNiOverrideTex_Parallax,
+  kNiOverrideTex_Environment,
+  kNiOverrideTex_EnvMask,
+  kNiOverrideTex_6,
+  kNiOverrideTex_Specular,
+  kNiOverrideTex_8,
+  kNiOverrideTex_9,
 };
 
 #define MAKE_NI_OVERRIDE_FUNCTION_ARGS(...) RE::StaticFunctionTag, __VA_ARGS__
@@ -77,50 +88,4 @@ MAKE_NI_OVERRIDE_FUNCTION(RemoveAllReferenceOverrides, void,
 MAKE_NI_OVERRIDE_FUNCTION(HasNodeOverride, bool, RE::TESObjectREFR* refr,
                           bool isFemale, const char* node, int key,
                           uint32_t index)
-
-static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool isFemale,
-                                const char* node,
-                                MaterialFileBase& material) {
-  RETURN_IF_FALSE(refr)
-  RETURN_IF_FALSE(node)
-
-  AddNodeOverrideFloat()(RE::StaticFunctionTag{}, refr, isFemale, node,
-                         kNiOverrideKey_ShaderAlpha, 0, material.transparency,
-                         false);
-
-  if (const auto lightingMaterial = material.As<BGSMFile>()) {
-    auto diffuseTex = StringHelpers::PrefixTexturesPath(lightingMaterial->diffuseMap);
-    auto normalTex =
-        lightingMaterial->normalMap.empty()
-            ? ""
-            : StringHelpers::PrefixTexturesPath(lightingMaterial->normalMap);
-    auto specularTex =
-        lightingMaterial->specularMap.empty()
-            ? ""
-            : StringHelpers::PrefixTexturesPath(lightingMaterial->specularMap);
-    logger::debug(
-        "Applying lighting material to node: {}, diffuse: {}, "
-        "normal: {}, specular: {}",
-        node, diffuseTex, normalTex, specularTex);
-
-    AddNodeOverrideString()(RE::StaticFunctionTag{}, refr, isFemale, node,
-                            kNiOverrideKey_ShaderTexture, 0, diffuseTex.c_str(),
-                            false);
-    AddNodeOverrideString()(RE::StaticFunctionTag{}, refr, isFemale, node,
-                            kNiOverrideKey_ShaderTexture, 1,
-                            normalTex.c_str(), false);
-    AddNodeOverrideString()(RE::StaticFunctionTag{}, refr, isFemale, node,
-                            kNiOverrideKey_ShaderTexture, 7,
-                            specularTex.c_str(), false);
-    AddNodeOverrideFloat()(RE::StaticFunctionTag{}, refr, isFemale, node,
-                           kNiOverrideKey_ShaderSpecularStrength, 1,
-                           lightingMaterial->specularMult, false);
-    return true;
-  }
-  if (const auto effectMaterial = material.As<BGEMFile>()) {
-    logger::error("BGEM not supported yet");
-    return false;
-  }
-  return false;
-}
 };  // namespace NiOverride

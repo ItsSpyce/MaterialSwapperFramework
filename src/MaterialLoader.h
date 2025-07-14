@@ -4,10 +4,8 @@
 
 #include "Filesystem.h"
 #include "MaterialConfig.h"
-#include "IO/BinaryMaterialReader.h"
-#include "IO/JsonMaterialReader.h"
-#include "StringHelpers.h"
 #include "Models/MaterialFileBase.h"
+#include "StringHelpers.h"
 
 namespace fs = std::filesystem;
 
@@ -17,15 +15,15 @@ class MaterialLoader {
     if (clearExisting) {
       materialConfigs_.clear();
     }
-    std::hash<std::string> hash{};
     for (auto& jsonFile : Filesystem::EnumerateMaterialConfigDir()) {
       auto loweredPath = StringHelpers::ToLower(jsonFile.path().string());
-      auto filename = StringHelpers::ToLower(jsonFile.path().filename().string());
+      auto filename =
+          StringHelpers::ToLower(jsonFile.path().filename().string());
       if (!filename.ends_with(".json") || filename[0] == '_') {
         continue;
       }
       logger::debug("Reading material config file: {}", loweredPath);
-      MaterialConfig config;
+      MaterialConfigMap config;
       if (auto err = glz::read_file_json(config, loweredPath, std::string{})) {
         auto cleanedError = glz::format_error(err);
         logger::error("Failed to read material config file {}: {}", loweredPath,
@@ -48,21 +46,22 @@ class MaterialLoader {
     }
   }
 
-  _NODISCARD static std::shared_ptr<MaterialFileBase> LoadMaterial(
+  _NODISCARD static std::shared_ptr<MaterialRecord> LoadMaterial(
       const std::string& filename) {
     if (filename.empty()) {
       logger::error("Filename is empty");
       return nullptr;
     }
-    auto path = fs::path("Data") / filename;
+    auto path = fs::path("Data") / "Materials" / filename;
     return LoadMaterialFromDisk(path.string());
   }
 
-  _NODISCARD static MaterialRecord* GetMaterial(RE::FormID formID, const std::string& materialName) {
-    auto it = materialConfigs_.find(formID);
-    if (it != materialConfigs_.end()) {
+  _NODISCARD static MaterialConfig* GetMaterial(
+      RE::FormID formID, const std::string& materialName) {
+    if (auto it = materialConfigs_.find(formID); it != materialConfigs_.end()) {
       for (auto& record : it->second) {
-        if (StringHelpers::ToLower(record.name) == StringHelpers::ToLower(materialName)) {
+        if (StringHelpers::ToLower(record.name) ==
+            StringHelpers::ToLower(materialName)) {
           return &record;
         }
       }
@@ -70,7 +69,7 @@ class MaterialLoader {
     return nullptr;
   }
 
-  _NODISCARD static MaterialRecord* GetDefaultMaterial(RE::FormID formID) {
+  _NODISCARD static MaterialConfig* GetDefaultMaterial(RE::FormID formID) {
     auto it = materialConfigs_.find(formID);
     if (it != materialConfigs_.end()) {
       for (auto& record : it->second) {
@@ -84,7 +83,7 @@ class MaterialLoader {
 
   static void VisitMaterialFilesForFormID(
       uint32_t formID,
-      const std::function<void(const MaterialRecord&)>& visitor) {
+      const std::function<void(const MaterialConfig&)>& visitor) {
     auto it = materialConfigs_.find(formID);
     if (it != materialConfigs_.end()) {
       for (const auto& entry : it->second) {
@@ -94,24 +93,29 @@ class MaterialLoader {
   }
 
  private:
-  static std::shared_ptr<MaterialFileBase> LoadMaterialFromDisk(
+  static std::shared_ptr<MaterialRecord> LoadMaterialFromDisk(
       const std::string& filename) {
-    const auto ext = StringHelpers::ToLower(fs::path(filename).extension().string());
-    IO::MaterialReaderBase* reader = nullptr;
-    if (ext == ".json") {
-      reader = new IO::JsonMaterialReader();
-    } else if (ext == ".bgsm" || ext == ".bgem") {
-      reader = new IO::BinaryMaterialReader();
-    } else {
-      logger::error("Unsupported material file extension: {}", ext);
+    if (filename.empty() || !fs::exists(filename)) {
+      logger::error("Material file does not exist: {}", filename);
       return nullptr;
     }
-    reader->Read(filename);
-    auto file = reader->File();
+    if (!StringHelpers::ToLower(filename).ends_with(".json")) {
+      logger::error("JSON file expected, but got: {}", filename);
+      return nullptr;
+    }
+    MaterialRecord record{};
+    if (auto err = glz::read_file_json<glz::opts{.error_on_unknown_keys = false,
+                                                 .new_lines_in_arrays = true}>(
+            record, filename, std::string{})) {
+      auto cleanedError = glz::format_error(err);
+      logger::error("Failed to read material file {}: {}", filename,
+                    cleanedError);
+      return nullptr;
+    }
     // TODO: load templated materials
-    return file;
+    return std::make_shared<MaterialRecord>(std::move(record));
   }
 
-  static inline std::unordered_map<uint32_t, std::vector<MaterialRecord>>
+  static inline std::unordered_map<uint32_t, std::vector<MaterialConfig>>
       materialConfigs_{};
 };

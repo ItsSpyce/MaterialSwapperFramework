@@ -8,7 +8,7 @@ class FloraFactory : public Factory<RE::TESFlora>,
                      public Singleton<FloraFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESFlora* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to flora forms can be added here
     return false;

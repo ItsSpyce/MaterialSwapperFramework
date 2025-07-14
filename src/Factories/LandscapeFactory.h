@@ -8,7 +8,7 @@ class LandscapeFactory : public Factory<RE::TESObjectLAND>,
                          public Singleton<LandscapeFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectLAND* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to landscape forms can be added here
     return false;

@@ -8,7 +8,7 @@ class TextureSetFactory : public Factory<RE::BGSTextureSet>,
                           public Singleton<TextureSetFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::BGSTextureSet* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to texture set forms can be added here
     return false;

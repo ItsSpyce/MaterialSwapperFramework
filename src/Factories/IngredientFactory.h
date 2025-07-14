@@ -8,7 +8,7 @@ class IngredientFactory : public Factory<RE::IngredientItem>,
                           public Singleton<IngredientFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::IngredientItem* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to ingredient forms can be added here
     return false;

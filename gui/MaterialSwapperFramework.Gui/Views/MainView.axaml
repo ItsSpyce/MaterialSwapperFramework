@@ -2,42 +2,21 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:i="https://github.com/projektanker/icons.avalonia"
              xmlns:vm="clr-namespace:MaterialSwapperFramework.Gui.ViewModels"
-             xmlns:v="clr-namespace:MaterialSwapperFramework.Gui.Views"
+             xmlns:local="clr-namespace:MaterialSwapperFramework.Gui.Views"
+             xmlns:models="clr-namespace:MaterialSwapperFramework.Gui.Models"
              xmlns:gui="clr-namespace:MaterialSwapperFramework.Gui"
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="450"
              x:Class="MaterialSwapperFramework.Gui.Views.MainView"
-             x:DataType="vm:MainViewModel">
+             x:DataType="vm:MainViewModel"
+             x:CompileBindings="True">
   <Design.DataContext>
     <vm:MainViewModel />
   </Design.DataContext>
-  <Grid RowDefinitions="Auto,*">
-    <DockPanel VerticalAlignment="Top" Grid.Row="0">
-      <Menu DockPanel.Dock="Top" Background="DarkSlateGray">
-        <MenuItem Header="_File">
-          <MenuItem Header="_New"></MenuItem>
-          <MenuItem Header="_Open..." Name="FileOpen" IsEnabled="True">
-            <MenuItem Header="_ESM/ESP/ESL..." Click="OnOpenPluginClicked"></MenuItem>
-            <MenuItem Header="_Directory" Click="OnOpenFolderClicked"></MenuItem>
-            <MenuItem Header="MSF JSON"></MenuItem>
-          </MenuItem>
-          <MenuItem Header="_Save"></MenuItem>
-          <MenuItem Header="_Save As..."></MenuItem>
-          <Separator></Separator>
-          <MenuItem Header="_Recent Files..." ItemsSource="{Binding RecentFiles}">
-            <MenuItem.ItemTemplate>
-              <DataTemplate>
-                <MenuItem Header="{Binding}"></MenuItem>
-              </DataTemplate>
-            </MenuItem.ItemTemplate>
-          </MenuItem>
-        </MenuItem>
-        <MenuItem Header="_Edit"></MenuItem>
-        <MenuItem Header="_Help"></MenuItem>
-      </Menu>
-    </DockPanel>
-    <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*" RowDefinitions="*">
-      <ScrollViewer Grid.Column="0" Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+  <Grid RowDefinitions="Auto,*" Grid.Row="1">
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <TreeView AutoScrollToSelectedItem="True" SelectionMode="Single" ItemsSource="{Binding PluginNodes}" Padding="0" Margin="0" FontFamily="Consolas">
           <TreeView.ItemTemplate>
             <TreeDataTemplate ItemsSource="{Binding Nodes}">
@@ -45,29 +24,153 @@
                 Content="{Binding Label}"
                 Foreground="WhiteSmoke"
                 Command="{Binding $parent[TreeView].((vm:MainViewModel)DataContext).PluginMenuClickCommand}"
-                CommandParameter="{Binding Value}"
+                CommandParameter="{Binding}"
                 />
             </TreeDataTemplate>
           </TreeView.ItemTemplate>
         </TreeView>
       </ScrollViewer>
-      <ScrollViewer Grid.Column="1" Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <ListBox ItemsSource="{Binding MaterialsForRecord}">
-          <ListBox.ItemTemplate>
-            <DataTemplate>
-              <HyperlinkButton
-                Content="{Binding Name}"
-                Foreground="WhiteSmoke"
-                Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).SelectMaterialEntryCommand}"
-                CommandParameter="{Binding}"
-                />
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-      </ScrollViewer>
-      <ScrollViewer Grid.Column="2" Grid.Row="0">
-        <TextBlock Text="{Binding SelectedMaterial.Name}" />
-      </ScrollViewer>
+      <Grid Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="16">
+        <Grid>
+          <StackPanel Spacing="8">
+            <Label Content="{Binding ModifyCurrentRecordView.Record.EditorID, FallbackValue=No name}" FontSize="20" FontFamily="Consolas"/>
+            <StackPanel Spacing="4">
+              <Label>Selected material</Label>
+              <ComboBox ItemsSource="{Binding ModifyCurrentRecordView.Materials, FallbackValue=[]}" Width="250" SelectionChanged="CurrentMaterialSelectionChanged">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <ComboBoxItem Content="{Binding Name}" Tag="{Binding}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+            <StackPanel Spacing="4">
+              <Label>Name</Label>
+              <TextBox Text="{Binding ModifyCurrentRecordView.CurrentlyEditing.Name, FallbackValue=No material selected}" />
+            </StackPanel>
+            <StackPanel Spacing="4">
+              <Label>Base configuration</Label>
+              <TextBox></TextBox>
+            </StackPanel>
+            <StackPanel>
+              <WrapPanel ItemSpacing="8">
+                <ToolTip.Tip>
+                    If the material is hidden, a user will not be able to select it directly.
+                  </ToolTip.Tip>
+                <Label VerticalAlignment="Center">Is hidden</Label>
+                <CheckBox
+                  IsChecked="{Binding ModifyCurrentRecordView.CurrentlyEditing.IsHidden, FallbackValue=False}" />
+              </WrapPanel>
+              <WrapPanel ItemSpacing="8">
+                <ToolTip.Tip>
+                    If the material is default, it will be used as the default state with no name changes.
+                  </ToolTip.Tip>
+                <Label VerticalAlignment="Center">Is default</Label>
+                <CheckBox
+                  IsChecked="{Binding ModifyCurrentRecordView.CurrentlyEditing.ModifyName,FallbackValue=False,
+                    Converter={x:Static gui:StaticConverters.InverseBool}}"
+                  />
+              </WrapPanel>
+              <StackPanel IsVisible="{Binding ModifyCurrentRecordView.CurrentlyEditing.IsArmor, FallbackValue=False}">
+                <ToolTip.Tip>
+                    Gender for the material. If the materials are the same for the gender, you can use unisex. Otherwise, MSF will automatically determine which material to use.
+                  </ToolTip.Tip>
+                <Label VerticalAlignment="Center">Gender</Label>
+                <ComboBox BorderBrush="Transparent" SelectedValue="{Binding ModifyCurrentRecordView.CurrentlyEditing.Gender, Converter={x:Static gui:StaticConverters.GenderConverter}}">
+                  <ComboBoxItem>Unisex</ComboBoxItem>
+                  <ComboBoxItem>Male</ComboBoxItem>
+                  <ComboBoxItem>Female</ComboBoxItem>
+                </ComboBox>
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+        </Grid>
+        <Grid Grid.Column="1">
+          <Grid RowDefinitions="*,Auto" Margin="16" RowSpacing="16">
+            <DataGrid
+              HorizontalAlignment="Stretch"
+              ItemsSource="{Binding ModifyCurrentRecordView.CurrentlyEditing.Applies, FallbackValue=[], Mode=TwoWay}"
+              BorderBrush="WhiteSmoke"
+              BorderThickness="1"
+              GridLinesVisibility="All"
+              IsVisible="{Binding ModifyCurrentRecordView.ShowNifEdit, FallbackValue=False}">
+              <DataGrid.Columns>
+                <DataGridTemplateColumn Header="Shape">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <ComboBox
+                        ItemsSource="{Binding Source.AvailableShapes}"
+                        BorderBrush="Transparent"
+                        Background="Transparent"
+                        IsTextSearchEnabled="True"
+                        PlaceholderText="{Binding ShapeName}"
+                        HorizontalAlignment="Stretch" />
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Material">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <ComboBox
+                        ItemsSource="{Binding Source.AvailableMaterialFiles}"
+                        BorderBrush="Transparent"
+                        Background="Transparent"
+                        IsTextSearchEnabled="True"
+                        PlaceholderText="{Binding MaterialFile}"
+                        HorizontalAlignment="Stretch" />
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn>
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <Grid>
+                        <Button
+                          Command="{Binding RemoveFromSourceCommand}"
+                          Background="Transparent"
+                          IsVisible="{Binding IsTemp, Converter={x:Static gui:StaticConverters.InverseBool}}"
+                          HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Center">
+                          <ToolTip.Tip>
+                              Delete this row
+                            </ToolTip.Tip>
+                          <i:Icon Value="fa-xmark" />
+                        </Button>
+                        <Button
+                          IsVisible="{Binding IsTemp}"
+                          Background="Transparent"
+                          HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Center"
+                          Click="AddButtonClick">
+                          <ToolTip.Tip>
+                              Add this row
+                            </ToolTip.Tip>
+                          <i:Icon Value="fa-check" />
+                        </Button>
+                      </Grid>
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+              </DataGrid.Columns>
+            </DataGrid>
+
+            <WrapPanel Grid.Row="1" ItemsAlignment="End" ItemSpacing="8">
+              <Button>
+                <ToolTip.Tip>
+                  Save all changes for the currently selected material.
+                </ToolTip.Tip>
+                Save
+              </Button>
+              <Button Command="{Binding ModifyCurrentRecordView.CurrentlyEditing.RevertMaterialRecordCommand}">
+                <ToolTip.Tip>
+                  Reset all changes for the currently selected material.
+                </ToolTip.Tip>
+                Reset
+              </Button>
+            </WrapPanel>
+          </Grid>
+        </Grid>
+      </Grid>
     </Grid>
   </Grid>
 </UserControl>

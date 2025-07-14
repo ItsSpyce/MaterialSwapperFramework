@@ -8,7 +8,7 @@ class ContainerFactory : public Factory<RE::TESObjectCONT>,
                          public Singleton<ContainerFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectCONT* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to container forms can be added here
     return false;

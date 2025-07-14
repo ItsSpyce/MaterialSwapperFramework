@@ -8,9 +8,9 @@
 namespace Factories {
 class ArmorFactory : public Factory<RE::TESObjectARMO>,
                      public Singleton<ArmorFactory> {
-public:
+ public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectARMO* form,
-                     const MaterialRecord& material) override {
+                     const MaterialConfig& material) override {
     RETURN_IF_FALSE(refr)
     RETURN_IF_FALSE(form)
     auto slotMask = ConvertSlotMask(form->GetSlotMask());
@@ -42,8 +42,7 @@ public:
               it != material.applies.end()) {
             auto materialFile = MaterialLoader::LoadMaterial(it->second);
             logger::debug("Applying material to tri shape: {}", shape->name);
-            NiOverride::ApplyMaterialToNode(refr, true, shape->name.c_str(),
-                                            *materialFile);
+            ApplyMaterialToNode(refr, true, shape->name.c_str(), *materialFile);
           }
         }
       }
@@ -70,8 +69,7 @@ public:
                         material->name.c_str());
           continue;
         }
-        NiOverride::ApplyMaterialToNode(refr, true, triShape->name.c_str(),
-                                        *materialFile);
+        ApplyMaterialToNode(refr, true, triShape->name.c_str(), *materialFile);
       }
     }
     return true;
@@ -80,13 +78,15 @@ public:
   bool ApplySavedMaterial(RE::TESObjectREFR* refr,
                           RE::TESObjectARMO*) override {
     RETURN_IF_FALSE(refr)
+    auto actor = refr->As<RE::Actor>();
+    RETURN_IF_FALSE(actor)
     auto equippedItems = Helpers::GetEquippedInventoryItems(refr);
     if (equippedItems.empty()) {
       logger::warn("No equipped items found for reference: {}",
                    refr->GetFormID());
       return false;
     }
-    std::vector<MaterialRecord> materials{};
+    std::vector<MaterialConfig> materials{};
     for (const auto& inventoryItem : equippedItems) {
       auto formID = inventoryItem.object->GetFormID();
       auto name = inventoryItem.data->GetDisplayName();
@@ -111,7 +111,7 @@ public:
         continue;
       }
       auto nodeName = triShape->name.c_str();
-      auto it = std::ranges::find_if(materials, [&](const MaterialRecord& mat) {
+      auto it = std::ranges::find_if(materials, [&](const MaterialConfig& mat) {
         return mat.applies.contains(nodeName);
       });
       if (it == materials.end()) {
@@ -125,7 +125,9 @@ public:
                           material->name.c_str());
             continue;
           }
-          NiOverride::ApplyMaterialToNode(refr, true, nodeName, *materialFile);
+          ApplyMaterialToNode(
+              refr, actor->GetActorBase()->GetSex() == RE::SEXES::kFemale,
+              nodeName, *materialFile);
         }
       } else {
         auto filename = it->applies[nodeName];
@@ -139,14 +141,14 @@ public:
           logger::error("Failed to load material file: {}", filename);
           continue;
         }
-        NiOverride::ApplyMaterialToNode(refr, true, nodeName, *materialFile);
+        ApplyMaterialToNode(refr, true, nodeName, *materialFile);
       }
     }
     return true;
   }
 
   bool ApplyMaterial(RE::Actor* refr, RE::BIPED_OBJECTS::BIPED_OBJECT slot,
-                     const MaterialRecord& material) {
+                     const MaterialConfig& material) {
     RETURN_IF_FALSE(refr)
     auto currentBiped = refr->GetCurrentBiped();
     if (!currentBiped) {
@@ -176,8 +178,9 @@ public:
               it != material.applies.end()) {
             auto materialFile = MaterialLoader::LoadMaterial(it->second);
             logger::debug("Applying material to tri shape: {}", shape->name);
-            NiOverride::ApplyMaterialToNode(refr, true, shape->name.c_str(),
-                                            *materialFile);
+            ApplyMaterialToNode(
+                refr, actor->GetActorBase()->GetSex() == RE::SEXES::kFemale,
+                shape->name.c_str(), *materialFile);
           }
         }
       }
@@ -297,7 +300,7 @@ public:
   }
 
   static std::string AppendMaterialName(RE::TESForm* form,
-                                        const MaterialRecord& material) {
+                                        const MaterialConfig& material) {
     std::string name(form->GetName());
     std::string nameWithoutPreviousMaterial;
     if (size_t index; StringHelpers::HasMaterialName(form, index)) {
@@ -306,6 +309,79 @@ public:
       nameWithoutPreviousMaterial = name;
     }
     return fmt::format("{} (*{})", nameWithoutPreviousMaterial, material.name);
+  }
+
+  static std::optional<std::string> GetTexturePath(const std::string& in) {
+    if (in.empty()) {
+      logger::error("Empty texture path provided");
+      return std::nullopt;
+    }
+    auto result = StringHelpers::PrefixTexturesPath(in);
+    logger::debug("Texture path: {}", result);
+    return result;
+  }
+
+  static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool isFemale,
+                                  const char* node,
+                                  const MaterialRecord& material) {
+    RETURN_IF_FALSE(refr)
+    RETURN_IF_FALSE(node)
+
+    /*AddNodeOverrideFloat()(RE::StaticFunctionTag{}, refr, isFemale, node,
+                           kNiOverrideKey_ShaderAlpha, 0, material.transparency,
+                           false);*/
+
+    if (auto diffuseTex = GetTexturePath(material.diffuseMap)) {
+      NiOverride::AddNodeOverrideString()(
+          RE::StaticFunctionTag{}, refr, isFemale, node,
+          NiOverride::kNiOverrideKey_ShaderTexture,
+          NiOverride::kNiOverrideTex_Diffuse, diffuseTex->c_str(), false);
+    }
+    if (auto normalTex = GetTexturePath(material.normalMap)) {
+      NiOverride::AddNodeOverrideString()(
+          RE::StaticFunctionTag{}, refr, isFemale, node,
+          NiOverride::kNiOverrideKey_ShaderTexture,
+          NiOverride::kNiOverrideTex_Normal, normalTex->c_str(), false);
+    }
+    if (auto glowMap = GetTexturePath(material.glowMap)) {
+      if (material.glowMapEnabled) {
+        NiOverride::AddNodeOverrideString()(
+            RE::StaticFunctionTag{}, refr, isFemale, node,
+            NiOverride::kNiOverrideKey_ShaderTexture,
+            NiOverride::kNiOverrideTex_Glow, glowMap->c_str(), false);
+      }
+    }
+    if (auto parallaxTex = GetTexturePath(material.displacementMap)) {
+      // I think that's what parallax is lol
+      NiOverride::AddNodeOverrideString()(
+          RE::StaticFunctionTag{}, refr, isFemale, node,
+          NiOverride::kNiOverrideKey_ShaderTexture,
+          NiOverride::kNiOverrideTex_Parallax, parallaxTex->c_str(), false);
+    }
+    if (auto environmentTex = GetTexturePath(material.envMap)) {
+      NiOverride::AddNodeOverrideString()(
+          RE::StaticFunctionTag{}, refr, isFemale, node,
+          NiOverride::kNiOverrideKey_ShaderTexture,
+          NiOverride::kNiOverrideTex_Environment, environmentTex->c_str(),
+          false);
+    }
+    if (auto envMaskTex = GetTexturePath(material.envMapMask)) {
+      NiOverride::AddNodeOverrideString()(
+          RE::StaticFunctionTag{}, refr, isFemale, node,
+          NiOverride::kNiOverrideKey_ShaderTexture,
+          NiOverride::kNiOverrideTex_EnvMask, envMaskTex->c_str(), false);
+    }
+    if (auto specularTex = GetTexturePath(material.specularMap)) {
+      NiOverride::AddNodeOverrideString()(
+          RE::StaticFunctionTag{}, refr, isFemale, node,
+          NiOverride::kNiOverrideKey_ShaderTexture,
+          NiOverride::kNiOverrideTex_Specular, specularTex->c_str(), false);
+    }
+    NiOverride::AddNodeOverrideFloat()(
+        RE::StaticFunctionTag{}, refr, isFemale, node,
+        NiOverride::kNiOverrideKey_ShaderSpecularStrength, 1,
+        material.specularMult, false);
+    return true;
   }
 };
 }  // namespace Factories
