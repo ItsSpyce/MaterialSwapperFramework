@@ -1,6 +1,8 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 
+#include "RE/Misc.h"
+
 #include "MaterialLoader.h"
 #include "UI.h"
 #include "Hooks.h"

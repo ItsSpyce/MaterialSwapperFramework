@@ -15,8 +15,7 @@
       "name": "imgui",
       "version>=": "1.91.8",
       "features": [ "dx11-binding", "win32-binding", "freetype", "wchar32" ]
-    },
-    "re2",
-    "abseil"
-  ]
+    }
+  ],
+  "builtin-baseline": "cc288af760054fa489574bd8e22d05aa8fa01e5c"
 }

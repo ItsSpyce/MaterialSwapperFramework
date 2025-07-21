@@ -10,6 +10,10 @@ void MaterialsPage(const MaterialsPageProps&) {
   static auto selectedSlot = RE::BIPED_OBJECTS::BIPED_OBJECT::kBody;
 
   ImGui_Child("MaterialsList") {
+    ImGui_Button("Reset Materials") {
+      Factories::ArmorFactory::GetSingleton().ResetMaterials(
+          RE::PlayerCharacter::GetSingleton());
+    }
     ImGui_Combo("Armor slot", StringHelpers::GetSlotName(selectedSlot)) {
       Helpers::VisitArmorSlot(
           [&](RE::BIPED_OBJECTS::BIPED_OBJECT slot, const std::string& name) {

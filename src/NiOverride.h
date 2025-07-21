@@ -88,4 +88,7 @@ MAKE_NI_OVERRIDE_FUNCTION(RemoveAllReferenceOverrides, void,
 MAKE_NI_OVERRIDE_FUNCTION(HasNodeOverride, bool, RE::TESObjectREFR* refr,
                           bool isFemale, const char* node, int key,
                           uint32_t index)
+
+MAKE_NI_OVERRIDE_FUNCTION(GetItemUniqueID, int, RE::TESObjectREFR* actor,
+                          int weaponSlot, int slotMask, bool makeUnique)
 };  // namespace NiOverride

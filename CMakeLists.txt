@@ -55,8 +55,6 @@ FetchContent_MakeAvailable(glaze)
 find_package(spdlog CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(Freetype REQUIRED)
-find_package(absl CONFIG REQUIRED)
-find_package(re2 CONFIG REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "src/*.h")
@@ -73,7 +71,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   imgui::imgui
   Freetype::Freetype
   glaze::glaze
-  re2::re2
 )
 
 # When your SKSE .dll is compiled, this will automatically copy the .dll into your mods folder.
