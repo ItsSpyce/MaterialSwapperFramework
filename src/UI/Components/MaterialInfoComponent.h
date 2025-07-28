@@ -7,7 +7,8 @@
 namespace UI::Components {
 struct MaterialInfoComponentProps {
   MaterialConfig material;
-  RE::BIPED_OBJECTS::BIPED_OBJECT selectedSlot;
+  RE::TESObjectARMO* armor;
+  RE::TESObjectREFR* targetRef;
 };
 
 inline void MaterialInfoComponent(const MaterialInfoComponentProps& props) {
@@ -22,9 +23,7 @@ inline void MaterialInfoComponent(const MaterialInfoComponentProps& props) {
       ImGui::SetTooltip("Click to apply this material to the selected item.");
     }
     Factories::ArmorFactory::GetSingleton().ApplyMaterial(
-        RE::PlayerCharacter::GetSingleton(),
-        props.selectedSlot,
-        props.material);
+        props.targetRef, props.armor, props.material);
   }
 
   ImGui::PopStyleColor(2);

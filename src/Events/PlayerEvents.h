@@ -14,7 +14,7 @@ class PlayerEvents : public RE::BSTEventSink<RE::TESEquipEvent>,
     if (event->equipped) {
       RE::NiPointer actorRef(event->actor);
       SKSE::GetTaskInterface()->AddTask([actorRef] {
-        ArmoFactory::GetSingleton().ApplySavedMaterial(actorRef.get(), NULL);
+        ArmoFactory::GetSingleton()->ApplySavedMaterial(actorRef.get(), NULL);
       });
     }
 
@@ -24,7 +24,7 @@ class PlayerEvents : public RE::BSTEventSink<RE::TESEquipEvent>,
   RE::BSEventNotifyControl ProcessEvent(
       const RE::TESLoadGameEvent* event,
       RE::BSTEventSource<RE::TESLoadGameEvent>* src) override {
-    ArmoFactory::GetSingleton().ApplySavedMaterial(
+    ArmoFactory::GetSingleton()->ApplySavedMaterial(
         RE::PlayerCharacter::GetSingleton(), NULL);
     return RE::BSEventNotifyControl::kContinue;
   }

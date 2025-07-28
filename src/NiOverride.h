@@ -91,4 +91,5 @@ MAKE_NI_OVERRIDE_FUNCTION(HasNodeOverride, bool, RE::TESObjectREFR* refr,
 
 MAKE_NI_OVERRIDE_FUNCTION(GetItemUniqueID, int, RE::TESObjectREFR* actor,
                           int weaponSlot, int slotMask, bool makeUnique)
+MAKE_NI_OVERRIDE_FUNCTION(GetFormFromUniqueID, RE::FormID, int uniqueId);
 };  // namespace NiOverride

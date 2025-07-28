@@ -1,53 +1,76 @@
 #include "UI/Pages/MaterialsPage.h"
 
-#include "MaterialLoader.h"
-#include "StringHelpers.h"
-#include "UI/Components/MaterialInfoComponent.h"
-#include "UI/ImGui_Sugar.h"
+#include "Factories/ArmorFactory.h"
+#include "Helpers.h"
+#include "UI/ImGui_Stylus.h"
 
 namespace UI::Pages {
 void MaterialsPage(const MaterialsPageProps&) {
-  static auto selectedSlot = RE::BIPED_OBJECTS::BIPED_OBJECT::kBody;
+  static RE::TESObjectARMO* selectedArmor;
 
   ImGui_Child("MaterialsList") {
     ImGui_Button("Reset Materials") {
-      Factories::ArmorFactory::GetSingleton().ResetMaterials(
+      Factories::ArmorFactory::GetSingleton()->ResetMaterials(
           RE::PlayerCharacter::GetSingleton());
     }
-    ImGui_Combo("Armor slot", StringHelpers::GetSlotName(selectedSlot)) {
-      Helpers::VisitArmorSlot(
-          [&](RE::BIPED_OBJECTS::BIPED_OBJECT slot, const std::string& name) {
-            if (ImGui::Selectable(name.c_str(), selectedSlot == slot)) {
-              selectedSlot = slot;
+
+    ImGui_Table("ArmorTable", 1, ImGuiTableFlags_BordersInnerH,
+                {ImGui::GetContentRegionAvail().x * 0.25f, 0.f}) {
+      Helpers::VisitEquippedInventoryItems(
+          RE::PlayerCharacter::GetSingleton(), [&](const Helpers::InventoryItem& invItem) {
+            if (auto armo = invItem.data->object->As<RE::TESObjectARMO>()) {
+              ImGui_Row {
+                ImGui_Column {
+                  ImGui_Stylus(ImGui::Stylus::Styles{
+                      .framePadding = ImVec2{4.0f, 8.0f},
+                      .buttonTextAlign = ImVec2{0.0f, 0.5f},
+                      .borderColor = ImVec4{0.5f, 0.5f, 0.5, 1.0f},
+                      .buttonColor =
+                          selectedArmor && selectedArmor->GetFormID() ==
+                                               armo->GetFormID()
+                              ? ImVec4{0.2f, 0.4f, 0.8f, 1.0f}
+                              : ImVec4{0.f, 0.f, 0.f, 0.f}}) {
+                    ImGui_Button(
+                        armo->GetFullName(),
+                        ImVec2{ImGui::GetContentRegionAvail().x, 0.0f}) {
+                      selectedArmor = armo;
+                    }
+                  }
+                }
+              }
             }
           });
     }
-    if (selectedSlot == RE::BIPED_OBJECTS::BIPED_OBJECT::kNone) {
-      ImGui::Text("No slot selected");
-      return;
-    }
-    ImGui::Text("Selected slot: %s", StringHelpers::GetSlotName(selectedSlot));
-    ImGui::Separator();
-    auto& bipedObject = RE::PlayerCharacter::GetSingleton()
-                            ->GetCurrentBiped()
-                            ->objects[selectedSlot];
+    ImGui::SameLine();
 
-    if (!bipedObject.item) {
-      ImGui::Text("No armor item found for the selected slot.");
-      return;
-    }
-
-    if (selectedSlot != RE::BIPED_OBJECTS::BIPED_OBJECT::kNone) {
-      ImGui_Table("MaterialsTable", 1, ImGuiTableFlags_BordersInnerH) {
+    if (selectedArmor) {
+      ImGui_Table("MaterialsTable", 1, ImGuiTableFlags_BordersInnerH,
+                  {ImGui::GetContentRegionAvail().x * 0.75f, 0.f}) {
         MaterialLoader::VisitMaterialFilesForFormID(
-            bipedObject.item->GetFormID(), [&](const MaterialConfig& material) {
-              if (material.isHidden) {
+            selectedArmor->GetFormID(), [&](const std::unique_ptr<MaterialConfig>& material) {
+              if (material->isHidden) {
                 return;  // Skip isHidden materials
               }
               ImGui_Row {
                 ImGui_Column {
-                  Components::MaterialInfoComponent(
-                      {.material = material, .selectedSlot = selectedSlot});
+                  ImGui_Stylus(ImGui::Stylus::Styles{
+                      .framePadding = ImVec2{4.0f, 8.0f},
+                      .buttonTextAlign = ImVec2{0.0f, 0.5f},
+                      .borderColor = ImVec4{0.5f, 0.5f, 0.5, 1.0f},
+                      .buttonColor = ImVec4{0.f, 0.f, 0.f, 0.f}}) {
+                    ImGui_Button(
+                        material->name.c_str(),
+                        ImVec2{ImGui::GetContentRegionAvail().x, 0.0f}) {
+                      if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip(
+                            "Click to apply this material to the selected "
+                            "item.");
+                      }
+                      Factories::ArmorFactory::GetSingleton()->ApplyMaterial(
+                          RE::PlayerCharacter::GetSingleton(), selectedArmor,
+                          std::move(material));
+                    }
+                  }
                 }
               }
             });

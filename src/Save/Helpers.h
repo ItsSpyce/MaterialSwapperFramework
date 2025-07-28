@@ -1,6 +1,8 @@
 #pragma once
 
-namespace SerializerPlus {
+namespace Save {
+namespace Helpers {
+
 template <typename T>
 bool WriteData(const SKSE::SerializationInterface* serialization,
                const T* data) {
@@ -13,7 +15,7 @@ bool ReadData(const SKSE::SerializationInterface* serialization, T* data) {
 }
 
 template <>
-bool WriteData<RE::BSFixedString>(
+inline bool WriteData<RE::BSFixedString>(
     const SKSE::SerializationInterface* serialization,
     const RE::BSFixedString* str) {
   uint32_t len = str->length();
@@ -26,7 +28,7 @@ bool WriteData<RE::BSFixedString>(
   return false;
 }
 template <>
-bool ReadData<RE::BSFixedString>(
+inline bool ReadData<RE::BSFixedString>(
     const SKSE::SerializationInterface* serialization, RE::BSFixedString* str) {
   uint32_t len = 0;
   if (!serialization->ReadRecordData(&len, sizeof(len))) {
@@ -45,4 +47,5 @@ bool ReadData<RE::BSFixedString>(
   logger::error("Failed to read BSFixedString data");
   return false;
 }
-}  // namespace SerializerPlus
+}  // namespace Helpers
+}  // namespace Save

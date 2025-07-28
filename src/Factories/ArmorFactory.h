@@ -3,83 +3,66 @@
 #include <fmt/format.h>
 
 #include "Factory.h"
+#include "IO/MaterialLoader.h"
 #include "NiOverride.h"
 #include "NifHelpers.h"
 #include "RE/Misc.h"
+#include "Save/Save.h"
 #include "Singleton.h"
 
 namespace Factories {
-class ArmorFactory : public Factory<RE::TESObjectARMO>,
-                     public Singleton<ArmorFactory> {
-  struct ArmorInventoryItem {
-    Helpers::InventoryItem item;
-    std::vector<MaterialConfig> materials;
-
-    _NODISCARD std::string GetMaterialName() const {
-      auto materialNames = std::ranges::views::transform(
-          materials, [](const MaterialConfig& mat) { return mat.name; });
-      return fmt::format("{} ({})", item.data->GetDisplayName(),
-                         fmt::join(materialNames, "/"));
-    }
-  };
-
+class ArmorFactory : public Singleton<ArmorFactory> {
  public:
   void ResetMaterials(RE::TESObjectREFR* refr) {
     ApplyDefaultMaterial(refr, nullptr);
   }
 
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectARMO* form,
-                     const MaterialConfig& material) override {
+                     const std::unique_ptr<MaterialConfig>& material) {
     RETURN_IF_FALSE(refr)
     RETURN_IF_FALSE(form)
     auto uid = NiOverride::GetItemUniqueID()(RE::StaticFunctionTag{}, refr, 0,
                                              (int)form->GetSlotMask(), true);
-    if (!uid) {
-      logger::warn("Failed to get unique ID for reference: {}, form: {}",
-                   refr->GetFormID(), form->GetFormID());
+    if (uid == NULL) {
+      logger::warn("Failed to get unique ID for form: {}", refr->GetFormID());
       return false;
     }
-    logger::debug("Applying material to reference: {}, form: {}, unique ID: {}",
-                  refr->GetFormID(), form->GetFormID(), uid);
-    auto slotMask = ConvertSlotMask(form->GetSlotMask());
-    auto currentBiped = refr->GetCurrentBiped();
-    if (!currentBiped) {
-      logger::warn("No current biped found for reference: {}",
-                   refr->GetFormID());
+    if (!ApplyMaterialToRefr(refr, form, uid, material)) {
       return false;
     }
-
-    auto& bipedObject = currentBiped->objects[slotMask];
-    RETURN_IF_FALSE(bipedObject.item)
-    auto armo = bipedObject.item->As<RE::TESObjectARMO>();
-    auto inventoryItem =
-        Helpers::GetInventoryItemWithFormID(refr, armo->GetFormID());
-    RETURN_IF_FALSE(inventoryItem.data)
-    if (!material.modifyName) {
-      ClearItemDisplayName(inventoryItem.data);
-    } else {
-      const auto newDisplayName = AppendMaterialName(armo, material);
-      SetItemDisplayName(inventoryItem.data, newDisplayName);
-    }
-    if (inventoryItem.data->extraLists) {
-      if (auto actor = refr->As<RE::Actor>()) {
-        auto actor3d = actor->Get3D();
-        auto shapes = NifHelpers::GetAllTriShapes(actor3d);
-        for (auto& shape : shapes) {
-          if (auto it = material.applies.find(std::string{shape->name});
-              it != material.applies.end()) {
-            auto materialFile = MaterialLoader::LoadMaterial(it->second);
-            logger::debug("Applying material to tri shape: {}", shape->name);
-            ApplyMaterialToNode(refr, true, shape, *materialFile);
-          }
+    auto& record = armorMaterials_[uid];
+    std::vector oldMaterials(record.appliedMaterials);
+    record.appliedMaterials.clear();
+    for (const auto& materialName : oldMaterials) {
+      // If a material with the same "applies" shapes is already applied, skip
+      // it. The arrays might not match exactly, check length and if key is
+      // present
+      const auto appliedMaterialConfig =
+          MaterialLoader::GetMaterialConfig(form->GetFormID(), materialName);
+      if (!appliedMaterialConfig) {
+        continue;
+      }
+      if (appliedMaterialConfig->applies.size() != material->applies.size()) {
+        record.appliedMaterials.push_back(materialName);
+        continue;
+      }
+      auto found = false;
+      for (const auto& shapeName : material->applies | std::views::keys) {
+        if (appliedMaterialConfig->applies.contains(shapeName)) {
+          found = true;
+          break;
         }
       }
+      if (!found) {
+        record.appliedMaterials.push_back(materialName);
+      }
     }
-    return false;
+    record.appliedMaterials.push_back(material->name.c_str());
+
+    return true;
   }
 
-  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr,
-                            RE::TESObjectARMO*) override {
+  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr, RE::TESObjectARMO*) {
     RETURN_IF_FALSE(refr)
     auto triShapes = NifHelpers::GetAllTriShapes(refr->Get3D());
     for (auto& triShape : triShapes) {
@@ -88,8 +71,6 @@ class ArmorFactory : public Factory<RE::TESObjectARMO>,
         continue;
       }
       if (NifHelpers::HasBuiltInMaterial(material)) {
-        logger::debug("Applying default material to tri shape: {}",
-                      triShape->name);
         auto materialFile =
             MaterialLoader::LoadMaterial(material->name.c_str());
         if (!materialFile) {
@@ -97,136 +78,137 @@ class ArmorFactory : public Factory<RE::TESObjectARMO>,
                         material->name.c_str());
           continue;
         }
-        ApplyMaterialToNode(refr, true, triShape, *materialFile);
+        ApplyMaterialToNode(refr, true, triShape, std::move(materialFile));
       }
     }
     return true;
   }
 
-  bool ApplySavedMaterial(RE::TESObjectREFR* refr,
-                          RE::TESObjectARMO*) override {
+  bool ApplySavedMaterial(RE::TESObjectREFR* refr, RE::TESObjectARMO*) {
     RETURN_IF_FALSE(refr)
     auto actor = refr->As<RE::Actor>();
     RETURN_IF_FALSE(actor)
-    auto equippedItems = Helpers::GetEquippedInventoryItems(refr);
-    if (equippedItems.empty()) {
-      logger::warn("No equipped items found for reference: {}",
-                   refr->GetFormID());
-      return false;
-    }
-    std::vector<MaterialConfig> materials{};
-    for (const auto& inventoryItem : equippedItems) {
-      auto formID = inventoryItem.object->GetFormID();
-      auto name = inventoryItem.data->GetDisplayName();
-      logger::debug("Processing item: {}, form ID: {}", name, formID);
-      if (size_t matIndex = 0; StringHelpers::HasMaterialName(name, matIndex)) {
-        auto materialName = std::string(name).substr(
-            matIndex + 3, std::strlen(name) - (matIndex + 3) - 1);
-        if (auto materialRecord =
-                MaterialLoader::GetMaterial(formID, materialName)) {
-          logger::debug("Found material record: {}", materialRecord->name);
-          materials.push_back(*materialRecord);
-        } else {
-          logger::warn("No material record found for form ID: {}, name: {}",
-                       formID, materialName);
-        }
-      }
-    }
-    auto triShapes = NifHelpers::GetAllTriShapes(refr->Get3D());
-    for (const auto& triShape : triShapes) {
-      auto material = NifHelpers::GetShaderProperty(triShape);
-      if (!material) {
+    Helpers::VisitEquippedInventoryItems(
+        refr, [&](const Helpers::InventoryItem& equippedItem) {
+          if (equippedItem.uid == NULL) {
+            return;
+          }
+          logger::debug(
+              "Applying saved material to equipped item: {}, form: {}, unique "
+              "ID: {}",
+              refr->GetFormID(), equippedItem.data->object->GetFormID(),
+              equippedItem.uid);
+          auto* armo = equippedItem.data->object->As<RE::TESObjectARMO>();
+          if (!armo) {
+            logger::warn("Equipped item is not ARMO");
+            return;
+          }
+          auto& [appliedMaterials] = armorMaterials_[equippedItem.uid];
+          logger::debug("Applying materials: {}",
+                        fmt::join(appliedMaterials, ", "));
+          for (const auto& material : appliedMaterials) {
+            logger::debug(
+                "Applying saved material: {}, form: {}, unique ID: {}",
+                material, armo->GetFormID(), equippedItem.uid);
+            auto appliedMaterialConfig =
+                MaterialLoader::GetMaterialConfig(armo->GetFormID(), material);
+            if (!appliedMaterialConfig) {
+              logger::debug(
+                  "Material {} not found in material configs, skipping",
+                  material);
+              continue;
+            }
+            if (!ApplyMaterialToRefr(refr, armo, equippedItem.uid,
+                                     appliedMaterialConfig)) {
+              logger::error(
+                  "Failed to apply material to reference: {}, form: {}, "
+                  "unique ID: {}",
+                  refr->GetFormID(), armo->GetFormID(), equippedItem.uid);
+              continue;
+            }
+            logger::debug(
+                "Successfully applied material: {}, form: {}, unique ID: {}",
+                material, armo->GetFormID(), equippedItem.uid);
+          }
+        });
+    return true;
+  }
+
+  void LoadFromSave(Save::SaveData& saveData) {
+    armorMaterials_.clear();
+    logger::debug("Loading {} saved materials", saveData.armorRecords.size());
+    for (const auto& saveRecord : saveData.armorRecords) {
+      if (saveRecord.appliedMaterials.empty()) {
+        logger::warn("No materials applied to armor record with UID: {}",
+                     saveRecord.uid);
         continue;
       }
-      auto nodeName = triShape->name.c_str();
-      auto it = std::ranges::find_if(materials, [&](const MaterialConfig& mat) {
-        return mat.applies.contains(nodeName);
-      });
-      if (it == materials.end()) {
-        if (NifHelpers::HasBuiltInMaterial(material)) {
-          logger::debug("Applying default material to tri shape: {}",
-                        triShape->name);
-          auto materialFile =
-              MaterialLoader::LoadMaterial(material->name.c_str());
-          if (!materialFile) {
-            logger::error("Failed to load material file: {}",
-                          material->name.c_str());
-            continue;
-          }
-          ApplyMaterialToNode(
-              refr, actor->GetActorBase()->GetSex() == RE::SEXES::kFemale,
-              triShape, *materialFile);
-        }
-      } else {
-        auto filename = it->applies[nodeName];
-        if (filename.empty()) {
-          logger::warn("No material file specified for node: {}, material: {}",
-                       nodeName, it->name);
-          continue;
-        }
-        auto materialFile = MaterialLoader::LoadMaterial(filename);
-        if (!materialFile) {
-          logger::error("Failed to load material file: {}", filename);
-          continue;
-        }
-        ApplyMaterialToNode(refr, true, triShape, *materialFile);
+      logger::debug("Loading armor record with uid={}, materials={}",
+                    saveRecord.uid,
+                    fmt::join(saveRecord.appliedMaterials, ", "));
+      ArmorMaterialRecord record;
+      for (const auto& material : saveRecord.appliedMaterials) {
+        record.appliedMaterials.emplace_back(material);
       }
+      logger::debug("Loaded armor material record: uid={}, materials={}",
+                    saveRecord.uid, fmt::join(record.appliedMaterials, ", "));
+      armorMaterials_[saveRecord.uid] = std::move(record);
+    }
+  }
+
+  void WriteToSave(Save::SaveData& saveData) {
+    for (auto& [uid, val] : armorMaterials_) {
+      if (uid == NULL) {
+        logger::warn("Received NULL uid for armor record {}", uid);
+      }
+      if (val.appliedMaterials.empty()) {
+        logger::warn("No materials applied for armor record with UID: {}", uid);
+        continue;
+      }
+      logger::debug("Writing armor material record: uid={}, materials={}", uid,
+                    fmt::join(val.appliedMaterials, ", "));
+      Save::V1::ArmorRecordEntry entry{.uid = uid};
+      for (const auto& material : val.appliedMaterials) {
+        entry.appliedMaterials.emplace_back(material);
+      }
+      saveData.armorRecords.emplace_back(entry);
+    }
+  }
+
+ private:
+  struct ArmorMaterialRecord {
+    std::vector<std::string> appliedMaterials;
+  };
+  std::unordered_map<int, ArmorMaterialRecord> armorMaterials_;
+
+  static bool ApplyMaterialToRefr(
+      RE::TESObjectREFR* refr, const RE::TESObjectARMO* form, int uid,
+      const std::unique_ptr<MaterialConfig>& material) {
+    RETURN_IF_FALSE(refr)
+    RETURN_IF_FALSE(form)
+    RETURN_IF_FALSE(material)
+    logger::debug("Applying material to reference: {}, form: {}, unique ID: {}",
+                  refr->GetFormID(), form->GetFormID(), uid);
+    auto* refrModel = refr->Get3D();
+    for (const auto& [shapeName, materialName] : material->applies) {
+      logger::debug("Applying material: {}, shape: {}", materialName,
+                    shapeName);
+      auto* nivAv = refrModel->GetObjectByName(shapeName);
+      auto* triShape = nivAv ? nivAv->AsTriShape() : nullptr;
+      if (!triShape) {
+        logger::warn("No tri-shape found for shape name: {}", shapeName);
+        continue;
+      }
+      auto materialFile = MaterialLoader::LoadMaterial(materialName);
+      if (!materialFile) {
+        logger::error("Failed to load material file: {}", materialName);
+        continue;
+      }
+      ApplyMaterialToNode(refr, true, triShape, std::move(materialFile));
     }
     return true;
   }
 
-  bool ApplyMaterial(RE::Actor* refr, RE::BIPED_OBJECTS::BIPED_OBJECT slot,
-                     const MaterialConfig& material) {
-    RETURN_IF_FALSE(refr)
-    auto currentBiped = refr->GetCurrentBiped();
-    if (!currentBiped) {
-      logger::warn("No current biped found for reference: {}",
-                   refr->GetFormID());
-      return false;
-    }
-
-    auto& bipedObject = currentBiped->objects[slot];
-    RETURN_IF_FALSE(bipedObject.item)
-    auto armo = bipedObject.item->As<RE::TESObjectARMO>();
-    auto uid = NiOverride::GetItemUniqueID()(RE::StaticFunctionTag{}, refr, 0,
-                                             (int)armo->GetSlotMask(), true);
-    if (!uid) {
-      logger::warn("Failed to get unique ID for reference: {}, form: {}",
-                   refr->GetFormID(), armo->GetFormID());
-      return false;
-    }
-    logger::debug("Applying material to reference: {}, form: {}, unique ID: {}",
-                  refr->GetFormID(), armo->GetFormID(), uid);
-
-    auto inventoryItem =
-        Helpers::GetInventoryItemWithFormID(refr, armo->GetFormID());
-    RETURN_IF_FALSE(inventoryItem.data)
-    if (!material.modifyName) {
-      ClearItemDisplayName(inventoryItem.data);
-    } else {
-      const auto newDisplayName = AppendMaterialName(armo, material);
-      SetItemDisplayName(inventoryItem.data, newDisplayName);
-    }
-    if (inventoryItem.data->extraLists) {
-      if (auto actor = refr->As<RE::Actor>()) {
-        auto actor3d = actor->Get3D();
-        auto shapes = NifHelpers::GetAllTriShapes(actor3d);
-        for (auto& shape : shapes) {
-          if (auto it = material.applies.find(std::string{shape->name});
-              it != material.applies.end()) {
-            auto materialFile = MaterialLoader::LoadMaterial(it->second);
-            logger::debug("Applying material to tri shape: {}", shape->name);
-            ApplyMaterialToNode(
-                refr, actor->GetActorBase()->GetSex() == RE::SEXES::kFemale,
-                shape, *materialFile);
-          }
-        }
-      }
-    }
-    return false;
-  }
-
- private:
   static constexpr RE::BIPED_OBJECTS::BIPED_OBJECT ConvertSlotMask(
       const RE::BGSBipedObjectForm::BipedObjectSlot slot) {
     // this is a lot easier to do in the inverse direction...
@@ -384,9 +366,9 @@ class ArmorFactory : public Factory<RE::TESObjectARMO>,
     }
     return newTexture;
   }
-  static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool isFemale,
-                                  RE::BSTriShape* bsTriShape,
-                                  const MaterialRecord& record) {
+  static bool ApplyMaterialToNode(
+      RE::TESObjectREFR* refr, bool, RE::BSTriShape* bsTriShape,
+      const std::unique_ptr<MaterialRecord> record) {
     RETURN_IF_FALSE(refr)
     RETURN_IF_FALSE(bsTriShape)
     auto* shaderProperty = GetShaderProperty(bsTriShape);
@@ -399,116 +381,50 @@ class ArmorFactory : public Factory<RE::TESObjectARMO>,
       return false;
     }
 
-    if (!record.diffuseMap.empty()) {
+    if (!record->diffuseMap.empty()) {
       base->diffuseTexture =
-          RE::NiSourceTexturePtr(LoadTexture(record.diffuseMap.c_str()));
+          RE::NiSourceTexturePtr(LoadTexture(record->diffuseMap.c_str()));
     }
-    if (!record.normalMap.empty()) {
+    if (!record->normalMap.empty()) {
       base->normalTexture =
-          RE::NiSourceTexturePtr(LoadTexture(record.normalMap.c_str()));
+          RE::NiSourceTexturePtr(LoadTexture(record->normalMap.c_str()));
     }
-    if (!record.smoothSpecMap.empty()) {
+    if (!record->smoothSpecMap.empty()) {
       base->specularBackLightingTexture =
-          RE::NiSourceTexturePtr(LoadTexture(record.smoothSpecMap.c_str()));
-      base->specularPower = record.backLightPower;
+          RE::NiSourceTexturePtr(LoadTexture(record->smoothSpecMap.c_str()));
+      base->specularPower = record->backLightPower;
 
-      base->rimLightPower = record.rimPower;
+      base->rimLightPower = record->rimPower;
       base->specularColor =
-          RE::NiColor(record.specularColor[0], record.specularColor[1],
-                      record.specularColor[2]);
+          RE::NiColor(record->specularColor[0], record->specularColor[1],
+                      record->specularColor[2]);
     }
-    base->materialAlpha = record.transparency;
+    base->materialAlpha = record->transparency;
     auto feature = base->GetFeature();
     if (feature == RE::BSLightingShaderMaterial::Feature::kEnvironmentMap) {
       if (auto envMaterial =
               skyrim_cast<RE::BSLightingShaderMaterialEnvmap*>(base)) {
-        if (!record.envMap.empty()) {
+        if (!record->envMap.empty()) {
           envMaterial->envTexture =
-              RE::NiSourceTexturePtr(LoadTexture(record.envMap.c_str()));
+              RE::NiSourceTexturePtr(LoadTexture(record->envMap.c_str()));
         }
-        if (!record.envMapMask.empty()) {
+        if (!record->envMapMask.empty()) {
           envMaterial->envMaskTexture =
-              RE::NiSourceTexturePtr(LoadTexture(record.envMapMask.c_str()));
+              RE::NiSourceTexturePtr(LoadTexture(record->envMapMask.c_str()));
         }
-        envMaterial->envMapScale = record.envMapMaskScale;
+        envMaterial->envMapScale = record->envMapMaskScale;
       }
     }
     if (feature == RE::BSLightingShaderMaterial::Feature::kGlowMap &&
-        !record.glowMap.empty()) {
+        !record->glowMap.empty()) {
       auto glowMaterial =
           skyrim_cast<RE::BSLightingShaderMaterialGlowmap*>(base);
       if (glowMaterial) {
         glowMaterial->glowTexture =
-            RE::NiSourceTexturePtr(LoadTexture(record.glowMap.c_str()));
+            RE::NiSourceTexturePtr(LoadTexture(record->glowMap.c_str()));
       }
     }
     return true;
   }
-
-  // static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool isFemale,
-  //                                 RE::BSTriShape* bsTriShape,
-  //                                 const MaterialRecord& material) {
-  //   RETURN_IF_FALSE(refr)
-  //   RETURN_IF_FALSE(bsTriShape)
-  //  auto node = bsTriShape->name.c_str();
-
-  //  NiOverride::AddNodeOverrideFloat()(RE::StaticFunctionTag{}, refr,
-  //  isFemale, node,
-  //                                     NiOverride::kNiOverrideKey_ShaderAlpha,
-  //                                     0, material.transparency, false);
-
-  //  if (auto diffuseTex = GetTexturePath(material.diffuseMap)) {
-  //    NiOverride::AddNodeOverrideString()(
-  //        RE::StaticFunctionTag{}, refr, isFemale, node,
-  //        NiOverride::kNiOverrideKey_ShaderTexture,
-  //        NiOverride::kNiOverrideTex_Diffuse, diffuseTex->c_str(), false);
-  //  }
-
-  //  if (auto normalTex = GetTexturePath(material.normalMap)) {
-  //    NiOverride::AddNodeOverrideString()(
-  //        RE::StaticFunctionTag{}, refr, isFemale, node,
-  //        NiOverride::kNiOverrideKey_ShaderTexture,
-  //        NiOverride::kNiOverrideTex_Normal, normalTex->c_str(), false);
-  //  }
-  //  if (auto glowMap = GetTexturePath(material.glowMap)) {
-  //    if (material.glowMapEnabled) {
-  //      NiOverride::AddNodeOverrideString()(
-  //          RE::StaticFunctionTag{}, refr, isFemale, node,
-  //          NiOverride::kNiOverrideKey_ShaderTexture,
-  //          NiOverride::kNiOverrideTex_Glow, glowMap->c_str(), false);
-  //    }
-  //  }
-  //  if (auto parallaxTex = GetTexturePath(material.displacementMap)) {
-  //    // I think that's what parallax is lol
-  //    NiOverride::AddNodeOverrideString()(
-  //        RE::StaticFunctionTag{}, refr, isFemale, node,
-  //        NiOverride::kNiOverrideKey_ShaderTexture,
-  //        NiOverride::kNiOverrideTex_Parallax, parallaxTex->c_str(), false);
-  //  }
-  //  if (auto environmentTex = GetTexturePath(material.envMap)) {
-  //    NiOverride::AddNodeOverrideString()(
-  //        RE::StaticFunctionTag{}, refr, isFemale, node,
-  //        NiOverride::kNiOverrideKey_ShaderTexture,
-  //        NiOverride::kNiOverrideTex_Environment, environmentTex->c_str(),
-  //        false);
-  //  }
-  //  if (auto envMaskTex = GetTexturePath(material.envMapMask)) {
-  //    NiOverride::AddNodeOverrideString()(
-  //        RE::StaticFunctionTag{}, refr, isFemale, node,
-  //        NiOverride::kNiOverrideKey_ShaderTexture,
-  //        NiOverride::kNiOverrideTex_EnvMask, envMaskTex->c_str(), false);
-  //  }
-  //  if (auto specularTex = GetTexturePath(material.specularMap)) {
-  //    NiOverride::AddNodeOverrideString()(
-  //        RE::StaticFunctionTag{}, refr, isFemale, node,
-  //        NiOverride::kNiOverrideKey_ShaderTexture,
-  //        NiOverride::kNiOverrideTex_Specular, specularTex->c_str(), false);
-  //  }
-  //  NiOverride::AddNodeOverrideFloat()(
-  //      RE::StaticFunctionTag{}, refr, isFemale, node,
-  //      NiOverride::kNiOverrideKey_ShaderSpecularStrength, 1,
-  //      material.specularMult, false);
-  //  return true;
-  //}
 };
 }  // namespace Factories

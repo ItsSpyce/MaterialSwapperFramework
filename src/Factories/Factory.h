@@ -1,5 +1,7 @@
 #pragma once
 
+#include "MaterialConfig.h"
+
 namespace Factories {
 
 class ArmorFactory;

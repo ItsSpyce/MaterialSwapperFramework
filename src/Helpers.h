@@ -1,9 +1,11 @@
 #pragma once
 
 #include "MathTypes.h"
+#include "NiOverride.h"
 #include "StringHelpers.h"
 
 namespace Helpers {
+
 using BipedObjectSlot = RE::BIPED_OBJECTS::BIPED_OBJECT;
 static constexpr auto VALID_SLOTS = {
     BipedObjectSlot::kHead,
@@ -94,27 +96,30 @@ struct InventoryItem {
   RE::TESBoundObject* object;
   int count;
   std::unique_ptr<RE::InventoryEntryData> data;
+  int uid;
 };
 
-static std::vector<InventoryItem> GetEquippedInventoryItems(
-    RE::TESObjectREFR* refr) {
-  std::vector<InventoryItem> items;
-  if (!refr) {
-    return items;
-  }
+static void VisitEquippedInventoryItems(
+    RE::TESObjectREFR* refr,
+    const std::function<void(const InventoryItem&)>& visitor) {
   auto inventoryData = refr->GetInventory();
   for (auto& [obj, data] : inventoryData) {
     if (data.second->extraLists) {
       for (auto& extraList : *data.second->extraLists) {
         if (extraList->HasType(RE::ExtraDataType::kWorn)) {
-          items.push_back({.object = obj,
-                           .count = data.first,
-                           .data = std::move(data.second)});
+          auto* armo = obj->As<RE::TESObjectARMO>();
+          // auto* weap = obj->As<RE::TESObjectWEAP>(); // TODO
+          auto uid = NiOverride::GetItemUniqueID()(
+              RE::StaticFunctionTag{}, refr, 0,
+              armo ? static_cast<int>(armo->GetSlotMask()) : 0, false);
+          visitor({.object = obj,
+                   .count = data.first,
+                   .data = std::move(data.second),
+                   .uid = uid});
         }
       }
     }
   }
-  return items;
 }
 
 static InventoryItem GetInventoryItemWithFormID(RE::TESObjectREFR* refr,

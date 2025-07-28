@@ -3,13 +3,10 @@
 
 #include "RE/Misc.h"
 
-#include "MaterialLoader.h"
 #include "UI.h"
 #include "Hooks.h"
 #include "Events.h"
 #include "MaterialPapyrus.h"
-#include "Factories.h"
-#include "Cond/Conditions.h"
 
 static void InitializeLogging() {
   static bool initialized = false;
@@ -59,9 +56,14 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
   InitializeLogging();
 
   SKSE::GetMessagingInterface()->RegisterListener(HandleMessage);
+  logger::info("Registering UI hooks...");
   UI::RegisterHooks();
+  logger::info("Installing hooks...");
   Hooks::Install();
+  logger::info("Registering Papyrus functions...");
   SKSE::GetPapyrusInterface()->Register(MaterialPapyrus::RegisterFunctions);
+  logger::info("Registering save hooks...");
+  Save::Install();
 
   return true;
 }

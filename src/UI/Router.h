@@ -40,10 +40,10 @@ struct LinkProps {
 };
 
 inline void Link(const LinkProps& props) {
-  auto& router = Router::GetSingleton();
+  auto router = Router::GetSingleton();
   // Create a link that navigates to the specified path when clicked
   if (ImGui::Button(props.label)) {
-    router.NavigateTo(props.path);
+    router->NavigateTo(props.path);
   }
 }
 }  // namespace UI

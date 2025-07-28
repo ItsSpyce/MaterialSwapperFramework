@@ -81,16 +81,31 @@ inline std::string ToLower(std::string_view str) {
 inline std::string PrefixTexturesPath(const std::string_view& path) {
   return fmt::format("textures\\{}", path);
 }
-  
-static bool HasMaterialName(std::string_view name, size_t& index) {
+
+inline bool HasMaterialName(std::string_view name, size_t& index) {
   index = name.find(" (*");
   return index != std::string::npos;
 }
 
-static bool HasMaterialName(RE::TESForm* form, size_t& index) {
+inline bool HasMaterialName(RE::TESForm* form, size_t& index) {
   if (!form) {
     return false;
   }
   return HasMaterialName(form->GetName(), index);
 }
+
+inline void Join(const std::vector<const char*>& strings,
+                        const char* delimiter, std::string& out) {
+  if (strings.empty()) {
+    return;
+  }
+  std::string result;
+  for (const auto& str : strings) {
+    if (!result.empty()) {
+      result += delimiter;
+    }
+    result += str;
+  }
+  out = std::move(result);
 }
+}  // namespace StringHelpers
