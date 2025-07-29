@@ -10,15 +10,16 @@ void MaterialsPage(const MaterialsPageProps&) {
 
   ImGui_Child("MaterialsList") {
     ImGui_Button("Reset Materials") {
-      Factories::ArmorFactory::GetSingleton()->ResetMaterials(
+      Factories::ArmorFactory::ResetMaterials(
           RE::PlayerCharacter::GetSingleton());
     }
 
     ImGui_Table("ArmorTable", 1, ImGuiTableFlags_BordersInnerH,
                 {ImGui::GetContentRegionAvail().x * 0.25f, 0.f}) {
       Helpers::VisitEquippedInventoryItems(
-          RE::PlayerCharacter::GetSingleton(), [&](const Helpers::InventoryItem& invItem) {
-            if (auto armo = invItem.data->object->As<RE::TESObjectARMO>()) {
+          RE::PlayerCharacter::GetSingleton(),
+          [&](const std::unique_ptr<Helpers::InventoryItem>& invItem) {
+            if (auto armo = invItem->data->object->As<RE::TESObjectARMO>()) {
               ImGui_Row {
                 ImGui_Column {
                   ImGui_Stylus(ImGui::Stylus::Styles{
@@ -47,7 +48,8 @@ void MaterialsPage(const MaterialsPageProps&) {
       ImGui_Table("MaterialsTable", 1, ImGuiTableFlags_BordersInnerH,
                   {ImGui::GetContentRegionAvail().x * 0.75f, 0.f}) {
         MaterialLoader::VisitMaterialFilesForFormID(
-            selectedArmor->GetFormID(), [&](const std::unique_ptr<MaterialConfig>& material) {
+            selectedArmor->GetFormID(),
+            [&](const std::unique_ptr<MaterialConfig>& material) {
               if (material->isHidden) {
                 return;  // Skip isHidden materials
               }

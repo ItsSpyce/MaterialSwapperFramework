@@ -12,9 +12,13 @@ class PlayerEvents : public RE::BSTEventSink<RE::TESEquipEvent>,
       const RE::TESEquipEvent* event,
       RE::BSTEventSource<RE::TESEquipEvent>* src) override {
     if (event->equipped) {
-      RE::NiPointer actorRef(event->actor);
-      SKSE::GetTaskInterface()->AddTask([actorRef] {
-        ArmoFactory::GetSingleton()->ApplySavedMaterial(actorRef.get(), NULL);
+      auto refHandle = event->actor->GetHandle().get();
+      auto baseObject = event->baseObject + 0;  // Ensure baseObject is not null
+      SKSE::GetTaskInterface()->AddTask([refHandle, baseObject] {
+        auto inventoryItem =
+            Helpers::GetInventoryItemWithFormID(refHandle.get(), baseObject);
+        ArmoFactory::GetSingleton()->ApplySavedMaterial(refHandle.get(),
+                                                        inventoryItem);
       });
     }
 
@@ -24,8 +28,17 @@ class PlayerEvents : public RE::BSTEventSink<RE::TESEquipEvent>,
   RE::BSEventNotifyControl ProcessEvent(
       const RE::TESLoadGameEvent* event,
       RE::BSTEventSource<RE::TESLoadGameEvent>* src) override {
-    ArmoFactory::GetSingleton()->ApplySavedMaterial(
-        RE::PlayerCharacter::GetSingleton(), NULL);
+    SKSE::GetTaskInterface()->AddTask([&] {
+      logger::info("Applying saved materials to equipped armor on load");
+      Helpers::VisitEquippedInventoryItems(
+          RE::PlayerCharacter::GetSingleton(),
+          [](const std::unique_ptr<Helpers::InventoryItem>& item) {
+            if (item->data->object->IsArmor()) {
+              ArmoFactory::GetSingleton()->ApplySavedMaterial(
+                  RE::PlayerCharacter::GetSingleton(), item);
+            }
+          });
+    });
     return RE::BSEventNotifyControl::kContinue;
   }
 

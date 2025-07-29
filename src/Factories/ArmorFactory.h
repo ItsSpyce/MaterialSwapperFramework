@@ -2,7 +2,6 @@
 
 #include <fmt/format.h>
 
-#include "Factory.h"
 #include "IO/MaterialLoader.h"
 #include "NiOverride.h"
 #include "NifHelpers.h"
@@ -13,7 +12,7 @@
 namespace Factories {
 class ArmorFactory : public Singleton<ArmorFactory> {
  public:
-  void ResetMaterials(RE::TESObjectREFR* refr) {
+  static void ResetMaterials(RE::TESObjectREFR* refr) {
     ApplyDefaultMaterial(refr, nullptr);
   }
 
@@ -28,9 +27,17 @@ class ArmorFactory : public Singleton<ArmorFactory> {
       return false;
     }
     if (!ApplyMaterialToRefr(refr, form, uid, material)) {
+      logger::error(
+          "Failed to apply material to reference: {}, form: {}, unique ID: {}",
+          refr->GetFormID(), form->GetFormID(), uid);
       return false;
     }
     auto& record = armorMaterials_[uid];
+    if (std::ranges::contains(record.appliedMaterials, material->name)) {
+      logger::debug("Material {} already applied to armor with UID: {}",
+                    material->name, uid);
+      return true;  // Material already applied
+    }
     std::vector oldMaterials(record.appliedMaterials);
     record.appliedMaterials.clear();
     for (const auto& materialName : oldMaterials) {
@@ -57,12 +64,13 @@ class ArmorFactory : public Singleton<ArmorFactory> {
         record.appliedMaterials.push_back(materialName);
       }
     }
-    record.appliedMaterials.push_back(material->name.c_str());
+    record.appliedMaterials.emplace_back(material->name.c_str());
 
     return true;
   }
 
-  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr, RE::TESObjectARMO*) {
+  static bool ApplyDefaultMaterial(RE::TESObjectREFR* refr,
+                                   RE::TESObjectARMO*) {
     RETURN_IF_FALSE(refr)
     auto triShapes = NifHelpers::GetAllTriShapes(refr->Get3D());
     for (auto& triShape : triShapes) {
@@ -78,59 +86,52 @@ class ArmorFactory : public Singleton<ArmorFactory> {
                         material->name.c_str());
           continue;
         }
-        ApplyMaterialToNode(refr, true, triShape, std::move(materialFile));
+        ApplyMaterialToNode(refr, true, triShape, materialFile);
       }
     }
     return true;
   }
 
-  bool ApplySavedMaterial(RE::TESObjectREFR* refr, RE::TESObjectARMO*) {
+  bool ApplySavedMaterial(
+      RE::TESObjectREFR* refr,
+      const std::unique_ptr<Helpers::InventoryItem>& equippedItem) {
     RETURN_IF_FALSE(refr)
     auto actor = refr->As<RE::Actor>();
     RETURN_IF_FALSE(actor)
-    Helpers::VisitEquippedInventoryItems(
-        refr, [&](const Helpers::InventoryItem& equippedItem) {
-          if (equippedItem.uid == NULL) {
-            return;
-          }
-          logger::debug(
-              "Applying saved material to equipped item: {}, form: {}, unique "
-              "ID: {}",
-              refr->GetFormID(), equippedItem.data->object->GetFormID(),
-              equippedItem.uid);
-          auto* armo = equippedItem.data->object->As<RE::TESObjectARMO>();
-          if (!armo) {
-            logger::warn("Equipped item is not ARMO");
-            return;
-          }
-          auto& [appliedMaterials] = armorMaterials_[equippedItem.uid];
-          logger::debug("Applying materials: {}",
-                        fmt::join(appliedMaterials, ", "));
-          for (const auto& material : appliedMaterials) {
-            logger::debug(
-                "Applying saved material: {}, form: {}, unique ID: {}",
-                material, armo->GetFormID(), equippedItem.uid);
-            auto appliedMaterialConfig =
-                MaterialLoader::GetMaterialConfig(armo->GetFormID(), material);
-            if (!appliedMaterialConfig) {
-              logger::debug(
-                  "Material {} not found in material configs, skipping",
-                  material);
-              continue;
-            }
-            if (!ApplyMaterialToRefr(refr, armo, equippedItem.uid,
-                                     appliedMaterialConfig)) {
-              logger::error(
-                  "Failed to apply material to reference: {}, form: {}, "
-                  "unique ID: {}",
-                  refr->GetFormID(), armo->GetFormID(), equippedItem.uid);
-              continue;
-            }
-            logger::debug(
-                "Successfully applied material: {}, form: {}, unique ID: {}",
-                material, armo->GetFormID(), equippedItem.uid);
-          }
-        });
+    auto* armo = equippedItem->data->object->As<RE::TESObjectARMO>();
+    if (!armo) {
+      logger::warn("Equipped item is not ARMO");
+      return false;
+    }
+    if (equippedItem->uid == NULL) {
+      ApplyDefaultMaterial(refr, armo);
+      return false;
+    }
+    logger::debug(
+        "Applying saved material to equipped item: {}, form: {}, unique "
+        "ID: {}",
+        refr->GetFormID(), equippedItem->data->object->GetFormID(),
+        equippedItem->uid);
+    auto& [appliedMaterials] = armorMaterials_[equippedItem->uid];
+    logger::debug("Applying materials: {}", fmt::join(appliedMaterials, ", "));
+    for (const auto& material : appliedMaterials) {
+      logger::debug("Iterating over material {}", material);
+      auto appliedMaterialConfig =
+          MaterialLoader::GetMaterialConfig(armo->GetFormID(), material);
+      if (!appliedMaterialConfig) {
+        logger::debug("Material {} not found in material configs, skipping",
+                      material);
+        continue;
+      }
+      if (!ApplyMaterial(refr, armo, appliedMaterialConfig)) {
+        logger::error(
+            "Failed to apply material to reference: {}, form: {}, "
+            "unique ID: {}",
+            refr->GetFormID(), armo->GetFormID(), equippedItem->uid);
+        continue;
+      }
+      logger::debug("Successfully applied material {}", material);
+    }
     return true;
   }
 
@@ -143,14 +144,14 @@ class ArmorFactory : public Singleton<ArmorFactory> {
                      saveRecord.uid);
         continue;
       }
-      logger::debug("Loading armor record with uid={}, materials={}",
+      logger::debug("Iterating over armor record with uid={}, materials={}",
                     saveRecord.uid,
                     fmt::join(saveRecord.appliedMaterials, ", "));
       ArmorMaterialRecord record;
       for (const auto& material : saveRecord.appliedMaterials) {
         record.appliedMaterials.emplace_back(material);
       }
-      logger::debug("Loaded armor material record: uid={}, materials={}",
+      logger::debug("Added armor material record: uid={}, materials={}",
                     saveRecord.uid, fmt::join(record.appliedMaterials, ", "));
       armorMaterials_[saveRecord.uid] = std::move(record);
     }
@@ -191,8 +192,7 @@ class ArmorFactory : public Singleton<ArmorFactory> {
                   refr->GetFormID(), form->GetFormID(), uid);
     auto* refrModel = refr->Get3D();
     for (const auto& [shapeName, materialName] : material->applies) {
-      logger::debug("Applying material: {}, shape: {}", materialName,
-                    shapeName);
+      logger::debug("Setting shape {} material to {}", shapeName, materialName);
       auto* nivAv = refrModel->GetObjectByName(shapeName);
       auto* triShape = nivAv ? nivAv->AsTriShape() : nullptr;
       if (!triShape) {
@@ -204,82 +204,9 @@ class ArmorFactory : public Singleton<ArmorFactory> {
         logger::error("Failed to load material file: {}", materialName);
         continue;
       }
-      ApplyMaterialToNode(refr, true, triShape, std::move(materialFile));
+      ApplyMaterialToNode(refr, true, triShape, materialFile);
     }
     return true;
-  }
-
-  static constexpr RE::BIPED_OBJECTS::BIPED_OBJECT ConvertSlotMask(
-      const RE::BGSBipedObjectForm::BipedObjectSlot slot) {
-    // this is a lot easier to do in the inverse direction...
-    switch (slot) {
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kHead:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kHead;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kHair:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kHair;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kBody:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kBody;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kHands:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kHands;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kForearms:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kForearms;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kAmulet:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kAmulet;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kRing:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kRing;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kFeet:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kFeet;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kCalves:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kCalves;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kShield:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kShield;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kTail:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kTail;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kLongHair:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kLongHair;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kCirclet:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kCirclet;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kEars:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kEars;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModMouth:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModMouth;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModNeck:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModNeck;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModChestPrimary:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModChestPrimary;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModBack:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModBack;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModMisc1:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModMisc1;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModPelvisPrimary:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModPelvisPrimary;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kDecapitateHead:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kDecapitateHead;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kDecapitate:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kDecapitate;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModPelvisSecondary:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModPelvisSecondary;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModLegRight:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModLegRight;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModLegLeft:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModLegLeft;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModFaceJewelry:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModFaceJewelry;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModChestSecondary:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModChestSecondary;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModShoulder:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModShoulder;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModArmLeft:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModArmLeft;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModArmRight:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModArmRight;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kModMisc2:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kModMisc2;
-      case RE::BGSBipedObjectForm::BipedObjectSlot::kFX01:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kFX01;
-      default:
-        return RE::BIPED_OBJECTS::BIPED_OBJECT::kNone;
-    }
   }
 
   static void SetItemDisplayName(
@@ -328,7 +255,7 @@ class ArmorFactory : public Singleton<ArmorFactory> {
     } else {
       nameWithoutPreviousMaterial = name;
     }
-    return fmt::format("{} (*{})", nameWithoutPreviousMaterial, material.name);
+    return fmt::format("{} ({})", nameWithoutPreviousMaterial, material.name);
   }
 
   static std::optional<std::string> GetTexturePath(const std::string& in) {
@@ -351,6 +278,7 @@ class ArmorFactory : public Singleton<ArmorFactory> {
   }
 
   static RE::NiSourceTexture* LoadTexture(const char* path) {
+    logger::debug("Loading texture from path: {}", path);
     auto texturePtr = RE::NiTexturePtr();
     RE::GetTexture(path, true, texturePtr, false);
     if (!texturePtr) {
@@ -359,16 +287,16 @@ class ArmorFactory : public Singleton<ArmorFactory> {
     }
     auto* newTexture = netimmerse_cast<RE::NiSourceTexture*>(texturePtr.get());
     if (!newTexture) {
-      logger::error(
-          "Failed to cast texture to NiSourceTexture for diffuse map: {}",
-          path);
+      logger::error("Failed to cast texture to NiSourceTexture for map: {}",
+                    path);
       return nullptr;
     }
     return newTexture;
   }
+
   static bool ApplyMaterialToNode(
       RE::TESObjectREFR* refr, bool, RE::BSTriShape* bsTriShape,
-      const std::unique_ptr<MaterialRecord> record) {
+      const std::unique_ptr<MaterialRecord>& record) {
     RETURN_IF_FALSE(refr)
     RETURN_IF_FALSE(bsTriShape)
     auto* shaderProperty = GetShaderProperty(bsTriShape);
@@ -384,6 +312,7 @@ class ArmorFactory : public Singleton<ArmorFactory> {
     if (!record->diffuseMap.empty()) {
       base->diffuseTexture =
           RE::NiSourceTexturePtr(LoadTexture(record->diffuseMap.c_str()));
+      return true;
     }
     if (!record->normalMap.empty()) {
       base->normalTexture =
@@ -402,7 +331,7 @@ class ArmorFactory : public Singleton<ArmorFactory> {
     base->materialAlpha = record->transparency;
     auto feature = base->GetFeature();
     if (feature == RE::BSLightingShaderMaterial::Feature::kEnvironmentMap) {
-      if (auto envMaterial =
+      if (auto* envMaterial =
               skyrim_cast<RE::BSLightingShaderMaterialEnvmap*>(base)) {
         if (!record->envMap.empty()) {
           envMaterial->envTexture =
@@ -417,7 +346,7 @@ class ArmorFactory : public Singleton<ArmorFactory> {
     }
     if (feature == RE::BSLightingShaderMaterial::Feature::kGlowMap &&
         !record->glowMap.empty()) {
-      auto glowMaterial =
+      auto* glowMaterial =
           skyrim_cast<RE::BSLightingShaderMaterialGlowmap*>(base);
       if (glowMaterial) {
         glowMaterial->glowTexture =
