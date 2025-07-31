@@ -28,7 +28,7 @@ struct InventoryItem {
 
 static void VisitEquippedInventoryItems(
     RE::TESObjectREFR* refr,
-    const std::function<void(const std::unique_ptr<InventoryItem>&)>& visitor) {
+    const std::function<void(std::unique_ptr<InventoryItem>&)>& visitor) {
   auto inventoryData = refr->GetInventory();
   for (auto& [obj, data] : inventoryData) {
     if (data.second->extraLists) {
