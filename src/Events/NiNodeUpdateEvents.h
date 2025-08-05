@@ -14,8 +14,6 @@ public:
     }
     logger::debug("NiNodeUpdateEvents: Actor: {}", actor->GetFormID());
     SKSE::GetTaskInterface()->AddTask([actor] {
-      logger::info("Applying saved materials to equipped armor on load");
-      auto* refr = RE::PlayerCharacter::GetSingleton();
       Factories::ArmorFactory::GetSingleton()->ApplySavedMaterials(actor);
     });
     return RE::BSEventNotifyControl::kContinue;

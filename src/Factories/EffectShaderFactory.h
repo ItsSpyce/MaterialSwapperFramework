@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Factory.h"
-#include "Singleton.h"
+
 
 namespace Factories {
 class EffectShaderFactory : public Factory<RE::TESEffectShader>,

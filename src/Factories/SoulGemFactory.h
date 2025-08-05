@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Factory.h"
-#include "Singleton.h"
+
 
 namespace Factories {
 class SoulGemFactory : public Factory<RE::TESSoulGem>,

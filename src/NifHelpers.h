@@ -5,7 +5,7 @@ namespace NifHelpers {
 template <typename T>
 static bool IsMaterialPath(T path) {
   auto str = StringHelpers::ToLower(path);
-  return str.ends_with(".bgsm") || str.ends_with(".bgem");
+  return str.ends_with(".json");
 }
 
 static bool HasBuiltInMaterial(RE::NiObjectNET* obj) {
@@ -68,6 +68,24 @@ static void VisitNiObject(RE::NiAVObject* obj,
 static void VisitNiObject(const RE::NiPointer<RE::NiAVObject>& obj,
                           const std::function<void(RE::NiAVObject*)>& visitor) {
   VisitNiObject(obj.get(), visitor);
+}
+
+static void VisitShapes(RE::NiAVObject* obj,
+                        const std::function<void(RE::BSTriShape*)>& visitor) {
+  if (!obj) {
+    return;
+  }
+  VisitNiObject(obj, [&](RE::NiAVObject* avObj) {
+    if (const auto triShape = avObj->AsTriShape()) {
+      visitor(triShape);
+    }
+  });
+}
+
+static void VisitShapes(
+    const RE::NiPointer<RE::NiAVObject>& obj,
+    const std::function<void(RE::BSTriShape*)>& visitor) {
+  VisitShapes(obj.get(), visitor);
 }
 
 static RE::NiPointer<RE::NiAVObject> GetMaterialSwappableShape(
@@ -152,18 +170,20 @@ static RE::BSTriShape* GetTriShape(RE::TESObjectREFR* refr,
   return geometry;
 }
 
-static RE::BSLightingShaderProperty* GetShaderProperty(RE::BSTriShape* shape) {
-  if (!shape) {
-    logger::error("GetShaderProperty called with null shape");
-    return nullptr;
-  }
-  for (auto& property : shape->properties) {
-    if (const auto shaderProperty =
-            skyrim_cast<RE::BSLightingShaderProperty*>(property.get())) {
-      return shaderProperty;
-    }
-  }
-
-  return nullptr;
+static RE::BSLightingShaderProperty* GetShaderProperty(
+    RE::BSTriShape* bsTriShape) {
+  auto* properties = bsTriShape->properties[1].get();
+  auto* bsLightShader =
+      properties ? netimmerse_cast<RE::BSLightingShaderProperty*>(properties)
+                 : nullptr;
+  return bsLightShader;
 }
+
+static RE::NiAlphaProperty* GetAlphaProperty(RE::BSTriShape* bsTriShape) {
+  auto* properties = bsTriShape->properties[0].get();
+  auto* alphaProperty =
+      properties ? netimmerse_cast<RE::NiAlphaProperty*>(properties) : nullptr;
+  return alphaProperty;
+}
+
 }  // namespace NifHelpers

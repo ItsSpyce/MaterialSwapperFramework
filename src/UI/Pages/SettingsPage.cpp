@@ -1,8 +1,11 @@
 #include "UI/Pages/SettingsPage.h"
 
 #include "imgui.h"
+#include "UI/ImGui_Sugar.h"
 
 void UI::Pages::SettingsPage(
     const SettingsPageProps& props) {
-  ImGui::Text("Settings will be implemented later.");
+  ImGui_Button("Show debug window") {
+    
+  }
 }

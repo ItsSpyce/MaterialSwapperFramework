@@ -9,7 +9,6 @@
     "catch2",
     "rapidcsv",
     "rsm-binary-io",
-    "xbyak",
     "directxtk",
     {
       "name": "imgui",
@@ -17,5 +16,5 @@
       "features": [ "dx11-binding", "win32-binding", "freetype", "wchar32" ]
     }
   ],
-  "builtin-baseline": "f2e1c41da38c71be74ef48684666991929b45418"
+  "builtin-baseline": "cc288af760054fa489574bd8e22d05aa8fa01e5c"
 }

@@ -11,16 +11,10 @@
 #include <imgui_impl_win32.h>
 
 namespace ImGui::SKSE {
-#ifdef SKYRIM_AE
-#define RELOCATION_OFFSET(se, ae) ae
-#else
-#define RELOCATION_OFFSET(se, ae) se
-#endif
-inline static REL::RelocationID kD3DInitHookID = RELOCATION_ID(75595, 77226);
-inline constexpr int kD3DInitHookOffset = RELOCATION_OFFSET(0x9, 0x275);
-inline static REL::RelocationID kDXGIPresentHookID =
-    RELOCATION_ID(75461, 77246);
-inline constexpr int kDXGIPresentHookOffset = 0x9;
+inline static REL::Relocation kD3DInitHook{RELOCATION_ID(75595, 77226),
+                                               OFFSET(0x9, 0x275)};
+inline static REL::Relocation kDXGIPresentHook{RELOCATION_ID(75461, 77246),
+                                                   OFFSET(0x9, 0x9)};
 
 inline ImVec2 GetWindowSize() {
   static const auto screen_size = RE::BSGraphics::Renderer::GetScreenSize();
@@ -61,7 +55,8 @@ inline InitStatus Install(DXGI_SWAP_CHAIN_DESC& sd) {
   if (!renderer) {
     return InitStatus::kNoRenderer;
   }
-  const auto swapchain = (IDXGISwapChain*)renderer->data.renderWindows[0].swapChain;
+  const auto swapchain =
+      (IDXGISwapChain*)renderer->data.renderWindows[0].swapChain;
   if (!swapchain) {
     return InitStatus::kFailedSwapchainLocate;
   }
@@ -81,6 +76,7 @@ inline InitStatus Install(DXGI_SWAP_CHAIN_DESC& sd) {
 
 #define IM_VK_KEYPAD_ENTER (VK_RETURN + 256)
 inline ImGuiKey ImGui_ImplWin32_VirtualKeyToImGuiKey(WPARAM wParam) {
+  using namespace REX::W32;
   switch (wParam) {
     case VK_TAB:
       return ImGuiKey_Tab;
@@ -296,6 +292,7 @@ inline ImGuiKey ImGui_ImplWin32_VirtualKeyToImGuiKey(WPARAM wParam) {
 }
 
 inline UINT ConvertDirectInputKeyToVirtualKey(uint32_t key) {
+  using namespace REX::W32;
   switch (key) {
     case DIK_LEFTARROW:
       return VK_LEFT;
@@ -559,14 +556,10 @@ class WindowManager {
   }
 
   static void RegisterHooksImpl() {
-    const REL::Relocation d3dInitHook{kD3DInitHookID,
-                                       kD3DInitHookOffset};  // BSGraphics::InitD3D
-    stl::write_thunk_call<D3DInitHook>(d3dInitHook.address());
-    const REL::Relocation dxgiHook{
-        kDXGIPresentHookID,
-        kDXGIPresentHookOffset};  // BSGraphics::Renderer::End
-    stl::write_thunk_call<DXGIPresentHook>(dxgiHook.address());
-    const REL::Relocation processInputQueueHook{RELOCATION_ID(67315, 68617), 0x7B};
+    stl::write_thunk_call<D3DInitHook>(kD3DInitHook.address());
+    stl::write_thunk_call<DXGIPresentHook>(kDXGIPresentHook.address());
+    const REL::Relocation processInputQueueHook{RELOCATION_ID(67315, 68617),
+                                                0x7B};
     stl::write_thunk_call<ProcessInputQueueHook>(
         processInputQueueHook.address());
 
@@ -642,22 +635,20 @@ class WindowManager {
 
   static const UIWindow** GetOpenMenus() {
     windowsLock_.lock();
-    auto windows =
-        std::find_if(windows_, [](UIWindow* window) {
-          return window && window->IsOpen() &&
-                 window->GetWindowType() == WindowType_kMenu;
-        });
+    auto windows = std::find_if(windows_, [](UIWindow* window) {
+      return window && window->IsOpen() &&
+             window->GetWindowType() == WindowType_kMenu;
+    });
     windowsLock_.unlock();
     return windows;
   }
 
   static const UIWindow** GetOpenWidgets() {
     windowsLock_.lock();
-    auto widgets =
-        std::find_if(windows_, [](UIWindow* window) {
-          return window && window->IsOpen() &&
-                 window->GetWindowType() == WindowType_kWidget;
-        });
+    auto widgets = std::find_if(windows_, [](UIWindow* window) {
+      return window && window->IsOpen() &&
+             window->GetWindowType() == WindowType_kWidget;
+    });
     windowsLock_.unlock();
     return widgets;
   }

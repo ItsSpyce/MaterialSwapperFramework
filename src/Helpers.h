@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NiOverride.h"
+#include "EditorIDCache.h"
 
 namespace Helpers {
 
@@ -16,7 +17,16 @@ inline uint32_t GetFormID(const std::string& name) {
     auto i = GetModIndex(name.substr(0, pos));
     return i | std::stoul(name.substr(pos + 1), nullptr, 16);
   }
-  return std::stoul(name, nullptr, 16);
+  if (name.starts_with("0x")) {
+    return std::stoul(name.substr(2), nullptr, 16);
+  }
+  if (name.starts_with("0X")) {
+    return std::stoul(name.substr(2), nullptr, 16);
+  }
+  if (const auto formIDFromCache = EditorIDCache::GetFormID(name); formIDFromCache != NULL) {
+    return formIDFromCache;
+  }
+  return 0;  // Return 0 if not found
 }
 
 struct InventoryItem {
@@ -33,6 +43,9 @@ static void VisitEquippedInventoryItems(
   for (auto& [obj, data] : inventoryData) {
     if (data.second->extraLists) {
       for (auto& extraList : *data.second->extraLists) {
+        if (!extraList) {
+          continue;
+        }
         if (extraList->HasType(RE::ExtraDataType::kWorn)) {
           auto* armo = obj->As<RE::TESObjectARMO>();
           // auto* weap = obj->As<RE::TESObjectWEAP>(); // TODO

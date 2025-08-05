@@ -1,8 +1,6 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 
-#include "RE/Misc.h"
-
 #include "UI.h"
 #include "Hooks.h"
 #include "Events.h"
@@ -46,6 +44,8 @@ static void HandleMessage(SKSE::MessagingInterface::Message* msg) {
     Events::Configure();
   }
   if (msg->type == SKSE::MessagingInterface::kDataLoaded) {
+    logger::info("Reading form editor IDs from plugins...");
+    EditorIDCache::HydrateEditorIDCache();
     logger::info("Reading materials from disk...");
     MaterialLoader::ReadMaterialsFromDisk(true);
   }

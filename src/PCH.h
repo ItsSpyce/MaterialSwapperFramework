@@ -2,45 +2,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
-
-#define NOGDICAPMASKS
-#define NOVIRTUALKEYCODES
-#define NOWINMESSAGES
-#define NOWINSTYLES
-#define NOSYSMETRICS
-#define NOMENUS
-#define NOICONS
-#define NOKEYSTATES
-#define NOSYSCOMMANDS
-#define NORASTEROPS
-#define NOSHOWWINDOW
-#define OEMRESOURCE
-#define NOATOM
-#define NOCLIPBOARD
-#define NOCOLOR
-#define NOCTLMGR
-#define NODRAWTEXT
-#define NOGDI
-#define NOKERNEL
-#define NOUSER
-#define NONLS
-#define NOMB
-#define NOMEMMGR
-#define NOMETAFILE
-#define NOMSG
-#define NOOPENFILE
-#define NOSCROLL
-#define NOSERVICE
-#define NOSOUND
-#define NOTEXTMETRIC
-#define NOWH
-#define NOWINOFFSETS
-#define NOCOMM
-#define NOKANJI
-#define NOHELP
-#define NOPROFILER
-#define NODEFERWINDOWPOS
-#define NOMCX
+#define BS_THREAD_POOL_NATIVE_EXTENSIONS
 
 #include <RE/Skyrim.h>
 #include <REL/Relocation.h>
@@ -52,16 +14,20 @@
 #include <algorithm>
 #include <cctype>
 #include <locale>
+#include <future>
+#include <Singleton.h>
+#include <bs_thread_pool.hpp>
 
 namespace logger = SKSE::log;
+using namespace std;
 using namespace std::literals;
-using IStreamPtr = std::unique_ptr<std::istream>;
+using IStreamPtr = unique_ptr<istream>;
 
 namespace stl {
 using namespace SKSE::stl;
 
 template <class T>
-void write_thunk_call(std::uintptr_t a_src) {
+void write_thunk_call(uintptr_t a_src) {
   SKSE::AllocTrampoline(14);
 
   auto& trampoline = SKSE::GetTrampoline();
@@ -80,3 +46,9 @@ void write_vfunc() {
     logger::error("Failed condition: {}", #_VAR); \
     return false;                                 \
   }
+
+#ifdef SKYRIM_AE
+#define OFFSET(se, ae) ae
+#else
+#define OFFSET(se, ae) se
+#endif

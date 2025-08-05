@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Factory.h"
-#include "Singleton.h"
 
 namespace Factories {
 class AddonNodeFactory : public Factory<RE::BGSAddonNode>,

@@ -1,4 +1,5 @@
 #include "UI.h"
+#include "UI/Pages/DebuggerPage.h"
 #include "UI/Pages/MaterialsPage.h"
 #include "UI/Pages/SettingsPage.h"
 #include "UI/Router.h"
@@ -9,6 +10,9 @@ void MainWindow::Initialize() {
   auto* router = Router::GetSingleton();
   router->UseRoute("/", [] { Pages::MaterialsPage({}); });
   router->UseRoute("/settings", [] { Pages::SettingsPage({}); });
+  router->UseRoute("/debugger", [] {
+    Pages::DebuggerPage({.actor = RE::PlayerCharacter::GetSingleton()});
+  });
 }
 
 void MainWindow::Draw() {
@@ -23,6 +27,7 @@ void MainWindow::Draw() {
       ImGui::Separator();
       Link({.path = "/", .label = "Home"});
       Link({.path = "/settings", .label = "Settings"});
+      Link({.path = "/debugger", .label = "Debugger"});
     }
     ImGui::SameLine();
     ImGui_Child("Content") { Router::GetSingleton()->operator()(); }

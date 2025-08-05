@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Singleton.h"
+#include "ImGui_Sugar.h"
 
 namespace UI {
 struct RouterProps {
@@ -42,8 +42,6 @@ struct LinkProps {
 inline void Link(const LinkProps& props) {
   auto router = Router::GetSingleton();
   // Create a link that navigates to the specified path when clicked
-  if (ImGui::Button(props.label)) {
-    router->NavigateTo(props.path);
-  }
+  ImGui_Button(props.label) { router->NavigateTo(props.path); }
 }
 }  // namespace UI

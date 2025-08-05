@@ -51,33 +51,8 @@ static void ClearItemDisplayName(
   }
 }
 
-static std::optional<std::string> GetTexturePath(const std::string& in) {
-  if (in.empty()) {
-    logger::error("Empty texture path provided");
-    return std::nullopt;
-  }
-  auto result = StringHelpers::PrefixTexturesPath(in);
-  logger::debug("Texture path: {}", result);
-  return result;
-}
-
-static RE::BSLightingShaderProperty* GetShaderProperty(
-    RE::BSTriShape* bsTriShape) {
-  auto* properties = bsTriShape->properties[1].get();
-  auto* bsLightShader =
-      properties ? netimmerse_cast<RE::BSLightingShaderProperty*>(properties)
-                 : nullptr;
-  return bsLightShader;
-}
-
-static RE::NiAlphaProperty* GetAlphaProperty(RE::BSTriShape* bsTriShape) {
-  auto* properties = bsTriShape->properties[2].get();
-  auto* alphaProperty =
-      properties ? netimmerse_cast<RE::NiAlphaProperty*>(properties) : nullptr;
-  return alphaProperty;
-}
-
 static RE::NiSourceTexture* LoadTexture(const char* path) {
+  logger::debug("Loading texture: {}", path);
   auto texturePtr = RE::NiTexturePtr();
   RE::GetTexture(path, true, texturePtr, false);
   if (!texturePtr) {
@@ -93,70 +68,133 @@ static RE::NiSourceTexture* LoadTexture(const char* path) {
   return newTexture;
 }
 
-static void ApplyTexture(RE::NiPointer<RE::NiSourceTexture>& target, const char* path) {
-  auto* texture = LoadTexture(path);
-  
-}
-
 static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool,
                                 RE::BSTriShape* bsTriShape,
                                 const std::unique_ptr<MaterialRecord>& record) {
   RETURN_IF_FALSE(refr)
   RETURN_IF_FALSE(bsTriShape)
-  auto* shaderProperty = GetShaderProperty(bsTriShape);
-  auto* base =
+  auto* shaderProperty = NifHelpers::GetShaderProperty(bsTriShape);
+  auto* alphaProperty = NifHelpers::GetAlphaProperty(bsTriShape);
+  auto* oldBase =
       skyrim_cast<RE::BSLightingShaderMaterialBase*>(shaderProperty->material);
-  if (!base) {
+  if (!oldBase) {
     logger::error(
         "Failed to get BSLightingShaderMaterialBase for tri shape: {}",
         bsTriShape->name);
     return false;
   }
-
-  if (!record->diffuseMap.empty()) {
+  auto* base =
+      RE::BSLightingShaderMaterialBase::CreateMaterial(oldBase->GetFeature());
+  if (!base) {
+    logger::error(
+        "Failed to create BSLightingShaderMaterialBase for tri shape: {}",
+        bsTriShape->name);
+    return false;
+  }
+  base->CopyMembers(oldBase);
+  if (record->decal) {
+    shaderProperty->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kDecal, true);
+  }
+  if (record->emitEnabled) {
+    if (record->emitColor.has_value()) {
+      shaderProperty->emissiveColor =
+          new RE::NiColor(record->emitColor->at(0), record->emitColor->at(1),
+                          record->emitColor->at(2));
+    }
+    shaderProperty->emissiveMult =
+        record->emitMult.value_or(shaderProperty->emissiveMult);
+    shaderProperty->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kOwnEmit, true);
+  }
+  if (alphaProperty) {
+    alphaProperty->SetAlphaBlending(
+        record->alphaBlend.value_or(alphaProperty->GetAlphaBlending()));
+    alphaProperty->SetAlphaTesting(
+        record->alphaTest.value_or(alphaProperty->GetAlphaTesting()));
+    alphaProperty->alphaThreshold =
+        record->alphaTestThreshold.value_or(alphaProperty->alphaThreshold);
+  }
+  if (record->diffuseMap.has_value() && !record->diffuseMap->empty()) {
     base->diffuseTexture =
-        RE::NiSourceTexturePtr(LoadTexture(record->diffuseMap.c_str()));
-    return true;
+        RE::NiSourceTexturePtr(LoadTexture(record->diffuseMap->c_str()));
   }
-  if (!record->normalMap.empty()) {
+  if (record->uvOffset.has_value()) {
+    base->texCoordOffset[0] =
+        RE::NiPoint2(record->uvOffset->at(0), record->uvOffset->at(0));
+  }
+  if (record->uvScale.has_value()) {
+    base->texCoordScale[0] =
+        RE::NiPoint2(record->uvScale->at(0), record->uvScale->at(1));
+  }
+  if (record->normalMap.has_value() && !record->normalMap->empty()) {
     base->normalTexture =
-        RE::NiSourceTexturePtr(LoadTexture(record->normalMap.c_str()));
+        RE::NiSourceTexturePtr(LoadTexture(record->normalMap->c_str()));
   }
-  if (!record->smoothSpecMap.empty()) {
-    base->specularBackLightingTexture =
-        RE::NiSourceTexturePtr(LoadTexture(record->smoothSpecMap.c_str()));
-    base->specularPower = record->backLightPower;
 
-    base->rimLightPower = record->rimPower;
-    base->specularColor =
-        RE::NiColor(record->specularColor[0], record->specularColor[1],
-                    record->specularColor[2]);
+  if (record->specularEnabled) {
+    if (record->specularMap.has_value() && !record->specularMap->empty()) {
+      base->specularBackLightingTexture =
+          RE::NiSourceTexturePtr(LoadTexture(record->specularMap->c_str()));
+    }
+    base->specularPower = record->backLightPower.value_or(base->specularPower);
+    base->refractionPower =
+        record->refractionPower.value_or(base->refractionPower);
+    base->specularColorScale =
+        record->specularMult.value_or(base->specularColorScale);
+    base->rimLightPower = record->rimPower.value_or(base->rimLightPower);
+    if (record->specularColor.has_value()) {
+      if (record->specularColor->at(0) > 1.0f) {
+        // we're trying to use byte represented values of a color, convert to 0
+        // to 1 float range
+        base->specularColor =
+            RE::NiColor(record->specularColor->at(0) / 255.0f,
+                        record->specularColor->at(1) / 255.0f,
+                        record->specularColor->at(2) / 255.0f);
+      } else {
+        base->specularColor = RE::NiColor(record->specularColor->at(0),
+                                          record->specularColor->at(1),
+                                          record->specularColor->at(2));
+      }
+    }
+
+  } else {
+    base->specularBackLightingTexture = nullptr;
+    base->specularPower = 20.0f;
+    base->refractionPower = 0.0f;
+    base->specularColorScale = 1.0f;
+    base->rimLightPower = 0.0f;
+    base->specularColor = RE::NiColor(1.0f, 1.0f, 1.0f);
   }
-  base->materialAlpha = record->transparency;
-  auto feature = base->GetFeature();
+
+  base->materialAlpha = record->transparency.value_or(base->materialAlpha);
+  // TODO: instead of comparing features, let properties decide and clone if
+  // needed
+  const auto feature = base->GetFeature();
   if (feature == RE::BSLightingShaderMaterial::Feature::kEnvironmentMap) {
     if (auto* envMaterial =
             skyrim_cast<RE::BSLightingShaderMaterialEnvmap*>(base)) {
-      if (!record->envMap.empty()) {
+      if (record->envMap.has_value() && !record->envMap->empty()) {
         envMaterial->envTexture =
-            RE::NiSourceTexturePtr(LoadTexture(record->envMap.c_str()));
+            RE::NiSourceTexturePtr(LoadTexture(record->envMap->c_str()));
       }
-      if (!record->envMapMask.empty()) {
+      if (record->envMapMask.has_value() && !record->envMapMask->empty()) {
         envMaterial->envMaskTexture =
-            RE::NiSourceTexturePtr(LoadTexture(record->envMapMask.c_str()));
+            RE::NiSourceTexturePtr(LoadTexture(record->envMapMask->c_str()));
       }
-      envMaterial->envMapScale = record->envMapMaskScale;
+      envMaterial->envMapScale =
+          record->envMapMaskScale.value_or(envMaterial->envMapScale);
     }
   }
   if (feature == RE::BSLightingShaderMaterial::Feature::kGlowMap &&
-      !record->glowMap.empty()) {
+      record->glowMapEnabled && record->glowMap.has_value() &&
+      !record->glowMap->empty()) {
     auto* glowMaterial =
         skyrim_cast<RE::BSLightingShaderMaterialGlowmap*>(base);
     if (glowMaterial) {
       glowMaterial->glowTexture =
-          RE::NiSourceTexturePtr(LoadTexture(record->glowMap.c_str()));
+          RE::NiSourceTexturePtr(LoadTexture(record->glowMap->c_str()));
     }
   }
+  shaderProperty->SetMaterial(base, true);
   return true;
 }
 
@@ -257,11 +295,13 @@ void ArmorFactory::OnUpdate() {
     return;
   }
   logger::debug("Updating materials for form ID {}", refr->GetFormID());
+  NifHelpers::VisitShapes(refr->Get3D(), [&](RE::BSTriShape* shape) {
+    ApplyDefaultMaterial(refr.get(), shape);
+  });
   Helpers::VisitEquippedInventoryItems(
       refr.get(), [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
-        if (!ApplySavedMaterial_Impl(this, refr.get()->As<RE::Actor>(), item)) {
-          logger::error("Failed to apply saved material for reference: {}",
-                        refr->GetFormID());
+        if (item->uid != NULL) {
+          ApplySavedMaterial_Impl(this, refr->As<RE::Actor>(), item);
         }
       });
 
@@ -291,87 +331,44 @@ bool ArmorFactory::ApplyMaterial(
                   material->name, uid);
     return true;  // Material already applied
   }
-  std::vector oldMaterials(record.appliedMaterials);
-  record.appliedMaterials.clear();
-  for (const auto& materialName : oldMaterials) {
-    // If a material with the same "applies" shapes is already applied, skip
-    // it. The arrays might not match exactly, check length and if key is
-    // present
-    const auto appliedMaterialConfig =
-        MaterialLoader::GetMaterialConfig(form->GetFormID(), materialName);
+  std::vector<std::string> newAppliedMaterials;
+  for (const auto& appliedMaterialName : record.appliedMaterials) {
+    auto appliedMaterialConfig =
+        MaterialLoader::GetMaterialConfig(form->GetFormID(), appliedMaterialName);
     if (!appliedMaterialConfig) {
-      continue;
+      continue;  // Skip if material config is not found
     }
-    if (appliedMaterialConfig->applies.size() != material->applies.size()) {
-      record.appliedMaterials.push_back(materialName);
-      continue;
+    if (appliedMaterialConfig->name == material->name) {
+      logger::debug("Skipping already applied material: {}", material->name);
+      continue;  // Skip if the material is already applied
     }
-    auto found = false;
-    for (const auto& shapeName : material->applies | std::views::keys) {
-      if (appliedMaterialConfig->applies.contains(shapeName)) {
-        found = true;
-        break;
+    // check if there's an intersection between the two shape collections
+    bool hasIntersection = false;
+    for (const auto& shapeName :
+         appliedMaterialConfig->applies | std::views::keys) {
+      if (material->applies.contains(shapeName) && material->layer == appliedMaterialConfig->layer) {
+        hasIntersection = true;
+        break;  // Stop checking if we found an intersection
       }
     }
-    if (!found) {
-      record.appliedMaterials.push_back(materialName);
+    if (hasIntersection) {
+      logger::debug("Skipping material {} as it intersects with {}",
+                    material->name, appliedMaterialName);
+      continue;  // Skip if there's an intersection
     }
+    newAppliedMaterials.emplace_back(appliedMaterialName);
   }
-  record.appliedMaterials.emplace_back(material->name.c_str());
+  newAppliedMaterials.emplace_back(material->name);
+  record.appliedMaterials = std::move(newAppliedMaterials);
+  logger::debug("Applied materials for armor with UID: {}: {}", uid,
+                fmt::join(record.appliedMaterials, ", "));
 
   return true;
 }
 
 bool ArmorFactory::ApplySavedMaterials(RE::Actor* refr) {
   RETURN_IF_FALSE(refr)
-  g_updateStack.push(refr->GetHandle());
-  return true;
-}
-
-bool ArmorFactory::ApplySavedMaterialsImmediate(RE::Actor* refr,
-                                                RE::NiAVObject* node) {
-  RETURN_IF_FALSE(refr)
-  RETURN_IF_FALSE(node)
-  Helpers::VisitEquippedInventoryItems(
-      refr, [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
-        if (item->uid == NULL) {
-          ApplyDefaultMaterial(refr, node);
-          return;
-        }
-        auto& [appliedMaterials] = g_armorMaterials[item->uid];
-        logger::debug("Applying materials: {}",
-                      fmt::join(appliedMaterials, ", "));
-        for (const auto& materialName : appliedMaterials) {
-          auto appliedMaterialConfig = MaterialLoader::GetMaterialConfig(
-              item->data->object->GetFormID(), materialName);
-          if (!appliedMaterialConfig) {
-            ApplyDefaultMaterial(refr, node);
-            logger::warn(
-                "No material config found for form ID: {}, material: {}",
-                item->data->object->GetFormID(), materialName);
-            continue;
-          }
-          for (const auto& [shapeName, materialFile] :
-               appliedMaterialConfig->applies) {
-            auto* nivAv = node->GetObjectByName(shapeName);
-            if (!nivAv) {
-              logger::warn("No object found for shape name: {}", shapeName);
-              continue;
-            }
-            auto* triShape = nivAv->AsTriShape();
-            if (!triShape) {
-              logger::warn("No tri-shape found for shape name: {}", shapeName);
-              continue;
-            }
-            if (!ApplyMaterialToNode(refr, true, triShape,
-                                     MaterialLoader::LoadMaterial(materialFile))) {
-              logger::error(
-                  "Failed to apply material to tri-shape: {}, material: {}",
-                  triShape->name, materialFile);
-            }
-          }
-        }
-      });
+  g_updateStack.emplace(refr->GetHandle());
   return true;
 }
 
@@ -411,5 +408,18 @@ void ArmorFactory::WriteToSave(Save::SaveData& saveData) {
 }
 
 void ArmorFactory::ResetMaterials(RE::TESObjectREFR* refr) {
-  // TODO:
+  if (!refr) {
+    return;
+  }
+  auto* actor = refr->As<RE::Actor>();
+  if (!actor) {
+    return;
+  }
+  ApplyDefaultMaterial(actor, refr->Get3D());
+  Helpers::VisitEquippedInventoryItems(
+      actor, [&](std::unique_ptr<Helpers::InventoryItem>& item) {
+        g_armorMaterials.erase(item->uid);
+        ClearItemDisplayName(item->data);
+      });
+  g_updateStack.push(refr->GetHandle());
 }

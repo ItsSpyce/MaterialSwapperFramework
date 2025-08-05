@@ -5,6 +5,7 @@ struct MaterialConfig {
   std::unordered_map<std::string, std::string> applies;
   bool isHidden;
   bool modifyName = true;
+  uint8_t layer = 0;
 };
 
 struct FormIDConfigEntry {

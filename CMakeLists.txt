@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(MaterialSwapperFramework VERSION 0.0.7.2)
+project(MaterialSwapperFramework VERSION 0.0.8)
 
 set(CMAKE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
@@ -15,7 +15,7 @@ endif()
 
 add_compile_definitions(SKYRIM)
 add_compile_definitions(SKYRIM_AE)
-set(CommonLibPath "${CMAKE_LIB_DIR}/commonlibsse")
+set(CommonLibPath "${CMAKE_LIB_DIR}/commonlibsse-ng")
 set(CommonLibName "CommonLibSSE")
 set(GameVersion "Skyrim")
 
