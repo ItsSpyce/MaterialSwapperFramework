@@ -62,6 +62,51 @@ void MaterialLoader::ReadMaterialsFromDisk(bool clearExisting) {
       }
     }
   }
+  for (auto& modDirectory : Filesystem::EnumerateModsInMaterialDir()) {
+    // the mod name is the last part of the path
+    auto modName = modDirectory.path().filename().string();
+    if (modName.empty() || modName[0] == '_') {
+      continue;  // Skip empty or hidden directories
+    }
+    if (modName == "config") {
+      continue;  // Skip the config directory
+    }
+    // format for a directory name is "MOD_NAME.es{m,p,l}"
+    auto* plugin =
+        RE::TESDataHandler::GetSingleton()->LookupModByName(modName);
+    if (!plugin) {
+      logger::warn("Plugin not loaded for mod directory: {}", modName);
+      continue;  // Skip if the plugin is not loaded
+    }
+    for (auto& jsonFile : fs::recursive_directory_iterator(modDirectory)) {
+      MaterialConfigMap config;
+      if (!jsonFile.is_regular_file() || !jsonFile.path().has_extension() ||
+          jsonFile.path().extension() != ".json") {
+        continue;  // Skip non-JSON files
+      }
+      auto loweredPath = StringHelpers::ToLower(jsonFile.path().string());
+      logger::debug("Reading material config file: {}", loweredPath);
+      if (auto err = glz::read_file_json(config, loweredPath, std::string{})) {
+        auto cleanedError = glz::format_error(err);
+        logger::error("Failed to read material config file {}: {}", loweredPath,
+                      cleanedError);
+        continue;
+      }
+      for (auto& [formID, entry] : config) {
+        auto realFormID = Helpers::GetFormID(formID);
+        if (realFormID == 0) {
+          logger::error("Invalid form ID in material config: {}", formID);
+          continue;
+        }
+        if (auto it = materialConfigs_.find(realFormID);
+            it != materialConfigs_.end()) {
+          it->second.insert_range(it->second.end(), entry);
+        } else {
+          materialConfigs_[realFormID] = entry;
+        }
+      }
+    }
+  }
 }
 
 std::unique_ptr<MaterialRecord> MaterialLoader::LoadMaterial(
@@ -88,7 +133,8 @@ std::unique_ptr<MaterialConfig> MaterialLoader::GetMaterialConfig(
   return nullptr;
 }
 
-std::unique_ptr<MaterialConfig> MaterialLoader::GetDefaultMaterial(RE::FormID formID) {
+std::unique_ptr<MaterialConfig> MaterialLoader::GetDefaultMaterial(
+    RE::FormID formID) {
   if (auto it = materialConfigs_.find(formID); it != materialConfigs_.end()) {
     for (auto& record : it->second) {
       if (!record.modifyName) {
@@ -101,7 +147,8 @@ std::unique_ptr<MaterialConfig> MaterialLoader::GetDefaultMaterial(RE::FormID fo
 
 void MaterialLoader::VisitMaterialFilesForFormID(
     uint32_t formID,
-    const std::function<void(const std::unique_ptr<MaterialConfig>&)>& visitor) {
+    const std::function<void(const std::unique_ptr<MaterialConfig>&)>&
+        visitor) {
   if (auto it = materialConfigs_.find(formID); it != materialConfigs_.end()) {
     for (const auto& entry : it->second) {
       visitor(std::make_unique<MaterialConfig>(entry));

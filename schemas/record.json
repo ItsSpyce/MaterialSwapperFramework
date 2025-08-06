@@ -1,0 +1,291 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MaterialRecord",
+  "type": "object",
+  "properties": {
+    "shaderType": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "inherits": { "type": "string" },
+    "clamp": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "uvOffset": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "uvScale": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "transparency": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "alphaBlend": { "type": "boolean" },
+    "sourceBlendMode": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "destinationBlendMode": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "alphaTestThreshold": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "alphaTest": { "type": "boolean" },
+    "depthWrite": { "type": "boolean" },
+    "depthTest": { "type": "boolean" },
+    "ssr": { "type": "boolean" },
+    "wetnessControlSsr": { "type": "boolean" },
+    "decal": { "type": "boolean" },
+    "twoSided": { "type": "boolean" },
+    "decalNoFade": { "type": "boolean" },
+    "nonOccluder": { "type": "boolean" },
+    "refraction": { "type": "boolean" },
+    "refractionalFalloff": { "type": "boolean" },
+    "refractionPower": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "envMapEnabled": { "type": "boolean" },
+    "envMapMaskScale": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "depthBias": { "type": "boolean" },
+    "grayscaleToPaletteColor": { "type": "boolean" },
+    "maskWrites": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+
+    "diffuseMap": { "type": "string" },
+    "normalMap": { "type": "string" },
+    "smoothSpecMap": { "type": "string" },
+    "grayscaleMap": { "type": "string" },
+    "glowMap": { "type": "string" },
+    "wrinkleMap": { "type": "string" },
+    "specularMap": { "type": "string" },
+    "lightingMap": { "type": "string" },
+    "flowMap": { "type": "string" },
+    "distanceFieldAlphaMap": { "type": "string" },
+    "envMap": { "type": "string" },
+    "innerLayerMap": { "type": "string" },
+    "displacementMap": { "type": "string" },
+    "baseMap": { "type": "string" },
+    "envMapMask": { "type": "string" },
+    "enableEditorAlphaThreshold": { "type": "boolean" },
+    "translucency": { "type": "boolean" },
+    "translucencyThickObject": { "type": "boolean" },
+    "translucencyMixAlbedoWithSubsurfaceColor": { "type": "boolean" },
+    "translucencySubsurfaceColor": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 255
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "translucencyTransmissiveScale": { "type": "number" },
+    "translucencyTurbulence": { "type": "number" },
+    "rimLighting": { "type": "boolean" },
+    "rimPower": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "specularPower": { "type": "number" },
+    "subsurfaceLighting": { "type": "boolean" },
+    "subsurfaceLightingRolloff": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "specularEnabled": { "type": "boolean" },
+    "specularColor": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "specularMult": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "smoothness": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "fresnelPower": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "wetnessControlSpecScale": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "wetnessControlSpecPowerScale": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "wetnessControlSpecMinvar": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "wetnessControlEnvMapScale": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "wetnessControlFresnelPower": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "wetnessControlMetalness": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "pbr": { "type": "boolean" },
+    "customPorosity": { "type": "boolean" },
+    "porosityValue": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "rootMaterialPath": { "type": "string" },
+    "anisoLighting": { "type": "boolean" },
+    "emitEnabled": { "type": "boolean" },
+    "emitColor": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "emitMult": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "modelSpaceNormals": { "type": "boolean" },
+    "externalEmit": { "type": "boolean" },
+    "lumEmit": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "useAdaptiveEmissive": { "type": "boolean" },
+    "adaptiveEmissiveExposureParams": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "backLighting": { "type": "boolean" },
+    "receiveShadows": { "type": "boolean" },
+    "hideSecret": { "type": "boolean" },
+    "castShadows": { "type": "boolean" },
+    "dissolveFade": { "type": "boolean" },
+    "assumeShadowmask": { "type": "boolean" },
+    "glowMapEnabled": { "type": "boolean" },
+    "envMapWindow": { "type": "boolean" },
+    "envMapEye": { "type": "boolean" },
+    "hair": { "type": "boolean" },
+    "hairTintColor": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "tree": { "type": "boolean" },
+    "facegen": { "type": "boolean" },
+    "skinTint": { "type": "boolean" },
+    "tessellate": { "type": "boolean" },
+    "displacementMapParams": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "tessellationParams": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "grayscaleToPaletteScale": { "type": "number" },
+    "skewSpecularAlpha": { "type": "boolean" },
+    "terrain": { "type": "boolean" },
+    "terrainParams": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3
+    },
+
+    "blood": { "type": "boolean" },
+    "effectLighting": { "type": "boolean" },
+    "falloff": { "type": "boolean" },
+    "falloffColor": { "type": "boolean" },
+    "grayscaleToPaletteAlpha": { "type": "boolean" },
+    "soft": { "type": "boolean" },
+    "baseColor": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "baseColorScale": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "falloffParams": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "lightingInfluence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "envMapMinLod": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "softDepth": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "effectPbrSpecular": { "type": "boolean" }
+  },
+  "additionalProperties": false
+}

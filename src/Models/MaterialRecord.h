@@ -57,7 +57,7 @@ struct MaterialRecord {
   std::optional<float> translucencyTurbulence;
   std::optional<bool> rimLighting;
   std::optional<float> rimPower;
-  std::optional<float> backLightPower;
+  std::optional<float> specularPower;
   std::optional<bool> subsurfaceLighting;
   std::optional<float> subsurfaceLightingRolloff;
   std::optional<bool> specularEnabled;

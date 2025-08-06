@@ -135,7 +135,7 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool,
       base->specularBackLightingTexture =
           RE::NiSourceTexturePtr(LoadTexture(record->specularMap->c_str()));
     }
-    base->specularPower = record->backLightPower.value_or(base->specularPower);
+    base->specularPower = record->specularPower.value_or(base->specularPower);
     base->refractionPower =
         record->refractionPower.value_or(base->refractionPower);
     base->specularColorScale =
