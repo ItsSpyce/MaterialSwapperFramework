@@ -1,7 +1,7 @@
 #pragma once
 
-#include "NiOverride.h"
 #include "EditorIDCache.h"
+#include "NiOverride.h"
 
 namespace Helpers {
 
@@ -23,7 +23,8 @@ inline uint32_t GetFormID(const std::string& name) {
   if (name.starts_with("0X")) {
     return std::stoul(name.substr(2), nullptr, 16);
   }
-  if (const auto formIDFromCache = EditorIDCache::GetFormID(name); formIDFromCache != NULL) {
+  if (const auto formIDFromCache = EditorIDCache::GetFormID(name);
+      formIDFromCache != NULL) {
     return formIDFromCache;
   }
   return 0;  // Return 0 if not found
@@ -82,6 +83,28 @@ static std::unique_ptr<InventoryItem> GetInventoryItemWithFormID(
                       .count = data.first,
                       .data = std::move(data.second),
                       .uid = uid});
+  }
+  return std::unique_ptr<InventoryItem>{};
+}
+
+static std::unique_ptr<InventoryItem> GetInventoryItemWithUID(
+    RE::TESObjectREFR* refr, int uid) {
+  auto inventoryData = refr->GetInventory();
+  for (auto& [obj, data] : inventoryData) {
+    if (!obj || !data.second) {
+      continue;  // Skip if object or data is null
+    }
+    auto* armo = obj->As<RE::TESObjectARMO>();
+    auto itemUID = NiOverride::GetItemUniqueID()(
+        RE::StaticFunctionTag{}, refr, 0,
+        armo ? static_cast<int>(armo->GetSlotMask()) : 0, false);
+    if (itemUID == uid) {
+      return std::make_unique<InventoryItem>(
+          InventoryItem{.object = obj,
+                        .count = data.first,
+                        .data = std::move(data.second),
+                        .uid = itemUID});
+    }
   }
   return std::unique_ptr<InventoryItem>{};
 }

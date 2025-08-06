@@ -7,37 +7,18 @@
 #include "RE/Misc.h"
 
 using ArmorFactory = Factories::ArmorFactory;
+using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
+using ShaderFlag8 = RE::BSShaderProperty::EShaderPropertyFlag8;
 
 struct ArmorMaterialRecord {
-  std::vector<std::string> appliedMaterials;
+  vector<string> appliedMaterials;
 };
 
-static inline std::unordered_map<int, ArmorMaterialRecord> g_armorMaterials;
-static inline std::stack<RE::ObjectRefHandle> g_updateStack{};
-
-static void SetItemDisplayName(
-    const std::unique_ptr<RE::InventoryEntryData>& data,
-    const std::string& name) {
-  if (!data) {
-    return;
-  }
-  if (data->extraLists) {
-    for (auto& extraList : *data->extraLists) {
-      if (extraList->HasType(RE::ExtraDataType::kTextDisplayData)) {
-        auto textDisplayData = extraList->GetByType<RE::ExtraTextDisplayData>();
-        textDisplayData->SetName(name.c_str());
-        return;
-      } else {
-        auto textDisplayData = new RE::ExtraTextDisplayData(name.c_str());
-        extraList->Add(textDisplayData);
-        return;
-      }
-    }
-  }
-}
+static inline unordered_map<int, ArmorMaterialRecord> g_armorMaterials;
+static inline stack<RE::ObjectRefHandle> g_updateStack{};
 
 static void ClearItemDisplayName(
-    const std::unique_ptr<RE::InventoryEntryData>& data) {
+    const unique_ptr<RE::InventoryEntryData>& data) {
   if (!data) {
     return;
   }
@@ -45,6 +26,46 @@ static void ClearItemDisplayName(
     for (auto& extraList : *data->extraLists) {
       if (extraList->HasType(RE::ExtraDataType::kTextDisplayData)) {
         extraList->RemoveByType(RE::ExtraDataType::kTextDisplayData);
+        return;
+      }
+    }
+  }
+}
+
+static void SetItemDisplayName(RE::TESObjectREFR* refr, int uid) {
+  auto item = Helpers::GetInventoryItemWithUID(refr, uid);
+  auto formID = NiOverride::GetFormFromUniqueID()(RE::StaticFunctionTag{}, uid);
+  const auto data = item ? move(item->data) : nullptr;
+  if (!data) {
+    return;
+  }
+  auto appliedMaterials = g_armorMaterials[item->uid];
+  vector<const char*> filteredMaterials;
+  for (auto& mat : appliedMaterials.appliedMaterials) {
+    if (mat.empty()) {
+      continue;
+    }
+    if (auto config = MaterialLoader::GetMaterialConfig(formID, mat);
+        config && !config->isHidden && config->modifyName) {
+      filteredMaterials.emplace_back(mat.c_str());
+    }
+  }
+  if (filteredMaterials.empty()) {
+    ClearItemDisplayName(data);
+    return;
+  }
+  const auto name = fmt::format("{} [{}]", item->object->GetName(),
+                                fmt::join(filteredMaterials, ", "));
+  if (data->extraLists) {
+    for (auto& extraList : *data->extraLists) {
+      if (extraList->HasType(RE::ExtraDataType::kTextDisplayData)) {
+        auto textDisplayData = extraList->GetByType<RE::ExtraTextDisplayData>();
+
+        textDisplayData->SetName(name.c_str());
+        return;
+      } else {
+        auto textDisplayData = new RE::ExtraTextDisplayData(name.c_str());
+        extraList->Add(textDisplayData);
         return;
       }
     }
@@ -92,9 +113,12 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool,
     return false;
   }
   base->CopyMembers(oldBase);
-  if (record->decal) {
-    shaderProperty->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kDecal, true);
-  }
+  shaderProperty->SetFlags(ShaderFlag8::kDecal,
+                           record->decal.value_or(shaderProperty->flags.any(
+                               ShaderFlag::kDecal)));
+  shaderProperty->SetFlags(ShaderFlag8::kTwoSided,
+                           record->twoSided.value_or(shaderProperty->flags.any(
+                               ShaderFlag::kTwoSided)));
   if (record->emitEnabled) {
     if (record->emitColor.has_value()) {
       shaderProperty->emissiveColor =
@@ -103,7 +127,7 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool,
     }
     shaderProperty->emissiveMult =
         record->emitMult.value_or(shaderProperty->emissiveMult);
-    shaderProperty->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kOwnEmit, true);
+    shaderProperty->SetFlags(ShaderFlag8::kOwnEmit, true);
   }
   if (alphaProperty) {
     alphaProperty->SetAlphaBlending(
@@ -131,16 +155,16 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool,
   }
 
   if (record->specularEnabled) {
-    if (record->specularMap.has_value() && !record->specularMap->empty()) {
+    if (record->smoothSpecMap.has_value() && !record->smoothSpecMap->empty()) {
       base->specularBackLightingTexture =
-          RE::NiSourceTexturePtr(LoadTexture(record->specularMap->c_str()));
+          RE::NiSourceTexturePtr(LoadTexture(record->smoothSpecMap->c_str()));
     }
-    base->specularPower = record->specularPower.value_or(base->specularPower);
+    base->specularPower = record->specularPower.value_or(
+        record->backLightPower.value_or(base->specularPower));
     base->refractionPower =
         record->refractionPower.value_or(base->refractionPower);
     base->specularColorScale =
         record->specularMult.value_or(base->specularColorScale);
-    base->rimLightPower = record->rimPower.value_or(base->rimLightPower);
     if (record->specularColor.has_value()) {
       if (record->specularColor->at(0) > 1.0f) {
         // we're trying to use byte represented values of a color, convert to 0
@@ -161,8 +185,12 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool,
     base->specularPower = 20.0f;
     base->refractionPower = 0.0f;
     base->specularColorScale = 1.0f;
-    base->rimLightPower = 0.0f;
     base->specularColor = RE::NiColor(1.0f, 1.0f, 1.0f);
+  }
+  if (record->rimLighting) {
+    base->rimLightPower = record->rimPower.value_or(base->rimLightPower);
+  } else {
+    base->rimLightPower = 0.0f;
   }
 
   base->materialAlpha = record->transparency.value_or(base->materialAlpha);
@@ -333,8 +361,8 @@ bool ArmorFactory::ApplyMaterial(
   }
   std::vector<std::string> newAppliedMaterials;
   for (const auto& appliedMaterialName : record.appliedMaterials) {
-    auto appliedMaterialConfig =
-        MaterialLoader::GetMaterialConfig(form->GetFormID(), appliedMaterialName);
+    auto appliedMaterialConfig = MaterialLoader::GetMaterialConfig(
+        form->GetFormID(), appliedMaterialName);
     if (!appliedMaterialConfig) {
       continue;  // Skip if material config is not found
     }
@@ -346,7 +374,8 @@ bool ArmorFactory::ApplyMaterial(
     bool hasIntersection = false;
     for (const auto& shapeName :
          appliedMaterialConfig->applies | std::views::keys) {
-      if (material->applies.contains(shapeName) && material->layer == appliedMaterialConfig->layer) {
+      if (material->applies.contains(shapeName) &&
+          material->layer == appliedMaterialConfig->layer) {
         hasIntersection = true;
         break;  // Stop checking if we found an intersection
       }
@@ -360,6 +389,7 @@ bool ArmorFactory::ApplyMaterial(
   }
   newAppliedMaterials.emplace_back(material->name);
   record.appliedMaterials = std::move(newAppliedMaterials);
+  SetItemDisplayName(refr, uid);
   logger::debug("Applied materials for armor with UID: {}: {}", uid,
                 fmt::join(record.appliedMaterials, ", "));
 
@@ -384,6 +414,9 @@ void ArmorFactory::LoadFromSave(Save::SaveData& saveData) {
     }
     ArmorMaterialRecord record;
     for (const auto& material : saveRecord.appliedMaterials) {
+      if (material.empty()) {
+        continue;  // Skip empty material names
+      }
       record.appliedMaterials.emplace_back(material);
     }
     g_armorMaterials[saveRecord.uid] = std::move(record);
