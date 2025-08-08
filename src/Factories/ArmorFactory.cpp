@@ -123,8 +123,8 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
                                 const MaterialRecord* record) {
   RETURN_IF_FALSE(refr)
   RETURN_IF_FALSE(bsTriShape)
-  const auto effect = bsTriShape->properties[RE::BSGeometry::States::kEffect];
-  const auto property =
+  const auto& effect = bsTriShape->properties[RE::BSGeometry::States::kEffect];
+  const auto& property =
       bsTriShape->properties[RE::BSGeometry::States::kProperty];
   auto* lightingShader =
       netimmerse_cast<RE::BSLightingShaderProperty*>(effect.get());
@@ -166,8 +166,6 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
   }
   if (auto newMaterial =
           static_cast<RE::BSLightingShaderMaterialBase*>(material->Create())) {
-    logger::debug("Creating new BSLightingShaderMaterialBase for tri shape: {}",
-                  bsTriShape->name);
     newMaterial->CopyMembers(material);
     const auto textureSet =
         material ? material->textureSet : RE::NiPointer<RE::BSTextureSet>();
@@ -177,8 +175,10 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
   (std::string("textures\\") + (_PATH)).c_str()
 
       if (const auto newTextureSet = RE::BSShaderTextureSet::Create()) {
-        logger::debug("Creating new texture set for tri shape: {}",
-                      bsTriShape->name);
+        for (auto slot : stl::enum_range(Texture::kDiffuse,
+                                             Texture::kTotal)) {
+          textureSet->SetTexturePath(slot, "\0");
+        }
         if (!record->diffuseMap->empty()) {
           newTextureSet->SetTexturePath(
               Texture::kDiffuse,
@@ -231,19 +231,9 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
                 RE::NiColor(record->specularColor->at(0) / 255.0f,
                             record->specularColor->at(1) / 255.0f,
                             record->specularColor->at(2) / 255.0f);
-          } else {
-            newMaterial->specularColor = RE::NiColor(
-                record->specularColor->at(0), record->specularColor->at(1),
-                record->specularColor->at(2));
           }
         }
 
-      } else {
-        newMaterial->specularBackLightingTexture = nullptr;
-        newMaterial->specularPower = 20.0f;
-        newMaterial->refractionPower = 0.0f;
-        newMaterial->specularColorScale = 1.0f;
-        newMaterial->specularColor = RE::NiColor(1.0f, 1.0f, 1.0f);
       }
       if (record->rimLighting) {
         newMaterial->rimLightPower =
@@ -294,172 +284,6 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
   return false;
 }
 
-static bool ApplyMaterialToNode(RE::TESObjectREFR* refr, bool,
-                                RE::BSTriShape* bsTriShape,
-                                const MaterialRecord* record) {
-  RETURN_IF_FALSE(refr)
-  RETURN_IF_FALSE(bsTriShape)
-  auto* lightingShader = NifHelpers::GetShaderProperty(bsTriShape);
-  auto* alphaProperty = NifHelpers::GetAlphaProperty(bsTriShape);
-  auto* material =
-      skyrim_cast<RE::BSLightingShaderMaterialBase*>(lightingShader->material);
-  if (!material) {
-    logger::error(
-        "Failed to get BSLightingShaderMaterialBase for tri shape: {}",
-        bsTriShape->name);
-    return false;
-  }
-  auto* newMaterial =
-      RE::BSLightingShaderMaterialBase::CreateMaterial(material->GetFeature());
-  if (!newMaterial) {
-    logger::error(
-        "Failed to create BSLightingShaderMaterialBase for tri shape: {}",
-        bsTriShape->name);
-    return false;
-  }
-  newMaterial->CopyMembers(material);
-  lightingShader->SetFlags(
-      ShaderFlag8::kDecal,
-      record->decal.value_or(lightingShader->flags.any(ShaderFlag::kDecal)));
-  lightingShader->SetFlags(ShaderFlag8::kTwoSided,
-                           record->twoSided.value_or(lightingShader->flags.any(
-                               ShaderFlag::kTwoSided)));
-  if (record->emitEnabled) {
-    if (record->emitColor.has_value()) {
-      lightingShader->emissiveColor =
-          new RE::NiColor(record->emitColor->at(0), record->emitColor->at(1),
-                          record->emitColor->at(2));
-    }
-    lightingShader->emissiveMult =
-        record->emitMult.value_or(lightingShader->emissiveMult);
-    lightingShader->SetFlags(ShaderFlag8::kOwnEmit, true);
-  }
-  if (alphaProperty) {
-    alphaProperty->SetAlphaBlending(
-        record->alphaBlend.value_or(alphaProperty->GetAlphaBlending()));
-    alphaProperty->SetAlphaTesting(
-        record->alphaTest.value_or(alphaProperty->GetAlphaTesting()));
-    alphaProperty->alphaThreshold =
-        record->alphaTestThreshold.value_or(alphaProperty->alphaThreshold);
-  }
-  if (record->diffuseMap.has_value() && !record->diffuseMap->empty()) {
-    logger::debug("Setting diffuse texture: {}", record->diffuseMap->c_str());
-    newMaterial->diffuseTexture =
-        RE::NiSourceTexturePtr(LoadTexture(record->diffuseMap->c_str()));
-  } else {
-    logger::debug("No diffuse texture specified for tri-shape: {}",
-                  bsTriShape->name);
-  }
-  if (record->uvOffset.has_value()) {
-    newMaterial->texCoordOffset[0] =
-        RE::NiPoint2(record->uvOffset->at(0), record->uvOffset->at(0));
-  }
-  if (record->uvScale.has_value()) {
-    newMaterial->texCoordScale[0] =
-        RE::NiPoint2(record->uvScale->at(0), record->uvScale->at(1));
-  }
-  if (record->normalMap.has_value() && !record->normalMap->empty()) {
-    newMaterial->normalTexture =
-        RE::NiSourceTexturePtr(LoadTexture(record->normalMap->c_str()));
-  }
-
-  if (record->specularEnabled) {
-    if (record->smoothSpecMap.has_value() && !record->smoothSpecMap->empty()) {
-      newMaterial->specularBackLightingTexture =
-          RE::NiSourceTexturePtr(LoadTexture(record->smoothSpecMap->c_str()));
-    }
-    newMaterial->specularPower = record->specularPower.value_or(
-        record->backLightPower.value_or(newMaterial->specularPower));
-    newMaterial->refractionPower =
-        record->refractionPower.value_or(newMaterial->refractionPower);
-    newMaterial->specularColorScale =
-        record->specularMult.value_or(newMaterial->specularColorScale);
-    if (record->specularColor.has_value()) {
-      if (record->specularColor->at(0) > 1.0f) {
-        newMaterial->specularColor =
-            RE::NiColor(record->specularColor->at(0) / 255.0f,
-                        record->specularColor->at(1) / 255.0f,
-                        record->specularColor->at(2) / 255.0f);
-      } else {
-        newMaterial->specularColor = RE::NiColor(record->specularColor->at(0),
-                                          record->specularColor->at(1),
-                                          record->specularColor->at(2));
-      }
-    }
-
-  } else {
-    newMaterial->specularBackLightingTexture = nullptr;
-    newMaterial->specularPower = 20.0f;
-    newMaterial->refractionPower = 0.0f;
-    newMaterial->specularColorScale = 1.0f;
-    newMaterial->specularColor = RE::NiColor(1.0f, 1.0f, 1.0f);
-  }
-  if (record->rimLighting) {
-    newMaterial->rimLightPower = record->rimPower.value_or(newMaterial->rimLightPower);
-  } else {
-    newMaterial->rimLightPower = 0.0f;
-  }
-
-  newMaterial->materialAlpha = record->transparency.value_or(newMaterial->materialAlpha);
-  if (lightingShader->flags.any(ShaderFlag::kEnvMap)) {
-    if (auto* envMaterial =
-            skyrim_cast<RE::BSLightingShaderMaterialEnvmap*>(newMaterial)) {
-      if (record->envMap.has_value() && !record->envMap->empty()) {
-        envMaterial->envTexture =
-            RE::NiSourceTexturePtr(LoadTexture(record->envMap->c_str()));
-      }
-      if (record->envMapMask.has_value() && !record->envMapMask->empty()) {
-        envMaterial->envMaskTexture =
-            RE::NiSourceTexturePtr(LoadTexture(record->envMapMask->c_str()));
-      }
-      envMaterial->envMapScale =
-          record->envMapMaskScale.value_or(envMaterial->envMapScale);
-      newMaterial = envMaterial;
-    }
-  }
-  if (lightingShader->flags.any(ShaderFlag::kGlowMap) &&
-      record->glowMapEnabled && record->glowMap.has_value() &&
-      !record->glowMap->empty()) {
-    auto* glowMaterial =
-        skyrim_cast<RE::BSLightingShaderMaterialGlowmap*>(newMaterial);
-    if (glowMaterial) {
-      glowMaterial->glowTexture =
-          RE::NiSourceTexturePtr(LoadTexture(record->glowMap->c_str()));
-    }
-    newMaterial = glowMaterial;
-  }
-  lightingShader->SetMaterial(newMaterial, true);
-  lightingShader->SetupGeometry(bsTriShape);
-  lightingShader->FinishSetupGeometry(bsTriShape);
-  newMaterial->~BSLightingShaderMaterialBase();
-  RE::free(newMaterial);
-  return true;
-}
-
-static bool ApplyDefaultMaterial(RE::TESObjectREFR* refr,
-                                 RE::NiAVObject* niObject) {
-  RETURN_IF_FALSE(refr)
-  NifHelpers::VisitShapes(niObject, [&](RE::BSTriShape* triShape) {
-    auto material = NifHelpers::GetShaderProperty(triShape);
-    if (!material) {
-      return;
-    }
-    if (NifHelpers::HasBuiltInMaterial(material)) {
-      logger::debug("Applying default material {} to tri-shape: {}",
-                    material->name.c_str(), triShape->name);
-      auto materialFile = MaterialLoader::LoadMaterial(material->name.c_str());
-      if (!materialFile) {
-        logger::error("Failed to load material file: {}",
-                      material->name.c_str());
-        return;
-      }
-      ApplyMaterialToNode(refr, true, triShape, materialFile);
-    }
-  });
-
-  return true;
-}
-
 static bool ApplySavedMaterial_Impl(
     ArmorFactory* factory, RE::Actor* refr,
     const std::unique_ptr<Helpers::InventoryItem>& equippedItem) {
@@ -475,7 +299,6 @@ static bool ApplySavedMaterial_Impl(
     return true;
   }
   auto& [appliedMaterials] = g_armorMaterials[equippedItem->uid];
-  logger::debug("Applying materials: {}", fmt::join(appliedMaterials, ", "));
   for (const auto& material : appliedMaterials) {
     auto appliedMaterialConfig =
         MaterialLoader::GetMaterialConfig(armo->GetFormID(), material);
@@ -512,7 +335,7 @@ static bool ApplyMaterialToRefr(RE::TESObjectREFR* refr,
       logger::error("Failed to load material file: {}", materialName);
       continue;
     }
-    ApplyMaterialToNode(refr, true, triShape, materialFile);
+    ApplyMaterialToNode(refr, triShape, materialFile);
   }
   return true;
 }
@@ -530,12 +353,25 @@ void ArmorFactory::OnUpdate() {
     return;
   }
   if (!refr->Is3DLoaded()) {
-    logger::debug("Skipping while 3D is unloaded");
+    logger::warn("Skipping while 3D is unloaded");
     return;
   }
-  logger::debug("Updating materials for form ID {}", refr->GetFormID());
-  NifHelpers::VisitShapes(refr->Get3D(), [&](RE::BSTriShape* shape) {
-    ApplyDefaultMaterial(refr.get(), shape);
+  NifHelpers::VisitShapes(refr->Get3D(), [&](RE::BSTriShape* triShape) {
+    if (!triShape) {
+      return;
+    }
+    auto& material = triShape->properties[RE::BSGeometry::States::kEffect];
+    if (!material) {
+      return;
+    }
+    if (std::string(material->name).ends_with(".json")) {
+      auto materialFile = MaterialLoader::LoadMaterial(material->name.c_str());
+      if (!materialFile) {
+        logger::error("Failed to load material file: {}", material->name.c_str());
+        return;
+      }
+      ApplyMaterialToNode(refr.get(), triShape, materialFile);
+    }
   });
   Helpers::VisitEquippedInventoryItems(
       refr.get(), [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
@@ -565,8 +401,6 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* refr, RE::TESObjectARMO* form,
   }
   auto& record = g_armorMaterials[uid];
   if (std::ranges::contains(record.appliedMaterials, material->name)) {
-    logger::debug("Material {} already applied to armor with UID: {}",
-                  material->name, uid);
     return true;  // Material already applied
   }
   std::vector<std::string> newAppliedMaterials;
@@ -577,7 +411,6 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* refr, RE::TESObjectARMO* form,
       continue;  // Skip if material config is not found
     }
     if (appliedMaterialConfig->name == material->name) {
-      logger::debug("Skipping already applied material: {}", material->name);
       continue;  // Skip if the material is already applied
     }
     // check if there's an intersection between the two shape collections
@@ -591,8 +424,6 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* refr, RE::TESObjectARMO* form,
       }
     }
     if (hasIntersection) {
-      logger::debug("Skipping material {} as it intersects with {}",
-                    material->name, appliedMaterialName);
       continue;  // Skip if there's an intersection
     }
     newAppliedMaterials.emplace_back(appliedMaterialName);
@@ -600,8 +431,6 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* refr, RE::TESObjectARMO* form,
   newAppliedMaterials.emplace_back(material->name);
   record.appliedMaterials = std::move(newAppliedMaterials);
   SetItemDisplayName(refr, uid);
-  logger::debug("Applied materials for armor with UID: {}: {}", uid,
-                fmt::join(record.appliedMaterials, ", "));
 
   return true;
 }
@@ -615,7 +444,6 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* refr) {
 void ArmorFactory::LoadFromSave(Save::SaveData& saveData) {
   g_updateStack = {};
   g_armorMaterials.clear();
-  logger::debug("Loading {} saved materials", saveData.armorRecords.size());
   for (const auto& saveRecord : saveData.armorRecords) {
     if (saveRecord.appliedMaterials.empty()) {
       logger::warn("No materials applied to armor record with UID: {}",
@@ -658,7 +486,6 @@ void ArmorFactory::ResetMaterials(RE::TESObjectREFR* refr) {
   if (!actor) {
     return;
   }
-  ApplyDefaultMaterial(actor, refr->Get3D());
   Helpers::VisitEquippedInventoryItems(
       actor, [&](std::unique_ptr<Helpers::InventoryItem>& item) {
         g_armorMaterials.erase(item->uid);

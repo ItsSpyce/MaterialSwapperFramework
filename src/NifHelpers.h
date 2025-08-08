@@ -3,7 +3,7 @@
 
 namespace NifHelpers {
 template <typename T>
-inline bool IsMaterialPath(T path) {
+bool IsMaterialPath(T path) {
   auto str = StringHelpers::ToLower(path);
   return str.ends_with(".json");
 }
@@ -36,9 +36,8 @@ inline bool IsMaterialSwappable(const RE::NiPointer<RE::NiObjectNET>& obj) {
   return IsMaterialSwappable(obj.get());
 }
 
-inline void VisitNiObject_Impl(
-    RE::NiAVObject* obj, const std::function<void(RE::NiAVObject*)>& visitor,
-    std::vector<RE::BSFixedString>& visited) {
+inline void VisitNiObject(RE::NiAVObject* obj,
+                          const std::function<void(RE::NiAVObject*)>& visitor) {
   if (!obj) {
     return;
   }
@@ -48,21 +47,9 @@ inline void VisitNiObject_Impl(
       if (!child) {
         continue;
       }
-      // Avoid visiting the same object multiple times
-      if (!child->name.empty() &&
-          std::ranges::find(visited, child->name) != visited.end()) {
-        continue;
-      }
-      visited.emplace_back(child->name);
-      VisitNiObject_Impl(child.get(), visitor, visited);
+      VisitNiObject(child.get(), visitor);
     }
   }
-}
-
-inline void VisitNiObject(RE::NiAVObject* obj,
-                          const std::function<void(RE::NiAVObject*)>& visitor) {
-  std::vector<RE::BSFixedString> visited{};
-  VisitNiObject_Impl(obj, visitor, visited);
 }
 
 inline void VisitNiObject(const RE::NiPointer<RE::NiAVObject>& obj,
