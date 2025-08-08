@@ -10,6 +10,7 @@
     "rapidcsv",
     "rsm-binary-io",
     "directxtk",
+    "srell",
     {
       "name": "imgui",
       "version>=": "1.91.8",

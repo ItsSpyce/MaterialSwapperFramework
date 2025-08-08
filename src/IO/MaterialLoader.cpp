@@ -7,27 +7,26 @@
 #include "Models/MaterialFileBase.h"
 #include "StringHelpers.h"
 
-static std::unique_ptr<MaterialRecord> LoadMaterialFromDisk(
-    const std::string& filename) {
+static bool LoadMaterialFromDisk(
+    const std::string& filename, MaterialRecord& record) {
   if (filename.empty() || !fs::exists(filename)) {
     logger::error("Material file does not exist: {}", filename);
-    return nullptr;
+    return false;
   }
   if (!StringHelpers::ToLower(filename).ends_with(".json")) {
     logger::error("JSON file expected, but got: {}", filename);
-    return nullptr;
+    return false;
   }
-  MaterialRecord record{};
   if (auto err = glz::read_file_json<glz::opts{.error_on_unknown_keys = false,
                                                .new_lines_in_arrays = true}>(
           record, filename, std::string{})) {
     auto cleanedError = glz::format_error(err);
     logger::error("Failed to read material file {}: {}", filename,
                   cleanedError);
-    return nullptr;
+    return false;
   }
   // TODO: load templated materials
-  return std::make_unique<MaterialRecord>(std::move(record));
+  return true;
 }
 
 void MaterialLoader::ReadMaterialsFromDisk(bool clearExisting) {
@@ -109,36 +108,46 @@ void MaterialLoader::ReadMaterialsFromDisk(bool clearExisting) {
   }
 }
 
-std::unique_ptr<MaterialRecord> MaterialLoader::LoadMaterial(
+MaterialRecord* MaterialLoader::LoadMaterial(
     const std::string& filename) {
   if (filename.empty()) {
     logger::error("Filename is empty");
     return nullptr;
   }
   auto path = fs::path("Data") / "Materials" / filename;
-  return LoadMaterialFromDisk(path.string());
+  static std::unordered_map<std::string, MaterialRecord> materialCache;
+  if (auto it = materialCache.find(path.string());
+      it != materialCache.end()) {
+    return &it->second;  // Return cached record
+  }
+  MaterialRecord record;
+  if (!LoadMaterialFromDisk(path.string(), record)) {
+    return nullptr;
+  }
+  // Store the record in the cache
+  return &(materialCache[path.string()] = std::move(record));
 }
 
-std::unique_ptr<MaterialConfig> MaterialLoader::GetMaterialConfig(
+MaterialConfig* MaterialLoader::GetMaterialConfig(
     RE::FormID formID, const std::string& materialName) {
   if (auto it = materialConfigs_.find(formID); it != materialConfigs_.end()) {
     for (auto& record : it->second) {
       if (StringHelpers::ToLower(record.name) ==
           StringHelpers::ToLower(materialName)) {
         // Create a unique_ptr by copying the found record
-        return std::make_unique<MaterialConfig>(record);
+        return &record;
       }
     }
   }
   return nullptr;
 }
 
-std::unique_ptr<MaterialConfig> MaterialLoader::GetDefaultMaterial(
+MaterialConfig* MaterialLoader::GetDefaultMaterial(
     RE::FormID formID) {
   if (auto it = materialConfigs_.find(formID); it != materialConfigs_.end()) {
     for (auto& record : it->second) {
       if (!record.modifyName) {
-        return std::make_unique<MaterialConfig>(record);
+        return &record;
       }
     }
   }
@@ -147,11 +156,11 @@ std::unique_ptr<MaterialConfig> MaterialLoader::GetDefaultMaterial(
 
 void MaterialLoader::VisitMaterialFilesForFormID(
     uint32_t formID,
-    const std::function<void(const std::unique_ptr<MaterialConfig>&)>&
+    const std::function<void(const MaterialConfig*)>&
         visitor) {
   if (auto it = materialConfigs_.find(formID); it != materialConfigs_.end()) {
     for (const auto& entry : it->second) {
-      visitor(std::make_unique<MaterialConfig>(entry));
+      visitor(&entry);
     }
   }
 }

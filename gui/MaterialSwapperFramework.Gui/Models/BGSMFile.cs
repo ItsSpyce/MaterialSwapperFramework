@@ -132,9 +132,9 @@ namespace MaterialSwapperFramework.Gui.Models
       ];
       set => SpecularColor = 
       (
-        (uint)value[1] << 16 |
-        (uint)value[2] << 8 |
-        (uint)value[3]
+        (uint)value[0] << 16 |
+        (uint)value[1] << 8 |
+        (uint)value[2]
       );
     }
 

@@ -3,12 +3,12 @@
 
 namespace NifHelpers {
 template <typename T>
-static bool IsMaterialPath(T path) {
+inline bool IsMaterialPath(T path) {
   auto str = StringHelpers::ToLower(path);
   return str.ends_with(".json");
 }
 
-static bool HasBuiltInMaterial(RE::NiObjectNET* obj) {
+inline bool HasBuiltInMaterial(RE::NiObjectNET* obj) {
   if (!obj) {
     return false;
   }
@@ -18,11 +18,11 @@ static bool HasBuiltInMaterial(RE::NiObjectNET* obj) {
   return false;
 }
 
-static bool HasBuiltInMaterial(const RE::NiPointer<RE::NiObjectNET>& obj) {
+inline bool HasBuiltInMaterial(const RE::NiPointer<RE::NiObjectNET>& obj) {
   return HasBuiltInMaterial(obj.get());
 }
 
-static bool IsMaterialSwappable(RE::NiObjectNET* obj) {
+inline bool IsMaterialSwappable(RE::NiObjectNET* obj) {
   if (!obj) {
     return false;
   }
@@ -32,11 +32,11 @@ static bool IsMaterialSwappable(RE::NiObjectNET* obj) {
   return HasBuiltInMaterial(obj);
 }
 
-static bool IsMaterialSwappable(const RE::NiPointer<RE::NiObjectNET>& obj) {
+inline bool IsMaterialSwappable(const RE::NiPointer<RE::NiObjectNET>& obj) {
   return IsMaterialSwappable(obj.get());
 }
 
-static void VisitNiObject_Impl(
+inline void VisitNiObject_Impl(
     RE::NiAVObject* obj, const std::function<void(RE::NiAVObject*)>& visitor,
     std::vector<RE::BSFixedString>& visited) {
   if (!obj) {
@@ -59,18 +59,18 @@ static void VisitNiObject_Impl(
   }
 }
 
-static void VisitNiObject(RE::NiAVObject* obj,
+inline void VisitNiObject(RE::NiAVObject* obj,
                           const std::function<void(RE::NiAVObject*)>& visitor) {
   std::vector<RE::BSFixedString> visited{};
   VisitNiObject_Impl(obj, visitor, visited);
 }
 
-static void VisitNiObject(const RE::NiPointer<RE::NiAVObject>& obj,
+inline void VisitNiObject(const RE::NiPointer<RE::NiAVObject>& obj,
                           const std::function<void(RE::NiAVObject*)>& visitor) {
   VisitNiObject(obj.get(), visitor);
 }
 
-static void VisitShapes(RE::NiAVObject* obj,
+inline void VisitShapes(RE::NiAVObject* obj,
                         const std::function<void(RE::BSTriShape*)>& visitor) {
   if (!obj) {
     return;
@@ -82,13 +82,13 @@ static void VisitShapes(RE::NiAVObject* obj,
   });
 }
 
-static void VisitShapes(
+inline void VisitShapes(
     const RE::NiPointer<RE::NiAVObject>& obj,
     const std::function<void(RE::BSTriShape*)>& visitor) {
   VisitShapes(obj.get(), visitor);
 }
 
-static RE::NiPointer<RE::NiAVObject> GetMaterialSwappableShape(
+inline RE::NiPointer<RE::NiAVObject> GetMaterialSwappableShape(
     RE::NiPointer<RE::NiAVObject> obj) {
   if (!obj) {
     return nullptr;
@@ -114,7 +114,7 @@ static RE::NiPointer<RE::NiAVObject> GetMaterialSwappableShape(
   return nullptr;
 }
 
-static std::vector<RE::BSTriShape*> GetAllTriShapes(RE::NiAVObject* obj) {
+inline std::vector<RE::BSTriShape*> GetAllTriShapes(RE::NiAVObject* obj) {
   std::vector<RE::BSTriShape*> shapes;
   if (!obj) {
     return shapes;
@@ -127,12 +127,12 @@ static std::vector<RE::BSTriShape*> GetAllTriShapes(RE::NiAVObject* obj) {
   return shapes;
 }
 
-static std::vector<RE::BSTriShape*> GetAllTriShapes(
+inline std::vector<RE::BSTriShape*> GetAllTriShapes(
     const RE::NiPointer<RE::NiAVObject>& obj) {
   return GetAllTriShapes(obj.get());
 }
 
-static std::vector<RE::BSTriShape*> GetShapesWithDefaultMaterials(
+inline std::vector<RE::BSTriShape*> GetShapesWithDefaultMaterials(
     RE::NiAVObject* obj) {
   std::vector<RE::BSTriShape*> shapes;
   if (!obj) {
@@ -148,12 +148,12 @@ static std::vector<RE::BSTriShape*> GetShapesWithDefaultMaterials(
   return shapes;
 }
 
-static std::vector<RE::BSTriShape*> GetShapesWithDefaultMaterials(
+inline std::vector<RE::BSTriShape*> GetShapesWithDefaultMaterials(
     const RE::NiPointer<RE::NiAVObject>& obj) {
   return GetShapesWithDefaultMaterials(obj.get());
 }
 
-static RE::BSTriShape* GetTriShape(RE::TESObjectREFR* refr,
+inline RE::BSTriShape* GetTriShape(RE::TESObjectREFR* refr,
                                    const char* nodeName) {
   if (!refr) {
     logger::error("GetNode called with null refr");
@@ -170,17 +170,17 @@ static RE::BSTriShape* GetTriShape(RE::TESObjectREFR* refr,
   return geometry;
 }
 
-static RE::BSLightingShaderProperty* GetShaderProperty(
+inline RE::BSLightingShaderProperty* GetShaderProperty(
     RE::BSTriShape* bsTriShape) {
-  auto* properties = bsTriShape->properties[1].get();
+  auto* properties = bsTriShape->properties[RE::BSGeometry::States::kEffect].get();
   auto* bsLightShader =
       properties ? netimmerse_cast<RE::BSLightingShaderProperty*>(properties)
                  : nullptr;
   return bsLightShader;
 }
 
-static RE::NiAlphaProperty* GetAlphaProperty(RE::BSTriShape* bsTriShape) {
-  auto* properties = bsTriShape->properties[0].get();
+inline RE::NiAlphaProperty* GetAlphaProperty(RE::BSTriShape* bsTriShape) {
+  auto* properties = bsTriShape->properties[RE::BSGeometry::States::kProperty].get();
   auto* alphaProperty =
       properties ? netimmerse_cast<RE::NiAlphaProperty*>(properties) : nullptr;
   return alphaProperty;

@@ -51,7 +51,8 @@
           <MenuItem Header="_Tools">
             <MenuItem Header="_Consolidation Wizard..." Click="OnOpenConsolidationWizard" />
             <MenuItem Header="_Texture Set To Material..." />
-            <MenuItem Header="_Convert BGSM/BGEM to JSON..." Click="OnConvertMaterialFileClicked"/>
+            <MenuItem Header="_Convert BGSM/BGEM to JSON..." Click="OnConvertMaterialFileClicked" />
+            <MenuItem Header="_Patch NIF Materials" Click="OnPatchNifsClicked"/>
           </MenuItem>
           <MenuItem Header="_Help"></MenuItem>
         </Menu>

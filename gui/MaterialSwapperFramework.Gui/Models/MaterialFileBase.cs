@@ -20,7 +20,7 @@ namespace MaterialSwapperFramework.Gui.Models
       Version = 2;
       TileU = true;
       TileV = true;
-      UVScale = new(1.0f);
+      UVScale = [1.0f, 1.0f];
       Alpha = 1.0f;
       AlphaTestRef = 128;
       ZBufferWrite = true;
@@ -49,12 +49,10 @@ namespace MaterialSwapperFramework.Gui.Models
     public bool TileV { get; set; }
 
     [JsonProperty("uvOffset")]
-    [JsonConverter(typeof(VectorConverter))]
-    public Vector2 UVOffset { get; set; }
+    public float[] UVOffset { get; set; }
 
     [JsonProperty("uvScale")]
-    [JsonConverter(typeof(VectorConverter))]
-    public Vector2 UVScale { get; set; }
+    public float[] UVScale { get; set; }
 
     [JsonProperty("transparency")]
     public float Alpha { get; set; }
@@ -177,8 +175,8 @@ namespace MaterialSwapperFramework.Gui.Models
       var tileFlags = input.ReadUInt32();
       TileU = (tileFlags & 2) != 0;
       TileV = (tileFlags & 1) != 0;
-      UVOffset = new(input.ReadSingle(), input.ReadSingle());
-      UVScale = new(input.ReadSingle(), input.ReadSingle());
+      UVOffset = [input.ReadSingle(), input.ReadSingle()];
+      UVScale = [input.ReadSingle(), input.ReadSingle()];
 
       Alpha = input.ReadSingle();
       var alphaBlendMode0 = input.ReadByte();
@@ -229,10 +227,10 @@ namespace MaterialSwapperFramework.Gui.Models
       if (TileV) tileFlags += 1;
       output.Write(tileFlags);
 
-      output.Write(UVOffset.X);
-      output.Write(UVOffset.Y);
-      output.Write(UVScale.X);
-      output.Write(UVScale.Y);
+      output.Write(UVOffset[0]);
+      output.Write(UVOffset[1]);
+      output.Write(UVScale[0]);
+      output.Write(UVScale[1]);
 
       output.Write(Alpha);
 

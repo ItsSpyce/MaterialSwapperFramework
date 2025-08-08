@@ -47,7 +47,7 @@ add_subdirectory(${CommonLibPath} EXCLUDE_FROM_ALL)
 FetchContent_Declare(
   glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG v5.5.2
+  GIT_TAG v5.5.5
   GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(glaze)
@@ -55,8 +55,10 @@ FetchContent_MakeAvailable(glaze)
 find_package(spdlog CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(Freetype REQUIRED)
+find_path(SRELL_INCLUDE_DIRS "srell.hpp")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(${SRELL_INCLUDE_DIRS})
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "src/*.h")
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 

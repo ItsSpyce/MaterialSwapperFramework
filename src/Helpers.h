@@ -37,7 +37,7 @@ struct InventoryItem {
   int uid;
 };
 
-static void VisitEquippedInventoryItems(
+inline void VisitEquippedInventoryItems(
     RE::TESObjectREFR* refr,
     const std::function<void(std::unique_ptr<InventoryItem>&)>& visitor) {
   auto inventoryData = refr->GetInventory();
@@ -65,7 +65,7 @@ static void VisitEquippedInventoryItems(
   }
 }
 
-static std::unique_ptr<InventoryItem> GetInventoryItemWithFormID(
+inline std::unique_ptr<InventoryItem> GetInventoryItemWithFormID(
     RE::TESObjectREFR* refr, uint32_t formID) {
   auto inventoryData = refr->GetInventory(
       [&](const RE::TESBoundObject& obj) { return obj.GetFormID() == formID; });
@@ -87,7 +87,7 @@ static std::unique_ptr<InventoryItem> GetInventoryItemWithFormID(
   return std::unique_ptr<InventoryItem>{};
 }
 
-static std::unique_ptr<InventoryItem> GetInventoryItemWithUID(
+inline std::unique_ptr<InventoryItem> GetInventoryItemWithUID(
     RE::TESObjectREFR* refr, int uid) {
   auto inventoryData = refr->GetInventory();
   for (auto& [obj, data] : inventoryData) {

@@ -48,8 +48,7 @@ void MaterialsPage(const MaterialsPageProps&) {
       ImGui_Table("MaterialsTable", 1, ImGuiTableFlags_BordersInnerH,
                   {ImGui::GetContentRegionAvail().x * 0.75f, 0.f}) {
         MaterialLoader::VisitMaterialFilesForFormID(
-            selectedArmor->GetFormID(),
-            [&](const std::unique_ptr<MaterialConfig>& material) {
+            selectedArmor->GetFormID(), [&](const MaterialConfig* material) {
               if (material->isHidden) {
                 return;  // Skip isHidden materials
               }
@@ -70,7 +69,7 @@ void MaterialsPage(const MaterialsPageProps&) {
                       }
                       Factories::ArmorFactory::GetSingleton()->ApplyMaterial(
                           RE::PlayerCharacter::GetSingleton(), selectedArmor,
-                          std::move(material));
+                          material);
                     }
                   }
                 }

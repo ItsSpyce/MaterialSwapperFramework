@@ -47,6 +47,7 @@ public class VectorConverter : JsonConverter
       switch (reader.TokenType)
       {
         case JsonToken.Integer:
+        case JsonToken.Float:
           data.Add(Convert.ToSingle(reader.Value));
           break;
         case JsonToken.EndArray:

@@ -12,5 +12,9 @@ constexpr auto Clone = REL::ID(70187);
 namespace NiTexture {
 constexpr auto GetTexture = REL::ID(105640);
 }
+namespace BSShaderTextureSet {
+constexpr auto SetTexture = REL::ID(21363);
+constexpr auto SetTexturePath = REL::ID(21364);
+}
 }  // namespace Offset
 }  // namespace RE

@@ -7,16 +7,17 @@
 #include <RE/Skyrim.h>
 #include <REL/Relocation.h>
 #include <SKSE/SKSE.h>
+#include <Singleton.h>
 #include <d3d11.h>
 #include <dxgi.h>
 #include <fmt/ostream.h>
 
 #include <algorithm>
-#include <cctype>
-#include <locale>
-#include <future>
-#include <Singleton.h>
 #include <bs_thread_pool.hpp>
+#include <cctype>
+#include <future>
+#include <locale>
+#include <ranges>
 
 namespace logger = SKSE::log;
 using namespace std;
@@ -38,6 +39,14 @@ template <class F, class T>
 void write_vfunc() {
   REL::Relocation vtbl{F::VTABLE[0]};
   T::func = vtbl.write_vfunc(T::idx, T::thunk);
+}
+
+constexpr inline auto enum_range(auto first, auto last) {
+  auto enum_range =
+      std::views::iota(std::to_underlying(first), std::to_underlying(last)) |
+      std::views::transform(
+          [](auto enum_val) { return (decltype(first))enum_val; });
+  return enum_range;
 }
 }  // namespace stl
 

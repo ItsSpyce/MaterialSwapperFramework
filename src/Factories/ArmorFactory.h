@@ -10,7 +10,7 @@ class ArmorFactory : public Singleton<ArmorFactory> {
 
   void OnUpdate();
   bool ApplyMaterial(RE::Actor* refr, RE::TESObjectARMO* form,
-                     const std::unique_ptr<MaterialConfig>& material);
+                     const MaterialConfig* material);
   bool ApplySavedMaterials(RE::Actor* refr);
   void LoadFromSave(Save::SaveData& saveData);
   void WriteToSave(Save::SaveData& saveData);
