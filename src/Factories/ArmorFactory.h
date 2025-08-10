@@ -12,6 +12,7 @@ class ArmorFactory : public Singleton<ArmorFactory> {
   bool ApplyMaterial(RE::Actor* refr, RE::TESObjectARMO* form,
                      const MaterialConfig* material);
   bool ApplySavedMaterials(RE::Actor* refr);
+  bool ApplySavedMaterials(RE::Actor* refr, RE::TESObjectARMO* armo);
   void LoadFromSave(Save::SaveData& saveData);
   void WriteToSave(Save::SaveData& saveData);
 };

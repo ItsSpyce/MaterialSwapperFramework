@@ -11,9 +11,16 @@ class PlayerEvents : public RE::BSTEventSink<RE::TESEquipEvent> {
       const RE::TESEquipEvent* event,
       RE::BSTEventSource<RE::TESEquipEvent>* src) override {
     if (event->equipped) {
+      auto* form =
+          RE::TESForm::LookupByID<RE::TESObjectARMO>(event->baseObject);
+      if (!form) {
+        // not an armor item or not found
+        return RE::BSEventNotifyControl::kContinue;
+      }
       auto refHandle = event->actor->GetHandle().get();
-      SKSE::GetTaskInterface()->AddTask([refHandle] {
-        ArmorFactory::GetSingleton()->ApplySavedMaterials(refHandle.get()->As<RE::Actor>());
+      SKSE::GetTaskInterface()->AddTask([refHandle, form] {
+        ArmorFactory::GetSingleton()->ApplySavedMaterials(
+            refHandle->As<RE::Actor>(), form);
       });
     }
 
