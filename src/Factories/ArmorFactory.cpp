@@ -4,9 +4,12 @@
 
 #include <srell.hpp>
 
+#include "Helpers.h"
+#include "Models/MaterialRecord.h"
 #include "NiOverride.h"
 #include "NifHelpers.h"
 #include "RE/Misc.h"
+#include "TintMaskBuilder.h"
 
 using ArmorFactory = Factories::ArmorFactory;
 using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
@@ -41,18 +44,6 @@ static RE::BSShaderTextureSet* CreateTextureSet(char** value) {
 }
 }  // namespace TEXTURE
 
-struct ArmorMaterialRecord {
-  vector<string> appliedMaterials;
-};
-
-struct UpdateRequest {
-  RE::ObjectRefHandle refHandle;
-  RE::TESObjectARMO* armo;
-};
-
-static inline unordered_map<int, ArmorMaterialRecord> g_armorMaterials;
-static inline stack<UpdateRequest> g_updateStack{};
-
 static void ClearItemDisplayName(
     const unique_ptr<RE::InventoryEntryData>& data) {
   if (!data) {
@@ -68,24 +59,23 @@ static void ClearItemDisplayName(
   }
 }
 
-static void SetItemDisplayName(RE::TESObjectREFR* refr, int uid) {
+static void SetItemDisplayName(ArmorFactory* factory, RE::TESObjectREFR* refr,
+                               int uid) {
   auto item = Helpers::GetInventoryItemWithUID(refr, uid);
   auto formID = NiOverride::GetFormFromUniqueID()(RE::StaticFunctionTag{}, uid);
   const auto data = item ? std::move(item->data) : nullptr;
   if (!data) {
     return;
   }
-  auto appliedMaterials = g_armorMaterials[item->uid];
   vector<const char*> filteredMaterials;
-  for (auto& mat : appliedMaterials.appliedMaterials) {
-    if (mat.empty()) {
-      continue;
-    }
-    if (auto config = MaterialLoader::GetMaterialConfig(formID, mat);
-        config && !config->isHidden && config->modifyName) {
-      filteredMaterials.emplace_back(mat.c_str());
-    }
-  }
+  factory->VisitAppliedMaterials(
+      item->uid, [&](const char* name, const MaterialConfig& config) {
+        if (!config.isHidden && config.modifyName) {
+          filteredMaterials.emplace_back(name);
+        }
+        return VisitControl::kContinue;
+      });
+
   if (filteredMaterials.empty()) {
     ClearItemDisplayName(data);
     return;
@@ -272,20 +262,17 @@ static bool ApplySavedMaterial_Impl(
   if (equippedItem->uid == NULL) {
     return true;
   }
-  auto& [appliedMaterials] = g_armorMaterials[equippedItem->uid];
-  for (const auto& material : appliedMaterials) {
-    auto appliedMaterialConfig =
-        MaterialLoader::GetMaterialConfig(armo->GetFormID(), material);
-    if (!appliedMaterialConfig) {
-      continue;
-    }
-    if (!factory->ApplyMaterial(refr, armo, appliedMaterialConfig)) {
-      logger::error(
-          "Failed to apply material to reference: {}, form: {}, "
-          "unique ID: {}",
-          refr->GetFormID(), armo->GetFormID(), equippedItem->uid);
-    }
-  }
+  factory->VisitAppliedMaterials(
+      equippedItem->uid,
+      [&](const char*, const MaterialConfig& appliedMaterialConfig) {
+        if (!factory->ApplyMaterial(refr, armo, &appliedMaterialConfig)) {
+          logger::error(
+              "Failed to apply material to reference: {}, form: {}, "
+              "unique ID: {}",
+              refr->GetFormID(), armo->GetFormID(), equippedItem->uid);
+        }
+        return VisitControl::kContinue;
+      });
   return true;
 }
 
@@ -314,68 +301,43 @@ static bool ApplyMaterialToRefr(RE::TESObjectREFR* refr,
 }
 
 void ArmorFactory::OnUpdate() {
-  if (g_updateStack.empty()) {
+  if (updateStack_.empty()) {
     return;  // No updates to process
   }
-  auto& [refHandle, armo] = g_updateStack.top();
-  auto refr = RE::Actor::LookupByHandle(refHandle.native_handle());
-  if (!refr) {
-    logger::warn("Reference not found for handle: {}",
-                 refHandle.native_handle());
-    g_updateStack.pop();
-    return;
-  }
-  if (!refr->Is3DLoaded()) {
-    return;
-  }
-  if (armo) {
-    auto uid = NiOverride::GetItemUniqueID()(RE::StaticFunctionTag{},
-                                             refr->As<RE::Actor>(), 0,
-                                             (int)armo->GetSlotMask(), false);
-    auto* arma = armo->GetArmorAddon(refr->GetRace());
-    if (!arma) {
-      logger::warn("No armor addon found for armor: {}", armo->GetFormID());
-      g_updateStack.pop();
-      return;
+  auto limit = 30;
+  auto count = 0;
+  while (count < limit && !updateStack_.empty()) {
+    auto& [refHandle, armo] = updateStack_.top();
+    auto refr = RE::Actor::LookupByHandle(refHandle.native_handle());
+    if (!refr) {
+      logger::warn("Reference not found for handle: {}",
+                   refHandle.native_handle());
+      updateStack_.pop();
+      count++;
+      continue;
     }
-    RE::NiPointer<RE::NiNode> armoNifPtr;
-    if (RE::Demand(arma->bipedModels[refr->GetActorBase()->GetSex()].GetModel(),
-                   armoNifPtr, RE::BSModelDB::DBTraits::ArgsType{})) {
-      // Apply default material if no uid found
-      NifHelpers::VisitShapes(armoNifPtr, [&](RE::BSTriShape* shape) {
-        auto& material = shape->properties[RE::BSGeometry::States::kEffect];
-        if (!material) {
-          return VisitControl::kContinue;
-        }
-        if (std::string(material->name).ends_with(".json")) {
-          auto materialFile =
-              MaterialLoader::LoadMaterial(material->name.c_str());
-          if (!materialFile) {
-            logger::error("Failed to load material file: {}",
-                          material->name.c_str());
-            return VisitControl::kContinue;
-          }
-          ApplyMaterialToNode(refr.get(), shape, materialFile);
-        }
-        return VisitControl::kContinue;
-      });
-      auto item = Helpers::GetInventoryItemWithUID(refr.get(), uid);
-      if (!item) {
-        logger::warn("No inventory item found for uid: {}", uid);
-        g_updateStack.pop();
-        return;
+    if (!refr->Is3DLoaded()) {
+      count++;
+      continue;
+    }
+    if (armo) {
+      auto uid = NiOverride::GetItemUniqueID()(RE::StaticFunctionTag{},
+                                               refr->As<RE::Actor>(), 0,
+                                               (int)armo->GetSlotMask(), false);
+      auto* arma = armo->GetArmorAddon(refr->GetRace());
+      if (!arma) {
+        logger::warn("No armor addon found for armor: {}", armo->GetFormID());
+        updateStack_.pop();
+        count++;
+        continue;
       }
-      ApplySavedMaterial_Impl(this, refr.get(), item);
-    }
-  } else {
-    RE::BSVisit::TraverseScenegraphObjects(
-        refr->Get3D(), [&](RE::NiAVObject* geometry) {
-          auto* triShape = geometry->AsTriShape();
-          if (!triShape) {
-            return VisitControl::kContinue;
-          }
-          auto& material =
-              triShape->properties[RE::BSGeometry::States::kEffect];
+      RE::NiPointer<RE::NiNode> armoNifPtr;
+      if (RE::Demand(
+              arma->bipedModels[refr->GetActorBase()->GetSex()].GetModel(),
+              armoNifPtr, RE::BSModelDB::DBTraits::ArgsType{})) {
+        // Apply default material if no uid found
+        NifHelpers::VisitShapes(armoNifPtr, [&](RE::BSTriShape* shape) {
+          auto& material = shape->properties[RE::BSGeometry::States::kEffect];
           if (!material) {
             return VisitControl::kContinue;
           }
@@ -387,31 +349,69 @@ void ArmorFactory::OnUpdate() {
                             material->name.c_str());
               return VisitControl::kContinue;
             }
-            ApplyMaterialToNode(refr.get(), triShape, materialFile);
+            ApplyMaterialToNode(refr.get(), shape, materialFile);
           }
           return VisitControl::kContinue;
         });
-    // Apply all equipped armor
+        auto item = Helpers::GetInventoryItemWithUID(refr.get(), uid);
+        if (!item) {
+          logger::warn("No inventory item found for uid: {}", uid);
+          updateStack_.pop();
+          count++;
+          continue;
+        }
+        ApplySavedMaterial_Impl(this, refr.get(), item);
+      }
+    } else {
+      RE::BSVisit::TraverseScenegraphObjects(
+          refr->Get3D(), [&](RE::NiAVObject* geometry) {
+            auto* triShape = geometry->AsTriShape();
+            if (!triShape) {
+              return VisitControl::kContinue;
+            }
+            auto& material =
+                triShape->properties[RE::BSGeometry::States::kEffect];
+            if (!material) {
+              return VisitControl::kContinue;
+            }
+            if (std::string(material->name).ends_with(".json")) {
+              auto materialFile =
+                  MaterialLoader::LoadMaterial(material->name.c_str());
+              if (!materialFile) {
+                logger::error("Failed to load material file: {}",
+                              material->name.c_str());
+                return VisitControl::kContinue;
+              }
+              ApplyMaterialToNode(refr.get(), triShape, materialFile);
+            }
+            return VisitControl::kContinue;
+          });
+      // Apply all equipped armor
+      Helpers::VisitEquippedInventoryItems(
+          refr->As<RE::Actor>(),
+          [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
+            if (item->uid != NULL) {
+              ApplySavedMaterial_Impl(this, refr->As<RE::Actor>(), item);
+            }
+            return VisitControl::kContinue;
+          });
+    }
+
     Helpers::VisitEquippedInventoryItems(
-        refr->As<RE::Actor>(),
-        [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
+        refr.get(), [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
           if (item->uid != NULL) {
             ApplySavedMaterial_Impl(this, refr->As<RE::Actor>(), item);
           }
+          return VisitControl::kContinue;
         });
+
+    updateStack_.pop();
+    count++;
   }
-
-  Helpers::VisitEquippedInventoryItems(
-      refr.get(), [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
-        if (item->uid != NULL) {
-          ApplySavedMaterial_Impl(this, refr->As<RE::Actor>(), item);
-        }
-      });
-
-  g_updateStack.pop();
 }
 
-bool ArmorFactory::ApplyMaterial(RE::Actor* refr, RE::TESObjectARMO* form,
+bool ArmorFactory::ApplyMaterial(RE::TESObjectREFR* refr,
+                                 RE::TESObjectARMO* form,
                                  const MaterialConfig* material) {
   RETURN_IF_FALSE(refr)
   RETURN_IF_FALSE(form)
@@ -427,7 +427,7 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* refr, RE::TESObjectARMO* form,
         refr->GetFormID(), form->GetFormID(), uid);
     return false;
   }
-  auto& record = g_armorMaterials[uid];
+  auto& record = knownArmorMaterials_[uid];
   if (std::ranges::contains(record.appliedMaterials, material->name)) {
     return true;  // Material already applied
   }
@@ -458,29 +458,33 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* refr, RE::TESObjectARMO* form,
   }
   newAppliedMaterials.emplace_back(material->name);
   record.appliedMaterials = std::move(newAppliedMaterials);
-  SetItemDisplayName(refr, uid);
+  SetItemDisplayName(this, refr, uid);
 
   return true;
 }
 
-bool ArmorFactory::ApplySavedMaterials(RE::Actor* refr) {
+bool ArmorFactory::ApplySavedMaterials(RE::TESObjectREFR* refr) {
   RETURN_IF_FALSE(refr)
-  g_updateStack.emplace(refr->GetHandle());
+  updateStack_.emplace(refr->GetHandle());
   return true;
 }
 
-bool ArmorFactory::ApplySavedMaterials(RE::Actor* refr,
+bool ArmorFactory::ApplySavedMaterials(RE::TESObjectREFR* refr,
                                        RE::TESObjectARMO* armo) {
   RETURN_IF_FALSE(refr)
   RETURN_IF_FALSE(armo)
-  g_updateStack.emplace(
+  if (!MaterialLoader::HasMaterialConfigs(armo->GetFormID())) {
+    return false;
+  }
+  updateStack_.emplace(
       UpdateRequest{.refHandle = refr->GetHandle(), .armo = armo});
   return true;
 }
 
 void ArmorFactory::LoadFromSave(Save::SaveData& saveData) {
-  g_updateStack = {};
-  g_armorMaterials.clear();
+  while (!updateStack_.empty()) {
+    updateStack_.pop();
+  }
   for (const auto& saveRecord : saveData.armorRecords) {
     if (saveRecord.appliedMaterials.empty()) {
       logger::warn("No materials applied to armor record with UID: {}",
@@ -494,12 +498,12 @@ void ArmorFactory::LoadFromSave(Save::SaveData& saveData) {
       }
       record.appliedMaterials.emplace_back(material);
     }
-    g_armorMaterials[saveRecord.uid] = std::move(record);
+    knownArmorMaterials_[saveRecord.uid] = std::move(record);
   }
 }
 
 void ArmorFactory::WriteToSave(Save::SaveData& saveData) {
-  for (auto& [uid, val] : g_armorMaterials) {
+  for (auto& [uid, val] : knownArmorMaterials_) {
     if (uid == NULL) {
       logger::warn("Received NULL uid for armor record {}", uid);
     }
@@ -524,9 +528,39 @@ void ArmorFactory::ResetMaterials(RE::TESObjectREFR* refr) {
     return;
   }
   Helpers::VisitEquippedInventoryItems(
-      actor, [&](std::unique_ptr<Helpers::InventoryItem>& item) {
-        g_armorMaterials.erase(item->uid);
+      actor, [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
+        knownArmorMaterials_.erase(item->uid);
         ClearItemDisplayName(item->data);
+        return VisitControl::kContinue;
       });
-  g_updateStack.push({.refHandle = refr->GetHandle()});
+  updateStack_.push({.refHandle = refr->GetHandle()});
+}
+
+void ArmorFactory::VisitAppliedMaterials(
+    int uid, const Visitor<const char*, const MaterialConfig&>& visitor) {
+  if (uid == NULL) {
+    return;
+  }
+  auto* armo = NiOverride::GetFormFromUniqueID()(RE::StaticFunctionTag{}, uid)
+                   ->As<RE::TESObjectARMO>();
+  if (!armo) {
+    logger::warn("No armor form found for UID: {}", uid);
+    knownArmorMaterials_.erase(uid);
+    return;  // No armor form found for the given UID
+  }
+  if (auto it = knownArmorMaterials_.find(uid);
+      it != knownArmorMaterials_.end()) {
+    auto& [appliedMaterials] = it->second;
+    for (const auto& materialName : appliedMaterials) {
+      if (materialName.empty()) {
+        continue;  // Skip empty material names
+      }
+      if (const auto* config = MaterialLoader::GetMaterialConfig(
+              armo->GetFormID(), materialName)) {
+        BREAK_IF_STOP(visitor, materialName.c_str(), *config);
+      } else {
+        logger::warn("Material config not found for name: {}", materialName);
+      }
+    }
+  }
 }

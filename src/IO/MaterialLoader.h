@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Filesystem.h"
 #include "MaterialConfig.h"
 #include "Models/MaterialFileBase.h"
 
+struct MaterialRecord;
 
 class MaterialLoader {
  public:
@@ -17,9 +17,13 @@ class MaterialLoader {
 
   _NODISCARD static MaterialConfig* GetDefaultMaterial(RE::FormID formID);
 
+  _NODISCARD static bool HasMaterialConfigs(RE::FormID formID) {
+    return materialConfigs_.contains(formID);
+  }
+
   static void VisitMaterialFilesForFormID(
       uint32_t formID,
-      const std::function<void(const MaterialConfig*)>& visitor);
+      const Visitor<const MaterialConfig&>& visitor);
 
  private:
   static inline std::unordered_map<uint32_t, std::vector<MaterialConfig>>

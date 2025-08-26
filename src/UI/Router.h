@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ImGui_Stylus.h"
 #include "ImGui_Sugar.h"
 
 namespace UI {
@@ -42,6 +43,8 @@ struct LinkProps {
 inline void Link(const LinkProps& props) {
   auto router = Router::GetSingleton();
   // Create a link that navigates to the specified path when clicked
-  ImGui_Button(props.label) { router->NavigateTo(props.path); }
+  ImGui_Button(props.label, ImVec2{ImGui::GetContentRegionAvail().x, 0}) {
+    router->NavigateTo(props.path);
+  }
 }
 }  // namespace UI

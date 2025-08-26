@@ -1,9 +1,24 @@
 #pragma once
+#include <array>
 #include <optional>
 #include <string>
-#include <array>
+
+enum class ColorBlendMode : uint8_t {
+  kNone = 0,
+  kAdd = 1,
+  kMultiply = 2,
+  kScreen = 3,
+  kOverlay = 4,
+  kDarken = 5,
+  kLighten = 6,
+  kColorDodge = 7,
+  kColorBurn = 8,
+  kHardLight = 9,
+  kSoftLight = 10,
+};
 
 struct MaterialRecord {
+  string schemaVersion = "1.0";
   optional<uint8_t> shaderType;
   optional<string> inherits;
   optional<uint32_t> clamp;
@@ -121,4 +136,9 @@ struct MaterialRecord {
   optional<uint8_t> envMapMinLod;
   optional<float> softDepth;
   optional<bool> effectPbrSpecular;
+
+  // custom fields
+  optional<array<float, 4>> color;
+  optional<ColorBlendMode> colorBlendMode;
+  optional<string> colorBlendMap;
 };

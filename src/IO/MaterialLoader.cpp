@@ -3,12 +3,13 @@
 #include <glaze/glaze.hpp>
 
 #include "Filesystem.h"
+#include "Helpers.h"
 #include "MaterialConfig.h"
-#include "Models/MaterialFileBase.h"
+#include "Models/MaterialRecord.h"
 #include "StringHelpers.h"
 
-static bool LoadMaterialFromDisk(
-    const std::string& filename, MaterialRecord& record) {
+static bool LoadMaterialFromDisk(const std::string& filename,
+                                 MaterialRecord& record) {
   if (filename.empty() || !fs::exists(filename)) {
     logger::error("Material file does not exist: {}", filename);
     return false;
@@ -71,8 +72,7 @@ void MaterialLoader::ReadMaterialsFromDisk(bool clearExisting) {
       continue;  // Skip the config directory
     }
     // format for a directory name is "MOD_NAME.es{m,p,l}"
-    auto* plugin =
-        RE::TESDataHandler::GetSingleton()->LookupModByName(modName);
+    auto* plugin = RE::TESDataHandler::GetSingleton()->LookupModByName(modName);
     if (!plugin) {
       logger::warn("Plugin not loaded for mod directory: {}", modName);
       continue;  // Skip if the plugin is not loaded
@@ -108,16 +108,14 @@ void MaterialLoader::ReadMaterialsFromDisk(bool clearExisting) {
   }
 }
 
-MaterialRecord* MaterialLoader::LoadMaterial(
-    const std::string& filename) {
+MaterialRecord* MaterialLoader::LoadMaterial(const std::string& filename) {
   if (filename.empty()) {
     logger::error("Filename is empty");
     return nullptr;
   }
   auto path = fs::path("Data") / "Materials" / filename;
   static std::unordered_map<std::string, MaterialRecord> materialCache;
-  if (auto it = materialCache.find(path.string());
-      it != materialCache.end()) {
+  if (auto it = materialCache.find(path.string()); it != materialCache.end()) {
     return &it->second;  // Return cached record
   }
   MaterialRecord record;
@@ -138,12 +136,13 @@ MaterialConfig* MaterialLoader::GetMaterialConfig(
         return &record;
       }
     }
+  } else {
+    logger::warn("No material configs found for form ID: {:08X}", formID);
   }
   return nullptr;
 }
 
-MaterialConfig* MaterialLoader::GetDefaultMaterial(
-    RE::FormID formID) {
+MaterialConfig* MaterialLoader::GetDefaultMaterial(RE::FormID formID) {
   if (auto it = materialConfigs_.find(formID); it != materialConfigs_.end()) {
     for (auto& record : it->second) {
       if (!record.modifyName) {
@@ -156,11 +155,10 @@ MaterialConfig* MaterialLoader::GetDefaultMaterial(
 
 void MaterialLoader::VisitMaterialFilesForFormID(
     uint32_t formID,
-    const std::function<void(const MaterialConfig*)>&
-        visitor) {
+    const Visitor<const MaterialConfig&>& visitor) {
   if (auto it = materialConfigs_.find(formID); it != materialConfigs_.end()) {
     for (const auto& entry : it->second) {
-      visitor(&entry);
+      BREAK_IF_STOP(visitor, entry);
     }
   }
 }

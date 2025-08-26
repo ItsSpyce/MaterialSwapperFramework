@@ -6,14 +6,27 @@
 namespace Factories {
 class ArmorFactory : public Singleton<ArmorFactory> {
  public:
-  static void ResetMaterials(RE::TESObjectREFR* refr);
-
+  void ResetMaterials(RE::TESObjectREFR* refr);
   void OnUpdate();
-  bool ApplyMaterial(RE::Actor* refr, RE::TESObjectARMO* form,
+  bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectARMO* form,
                      const MaterialConfig* material);
-  bool ApplySavedMaterials(RE::Actor* refr);
-  bool ApplySavedMaterials(RE::Actor* refr, RE::TESObjectARMO* armo);
+  bool ApplySavedMaterials(RE::TESObjectREFR* refr);
+  bool ApplySavedMaterials(RE::TESObjectREFR* refr, RE::TESObjectARMO* armo);
+  void VisitAppliedMaterials(
+      int uid, const Visitor<const char*, const MaterialConfig&>& visitor);
   void LoadFromSave(Save::SaveData& saveData);
   void WriteToSave(Save::SaveData& saveData);
+
+ private:
+  struct ArmorMaterialRecord {
+    vector<string> appliedMaterials;
+  };
+
+  struct UpdateRequest {
+    RE::ObjectRefHandle refHandle;
+    RE::TESObjectARMO* armo;
+  };
+  unordered_map<int, ArmorMaterialRecord> knownArmorMaterials_;
+  stack<UpdateRequest> updateStack_;
 };
 }  // namespace Factories

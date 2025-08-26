@@ -1,8 +1,7 @@
 #pragma once
-#include "Helpers.h"
+
 #include "IO/MaterialStream.h"
 #include <glaze/glaze.hpp>
-#include "MaterialRecord.h"
 
 struct MaterialFileBase;
 

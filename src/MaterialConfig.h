@@ -1,15 +1,15 @@
 #pragma once
 
 struct MaterialConfig {
-  std::string name;
-  std::unordered_map<std::string, std::string> applies;
+  string name;
+  unordered_map<string, string> applies;
   bool isHidden;
   bool modifyName = true;
   uint8_t layer = 0;
 };
 
 struct FormIDConfigEntry {
-  std::vector<MaterialConfig> materials{};
+  vector<MaterialConfig> materials{};
 };
 
-using MaterialConfigMap = std::unordered_map<std::string, std::vector<MaterialConfig>>;
+using MaterialConfigMap = unordered_map<string, vector<MaterialConfig>>;

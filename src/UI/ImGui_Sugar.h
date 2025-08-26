@@ -148,6 +148,9 @@ inline auto BeginTooltip() -> bool {
 #define ImGui_TabBar(...)                                              \
   IMGUI_SUGAR_SCOPED_BOOL(ImGui::BeginTabBar, ImGui::EndTabBar, false, \
                           __VA_ARGS__)
+#define ImGui_TabItem(...)                             \
+  IMGUI_SUGAR_SCOPED_BOOL(ImGui::BeginTabItem, ImGui::EndTabItem, false, \
+                          __VA_ARGS__)
 #define ImGui_TreeNode(...) \
   IMGUI_SUGAR_SCOPED_BOOL(ImGui::TreeNode, ImGui::TreePop, false, __VA_ARGS__)
 #define ImGui_TreeNodeEx(...) \

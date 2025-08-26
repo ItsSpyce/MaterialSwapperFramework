@@ -60,4 +60,17 @@ constexpr inline auto enum_range(auto first, auto last) {
 #define OFFSET(se, ae) ae
 #else
 #define OFFSET(se, ae) se
-#endif
+#endif]
+
+template <typename... Args>
+using Visitor = function<RE::BSVisit::BSVisitControl(Args...)>;
+
+#define RETURN_IF_STOP(_VISITOR, ...)                                  \
+  if ((_VISITOR)(__VA_ARGS__) == RE::BSVisit::BSVisitControl::kStop) { \
+    return;                                                            \
+  }
+
+#define BREAK_IF_STOP(_VISITOR, ...)                                   \
+  if ((_VISITOR)(__VA_ARGS__) == RE::BSVisit::BSVisitControl::kStop) { \
+    break;                                                             \
+  }
