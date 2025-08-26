@@ -19,6 +19,8 @@
 #include <locale>
 #include <ranges>
 
+#include "DirectUI.hpp"
+
 namespace logger = SKSE::log;
 using namespace std;
 using namespace std::literals;

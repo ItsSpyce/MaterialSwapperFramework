@@ -307,17 +307,16 @@ void ArmorFactory::OnUpdate() {
   auto limit = 30;
   auto count = 0;
   while (count < limit && !updateStack_.empty()) {
+    count++;
     auto& [refHandle, armo] = updateStack_.top();
     auto refr = RE::Actor::LookupByHandle(refHandle.native_handle());
     if (!refr) {
       logger::warn("Reference not found for handle: {}",
                    refHandle.native_handle());
       updateStack_.pop();
-      count++;
       continue;
     }
     if (!refr->Is3DLoaded()) {
-      count++;
       continue;
     }
     if (armo) {
@@ -328,7 +327,6 @@ void ArmorFactory::OnUpdate() {
       if (!arma) {
         logger::warn("No armor addon found for armor: {}", armo->GetFormID());
         updateStack_.pop();
-        count++;
         continue;
       }
       RE::NiPointer<RE::NiNode> armoNifPtr;
@@ -357,7 +355,6 @@ void ArmorFactory::OnUpdate() {
         if (!item) {
           logger::warn("No inventory item found for uid: {}", uid);
           updateStack_.pop();
-          count++;
           continue;
         }
         ApplySavedMaterial_Impl(this, refr.get(), item);
@@ -406,7 +403,6 @@ void ArmorFactory::OnUpdate() {
         });
 
     updateStack_.pop();
-    count++;
   }
 }
 
