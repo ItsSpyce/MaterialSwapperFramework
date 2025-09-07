@@ -4,9 +4,10 @@
 
 #include <srell.hpp>
 
+#include "Graphics/D3DDevice.h"
+#include "Graphics/ShaderResource.h"
 #include "Helpers.h"
 #include "Models/MaterialRecord.h"
-#include "NiOverride.h"
 #include "NifHelpers.h"
 #include "RE/Misc.h"
 #include "TintMaskBuilder.h"
@@ -16,33 +17,6 @@ using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
 using ShaderFlag8 = RE::BSShaderProperty::EShaderPropertyFlag8;
 using Texture = RE::BSShaderTextureSet::Texture;
 using VisitControl = RE::BSVisit::BSVisitControl;
-
-namespace TEXTURE {
-static void SanitizePath(std::string& path) {
-  std::ranges::transform(path, path.begin(), [](char c) {
-    return static_cast<char>(std::tolower(c));
-  });
-  path = srell::regex_replace(path, srell::regex("/+|\\\\+"), "\\");
-  path = srell::regex_replace(path, srell::regex("^\\\\+"), "");
-  path = srell::regex_replace(
-      path,
-      srell::regex(R"(.*?[^\s]textures\\|^textures\\)", srell::regex::icase),
-      "");
-}
-
-static RE::BSShaderTextureSet* CreateTextureSet(char** value) {
-  const auto textureSet = RE::BSShaderTextureSet::Create();
-  if (textureSet) {
-    for (const auto type :
-         stl::enum_range(Texture::kDiffuse, Texture::kTotal)) {
-      if (strlen(value[type]) > 0) {
-        textureSet->SetTexturePath(type, value[type]);
-      }
-    }
-  }
-  return textureSet;
-}
-}  // namespace TEXTURE
 
 static void ClearItemDisplayName(
     const unique_ptr<RE::InventoryEntryData>& data) {
@@ -61,8 +35,9 @@ static void ClearItemDisplayName(
 
 static void SetItemDisplayName(ArmorFactory* factory, RE::TESObjectREFR* refr,
                                int uid) {
+  _TRACE(__FUNCTION__);
+  return;
   auto item = Helpers::GetInventoryItemWithUID(refr, uid);
-  auto formID = NiOverride::GetFormFromUniqueID()(RE::StaticFunctionTag{}, uid);
   const auto data = item ? std::move(item->data) : nullptr;
   if (!data) {
     return;
@@ -98,19 +73,97 @@ static void SetItemDisplayName(ArmorFactory* factory, RE::TESObjectREFR* refr,
   }
 }
 
+static void ApplyColorToTexture(const RE::NiSourceTexturePtr& texture,
+                                const RE::NiSourceTexturePtr& colorMask,
+                                const MaterialRecord* material) {
+  auto* d3dTexture = texture->rendererTexture->texture;
+  auto& color = material->color;
+  if (!d3dTexture || !color) {
+    return;
+  }
+  auto blendMode = material->colorBlendMode.value_or(ColorBlendMode::kMultiply);
+
+  // Get device/context
+  auto* renderer = RE::BSGraphics::Renderer::GetSingleton();
+  auto* device = (ID3D11Device*)RE::BSGraphics::Renderer::GetDevice();
+  auto* context = (ID3D11DeviceContext*)renderer->GetRuntimeData().context;
+  if (!device || !context) {
+    return;
+  }
+  auto* d3dDevice = new Graphics::D3DDevice(device, context);
+
+  // Load/compile the pixel shader
+  Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
+  Graphics::ShaderFactory shaderFactory;
+  Graphics::ShaderFile* shaderFile = new Graphics::ShaderResource(
+      "Data/SKSE/MaterialSwapperFramework/shaders/ColorBlend.hlsl", "main");
+  shaderFactory.CreatePixelShader(d3dDevice, shaderFile, nullptr, pixelShader);
+
+  // Set up constant buffer
+  struct ColorBlendParams {
+    float blendColor[3];
+    int blendMode;
+  } params;
+  params.blendColor[0] = color->at(0);
+  params.blendColor[1] = color->at(1);
+  params.blendColor[2] = color->at(2);
+  params.blendMode = (blendMode == ColorBlendMode::kMultiply) ? 0 : 1;
+
+  Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
+  D3D11_BUFFER_DESC cbDesc = {};
+  cbDesc.ByteWidth = sizeof(ColorBlendParams);
+  cbDesc.Usage = D3D11_USAGE_DEFAULT;
+  cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+  D3D11_SUBRESOURCE_DATA initData = {&params, 0, 0};
+  device->CreateBuffer(&cbDesc, &initData, &constantBuffer);
+
+  // Set pipeline state
+  context->PSSetShader(pixelShader.Get(), nullptr, 0);
+  context->PSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
+
+  // Create SRVs for input and mask textures
+  Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> inputSRV;
+  Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> maskSRV;
+  device->CreateShaderResourceView(d3dTexture, nullptr,
+                                   inputSRV.GetAddressOf());
+  device->CreateShaderResourceView(colorMask->rendererTexture->texture, nullptr,
+                                   maskSRV.GetAddressOf());
+
+  // Create a sampler state
+  D3D11_SAMPLER_DESC samplerDesc = {};
+  samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+  samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+  samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+  samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+  samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+  samplerDesc.MinLOD = 0;
+  samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+  Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler;
+  device->CreateSamplerState(&samplerDesc, sampler.GetAddressOf());
+
+  // Bind input texture and sampler
+
+  // Bind input texture and mask texture SRVs
+  ID3D11ShaderResourceView* srvs[2] = {inputSRV.Get(), maskSRV.Get()};
+  context->PSSetShaderResources(0, 2, srvs);
+
+  // Bind sampler
+  context->PSSetSamplers(0, 1, &sampler);
+}
+
 static RE::NiSourceTexture* LoadTexture(const char* path) {
   auto texturePtr = RE::NiTexturePtr();
-  RE::GetTexture(StringHelpers::ToLower(path).c_str(), true, texturePtr, false);
+  RE::GetTexture(path, true, texturePtr, false);
   if (!texturePtr) {
-    logger::error("Failed to get texture: {}", path);
+    _ERROR("Failed to get texture: {}", path);
     return nullptr;
   }
   auto* newTexture = netimmerse_cast<RE::NiSourceTexture*>(&*texturePtr);
   if (!newTexture) {
-    logger::error("Failed to cast texture to NiSourceTexture for map: {}",
-                  path);
+    _ERROR("Failed to cast texture to NiSourceTexture for map: {}", path);
     return nullptr;
   }
+
   return newTexture;
 }
 
@@ -124,19 +177,18 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
   auto* material =
       skyrim_cast<RE::BSLightingShaderMaterialBase*>(lightingShader->material);
   if (!material) {
-    logger::error(
-        "Failed to get BSLightingShaderMaterialBase for tri shape: {}",
-        bsTriShape->name);
+    _ERROR("Failed to get BSLightingShaderMaterialBase for tri shape: {}",
+           bsTriShape->name);
     return false;
   }
   auto* newMaterial =
       RE::BSLightingShaderMaterialBase::CreateMaterial(material->GetFeature());
   if (!newMaterial) {
-    logger::error(
-        "Failed to create BSLightingShaderMaterialBase for tri shape: {}",
-        bsTriShape->name);
+    _ERROR("Failed to create BSLightingShaderMaterialBase for tri shape: {}",
+           bsTriShape->name);
     return false;
   }
+
   newMaterial->CopyMembers(material);
   lightingShader->SetFlags(
       ShaderFlag8::kDecal,
@@ -163,8 +215,18 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
         record->alphaTestThreshold.value_or(alphaProperty->alphaThreshold);
   }
   if (record->diffuseMap.has_value() && !record->diffuseMap->empty()) {
-    newMaterial->diffuseTexture =
-        RE::NiSourceTexturePtr(LoadTexture(record->diffuseMap->c_str()));
+    auto diffuseTex = RE::NiSourceTexturePtr(LoadTexture(record->diffuseMap->c_str()));
+    newMaterial->diffuseTexture = diffuseTex;
+    if (record->color.has_value()) {
+      RE::NiSourceTexturePtr colorMask;
+      if (record->colorBlendMap.has_value()) {
+        colorMask = RE::NiSourceTexturePtr(LoadTexture(
+            record->colorBlendMap->c_str()));
+      } else {
+        colorMask = nullptr;
+      }
+      ApplyColorToTexture(diffuseTex, colorMask, record);
+    }
   }
   if (record->uvOffset.has_value()) {
     newMaterial->texCoordOffset[0] =
@@ -198,13 +260,6 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
                         record->specularColor->at(2) / 255.0f);
       }
     }
-
-  } else {
-    newMaterial->specularBackLightingTexture = nullptr;
-    newMaterial->specularPower = 20.0f;
-    newMaterial->refractionPower = 0.0f;
-    newMaterial->specularColorScale = 1.0f;
-    newMaterial->specularColor = RE::NiColor(1.0f, 1.0f, 1.0f);
   }
   if (record->rimLighting) {
     newMaterial->rimLightPower =
@@ -256,7 +311,7 @@ static bool ApplySavedMaterial_Impl(
   RETURN_IF_FALSE(actor)
   auto* armo = equippedItem->data->object->As<RE::TESObjectARMO>();
   if (!armo) {
-    logger::warn("Equipped item is not ARMO");
+    _WARN("Equipped item is not ARMO");
     return false;
   }
   if (equippedItem->uid == NULL) {
@@ -266,7 +321,7 @@ static bool ApplySavedMaterial_Impl(
       equippedItem->uid,
       [&](const char*, const MaterialConfig& appliedMaterialConfig) {
         if (!factory->ApplyMaterial(refr, armo, &appliedMaterialConfig)) {
-          logger::error(
+          _ERROR(
               "Failed to apply material to reference: {}, form: {}, "
               "unique ID: {}",
               refr->GetFormID(), armo->GetFormID(), equippedItem->uid);
@@ -287,12 +342,12 @@ static bool ApplyMaterialToRefr(RE::TESObjectREFR* refr,
     auto* nivAv = refrModel->GetObjectByName(shapeName);
     auto* triShape = nivAv ? nivAv->AsTriShape() : nullptr;
     if (!triShape) {
-      logger::warn("No tri-shape found for shape name: {}", shapeName);
+      _WARN("No tri-shape found for shape name: {}", shapeName);
       continue;
     }
     auto materialFile = MaterialLoader::LoadMaterial(materialName);
     if (!materialFile) {
-      logger::error("Failed to load material file: {}", materialName);
+      _ERROR("Failed to load material file: {}", materialName);
       continue;
     }
     ApplyMaterialToNode(refr, triShape, materialFile);
@@ -308,30 +363,30 @@ void ArmorFactory::OnUpdate() {
   auto count = 0;
   while (count < limit && !updateStack_.empty()) {
     count++;
-    auto& [refHandle, armo] = updateStack_.top();
-    auto refr = RE::Actor::LookupByHandle(refHandle.native_handle());
+    auto& [refr, armo] = updateStack_.top();
+    updateStack_.pop();
     if (!refr) {
-      logger::warn("Reference not found for handle: {}",
-                   refHandle.native_handle());
-      updateStack_.pop();
+      _WARN("Invalid reference handle: 0");
       continue;
     }
-    if (!refr->Is3DLoaded()) {
+    auto actor = refr->As<RE::Actor>();
+    if (!actor->Is3DLoaded()) {
+      updateStack_.push({.refr = refr, .armo = armo});
       continue;
     }
     if (armo) {
-      auto uid = NiOverride::GetItemUniqueID()(RE::StaticFunctionTag{},
-                                               refr->As<RE::Actor>(), 0,
-                                               (int)armo->GetSlotMask(), false);
-      auto* arma = armo->GetArmorAddon(refr->GetRace());
+      auto uid = Helpers::GetUniqueID(&*actor, armo->GetSlotMask(), false);
+      if (uid == NULL) {
+        continue;
+      }
+      auto* arma = armo->GetArmorAddon(actor->GetRace());
       if (!arma) {
-        logger::warn("No armor addon found for armor: {}", armo->GetFormID());
-        updateStack_.pop();
+        _WARN("No armor addon found for armor: {}", armo->GetFormID());
         continue;
       }
       RE::NiPointer<RE::NiNode> armoNifPtr;
       if (RE::Demand(
-              arma->bipedModels[refr->GetActorBase()->GetSex()].GetModel(),
+              arma->bipedModels[actor->GetActorBase()->GetSex()].GetModel(),
               armoNifPtr, RE::BSModelDB::DBTraits::ArgsType{})) {
         // Apply default material if no uid found
         NifHelpers::VisitShapes(armoNifPtr, [&](RE::BSTriShape* shape) {
@@ -343,25 +398,24 @@ void ArmorFactory::OnUpdate() {
             auto materialFile =
                 MaterialLoader::LoadMaterial(material->name.c_str());
             if (!materialFile) {
-              logger::error("Failed to load material file: {}",
-                            material->name.c_str());
+              _ERROR("Failed to load material file: {}",
+                     material->name.c_str());
               return VisitControl::kContinue;
             }
-            ApplyMaterialToNode(refr.get(), shape, materialFile);
+            ApplyMaterialToNode(actor, shape, materialFile);
           }
           return VisitControl::kContinue;
         });
-        auto item = Helpers::GetInventoryItemWithUID(refr.get(), uid);
+        auto item = Helpers::GetInventoryItemWithUID(actor, uid);
         if (!item) {
-          logger::warn("No inventory item found for uid: {}", uid);
-          updateStack_.pop();
+          _WARN("No inventory item found for uid: {}", uid);
           continue;
         }
-        ApplySavedMaterial_Impl(this, refr.get(), item);
+        ApplySavedMaterial_Impl(this, actor, item);
       }
     } else {
       RE::BSVisit::TraverseScenegraphObjects(
-          refr->Get3D(), [&](RE::NiAVObject* geometry) {
+          actor->Get3D(), [&](RE::NiAVObject* geometry) {
             auto* triShape = geometry->AsTriShape();
             if (!triShape) {
               return VisitControl::kContinue;
@@ -375,34 +429,32 @@ void ArmorFactory::OnUpdate() {
               auto materialFile =
                   MaterialLoader::LoadMaterial(material->name.c_str());
               if (!materialFile) {
-                logger::error("Failed to load material file: {}",
-                              material->name.c_str());
+                _ERROR("Failed to load material file: {}",
+                       material->name.c_str());
                 return VisitControl::kContinue;
               }
-              ApplyMaterialToNode(refr.get(), triShape, materialFile);
+              ApplyMaterialToNode(actor, triShape, materialFile);
             }
             return VisitControl::kContinue;
           });
       // Apply all equipped armor
       Helpers::VisitEquippedInventoryItems(
-          refr->As<RE::Actor>(),
+          actor->As<RE::Actor>(),
           [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
             if (item->uid != NULL) {
-              ApplySavedMaterial_Impl(this, refr->As<RE::Actor>(), item);
+              ApplySavedMaterial_Impl(this, actor->As<RE::Actor>(), item);
             }
             return VisitControl::kContinue;
           });
     }
 
     Helpers::VisitEquippedInventoryItems(
-        refr.get(), [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
+        actor, [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
           if (item->uid != NULL) {
-            ApplySavedMaterial_Impl(this, refr->As<RE::Actor>(), item);
+            ApplySavedMaterial_Impl(this, actor->As<RE::Actor>(), item);
           }
           return VisitControl::kContinue;
         });
-
-    updateStack_.pop();
   }
 }
 
@@ -411,16 +463,14 @@ bool ArmorFactory::ApplyMaterial(RE::TESObjectREFR* refr,
                                  const MaterialConfig* material) {
   RETURN_IF_FALSE(refr)
   RETURN_IF_FALSE(form)
-  auto uid = NiOverride::GetItemUniqueID()(RE::StaticFunctionTag{}, refr, 0,
-                                           (int)form->GetSlotMask(), true);
+  auto uid = Helpers::GetUniqueID(refr, form->GetSlotMask(), true);
   if (uid == NULL) {
-    logger::warn("Failed to get unique ID for form: {}", refr->GetFormID());
+    _WARN("Failed to get unique ID for form: {}", form->GetFormID());
     return false;
   }
   if (!ApplyMaterialToRefr(refr, form, uid, material)) {
-    logger::error(
-        "Failed to apply material to reference: {}, form: {}, unique ID: {}",
-        refr->GetFormID(), form->GetFormID(), uid);
+    _ERROR("Failed to apply material to reference: {}, form: {}, unique ID: {}",
+           refr->GetFormID(), form->GetFormID(), uid);
     return false;
   }
   auto& record = knownArmorMaterials_[uid];
@@ -461,7 +511,7 @@ bool ArmorFactory::ApplyMaterial(RE::TESObjectREFR* refr,
 
 bool ArmorFactory::ApplySavedMaterials(RE::TESObjectREFR* refr) {
   RETURN_IF_FALSE(refr)
-  updateStack_.emplace(refr->GetHandle());
+  updateStack_.push({.refr = refr});
   return true;
 }
 
@@ -472,19 +522,18 @@ bool ArmorFactory::ApplySavedMaterials(RE::TESObjectREFR* refr,
   if (!MaterialLoader::HasMaterialConfigs(armo->GetFormID())) {
     return false;
   }
-  updateStack_.emplace(
-      UpdateRequest{.refHandle = refr->GetHandle(), .armo = armo});
+  updateStack_.push(UpdateRequest{.refr = refr, .armo = armo});
   return true;
 }
 
-void ArmorFactory::LoadFromSave(Save::SaveData& saveData) {
+void ArmorFactory::ReadFromSave(Save::SaveData& saveData) {
   while (!updateStack_.empty()) {
     updateStack_.pop();
   }
   for (const auto& saveRecord : saveData.armorRecords) {
     if (saveRecord.appliedMaterials.empty()) {
-      logger::warn("No materials applied to armor record with UID: {}",
-                   saveRecord.uid);
+      _WARN("No materials applied to armor record with UID: {}",
+            saveRecord.uid);
       continue;
     }
     ArmorMaterialRecord record;
@@ -498,16 +547,16 @@ void ArmorFactory::LoadFromSave(Save::SaveData& saveData) {
   }
 }
 
-void ArmorFactory::WriteToSave(Save::SaveData& saveData) {
+void ArmorFactory::WriteToSave(Save::SaveData& saveData) const {
   for (auto& [uid, val] : knownArmorMaterials_) {
     if (uid == NULL) {
-      logger::warn("Received NULL uid for armor record {}", uid);
+      _WARN("Received NULL uid for armor record {}", uid);
     }
     if (val.appliedMaterials.empty()) {
-      logger::warn("No materials applied for armor record with UID: {}", uid);
+      _WARN("No materials applied for armor record with UID: {}", uid);
       continue;
     }
-    Save::V1::ArmorRecordEntry entry{.uid = uid};
+    ArmorRecordEntry entry{.uid = uid};
     for (const auto& material : val.appliedMaterials) {
       entry.appliedMaterials.emplace_back(material);
     }
@@ -529,7 +578,7 @@ void ArmorFactory::ResetMaterials(RE::TESObjectREFR* refr) {
         ClearItemDisplayName(item->data);
         return VisitControl::kContinue;
       });
-  updateStack_.push({.refHandle = refr->GetHandle()});
+  updateStack_.push({.refr = refr});
 }
 
 void ArmorFactory::VisitAppliedMaterials(
@@ -537,10 +586,9 @@ void ArmorFactory::VisitAppliedMaterials(
   if (uid == NULL) {
     return;
   }
-  auto* armo = NiOverride::GetFormFromUniqueID()(RE::StaticFunctionTag{}, uid)
-                   ->As<RE::TESObjectARMO>();
+  auto* armo = Helpers::GetFormFromUniqueID(uid);
   if (!armo) {
-    logger::warn("No armor form found for UID: {}", uid);
+    _TRACE("ARMO record not found for UID: {}", uid);
     knownArmorMaterials_.erase(uid);
     return;  // No armor form found for the given UID
   }
@@ -555,7 +603,7 @@ void ArmorFactory::VisitAppliedMaterials(
               armo->GetFormID(), materialName)) {
         BREAK_IF_STOP(visitor, materialName.c_str(), *config);
       } else {
-        logger::warn("Material config not found for name: {}", materialName);
+        _WARN("Material config not found for name: {}", materialName);
       }
     }
   }

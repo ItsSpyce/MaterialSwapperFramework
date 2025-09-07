@@ -35,11 +35,11 @@ void MainWindow::Initialize() {
   router->UseRoute("/debugger", [] {
     Pages::DebuggerPage({.actor = RE::PlayerCharacter::GetSingleton()});
   });
+  SetWindowSize({1500, 600});
 }
 
-void MainWindow::Draw() {
+void MainWindow::Render() const {
   ConfigureStyles();
-  ImGui::SetNextWindowSize(ImVec2{1500, 600}, ImGuiCond_Always);
   ImGui_Window("MaterialSwapperFramework", NULL, ImGuiWindowFlags_NoTitleBar) {
     ImGui::Text("Material Swapper Framework");
     ImGui::Separator();
@@ -55,17 +55,5 @@ void MainWindow::Draw() {
     ImGui::SameLine();
     ImGui_Child("Content") { Router::GetSingleton()->operator()(); }
   }
-}
-
-bool MainWindow::IsShowKey(RE::InputEvent* event) {
-  if (const auto buttonEvent = event->AsButtonEvent()) {
-    return buttonEvent->IsDown() &&
-           buttonEvent->GetDevice() == RE::INPUT_DEVICE::kKeyboard &&
-           (buttonEvent->GetIDCode() == RE::BSWin32KeyboardDevice::Keys::kF10 ||
-            (buttonEvent->GetIDCode() ==
-                 RE::BSWin32KeyboardDevice::Keys::kEscape &&
-             IsOpen()));
-  }
-  return false;
 }
 }  // namespace UI

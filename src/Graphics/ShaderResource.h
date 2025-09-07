@@ -5,8 +5,12 @@
 namespace Graphics {
 class ShaderResource : public ShaderFile {
  public:
-  ShaderResource(const char* filename, const char* entryPoint)
-      : filename_(filename), entryPoint_(entryPoint) {}
+  ShaderResource(const char* filename, const char* entryPoint);
+
+  virtual void* GetBuffer() const;
+	virtual size_t GetBufferSize() const;
+	virtual const char* GetSourceName() const;
+	virtual const char* GetEntryPoint() const;
 
  private:
   string entryPoint_;

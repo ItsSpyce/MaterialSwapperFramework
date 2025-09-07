@@ -4,7 +4,7 @@
 #include "Save/Save.h"
 
 namespace Factories {
-class ArmorFactory : public Singleton<ArmorFactory> {
+class ArmorFactory : public Singleton<ArmorFactory>, public ISaveable {
  public:
   void ResetMaterials(RE::TESObjectREFR* refr);
   void OnUpdate();
@@ -14,8 +14,8 @@ class ArmorFactory : public Singleton<ArmorFactory> {
   bool ApplySavedMaterials(RE::TESObjectREFR* refr, RE::TESObjectARMO* armo);
   void VisitAppliedMaterials(
       int uid, const Visitor<const char*, const MaterialConfig&>& visitor);
-  void LoadFromSave(Save::SaveData& saveData);
-  void WriteToSave(Save::SaveData& saveData);
+  void ReadFromSave(Save::SaveData& saveData) override;
+  void WriteToSave(Save::SaveData& saveData) const override;
 
  private:
   struct ArmorMaterialRecord {
@@ -23,10 +23,10 @@ class ArmorFactory : public Singleton<ArmorFactory> {
   };
 
   struct UpdateRequest {
-    RE::ObjectRefHandle refHandle;
+    RE::TESObjectREFR* refr;
     RE::TESObjectARMO* armo;
   };
-  unordered_map<int, ArmorMaterialRecord> knownArmorMaterials_;
+  unordered_map<u32, ArmorMaterialRecord> knownArmorMaterials_;
   stack<UpdateRequest> updateStack_;
 };
 }  // namespace Factories

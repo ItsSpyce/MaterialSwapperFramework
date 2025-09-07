@@ -15,7 +15,8 @@
         "VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
         "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake",
         "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "WITH_PANDAGL_IMAGE":  "OFF"
       }
     },
     {

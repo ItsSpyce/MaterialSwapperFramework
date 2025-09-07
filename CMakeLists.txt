@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(MaterialSwapperFramework VERSION 0.0.9.2)
+project(MaterialSwapperFramework VERSION 0.1.2.1)
 
 set(CMAKE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party)
+set(LIBXML2_WITH_ICONV OFF CACHE BOOL "Build libxml2 with iconv support")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 if(DEFINED ENV{SKYRIM_FOLDER} AND IS_DIRECTORY "$ENV{SKYRIM_FOLDER}/Data")
@@ -20,7 +22,8 @@ set(CommonLibName "CommonLibSSE")
 set(GameVersion "Skyrim")
 
 include(CommonLibSSE)
-include(FetchContent)
+include(CPM)
+include(nuklear)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
 
@@ -28,7 +31,6 @@ option(ENABLE_SKYRIM_SE "Enable support for Skyrim SE in the dynamic runtime fea
 option(ENABLE_SKYRIM_AE "Enable support for Skyrim AE in the dynamic runtime feature." ON)
 option(ENABLE_SKYRIM_VR "Enable support for Skyrim VR in the dynamic runtime feature." OFF)
 set(BUILD_TESTS OFF)
-
 
 if(MSVC)
     add_compile_definitions(
@@ -42,19 +44,14 @@ if(MSVC)
     endif()
 endif()
 
+set(LcuiPath ${CMAKE_LIB_DIR}/lcui)
+
 add_subdirectory(${CommonLibPath} EXCLUDE_FROM_ALL)
 
-FetchContent_Declare(
-  glaze
-  GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG v5.5.5
-  GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(glaze)
+CPMAddPackage("gh:stephenberry/glaze@5.5.5")
 
 find_package(spdlog CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
-find_package(Freetype REQUIRED)
 find_path(SRELL_INCLUDE_DIRS "srell.hpp")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -71,7 +68,6 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_link_libraries(${PROJECT_NAME} PRIVATE
   spdlog::spdlog
   imgui::imgui
-  Freetype::Freetype
   glaze::glaze
 )
 

@@ -5,6 +5,7 @@
 #include "Hooks.h"
 #include "Events.h"
 #include "MaterialPapyrus.h"
+#include "ModState.h"
 
 static void InitializeLogging() {
   static bool initialized = false;
@@ -44,10 +45,11 @@ static void HandleMessage(SKSE::MessagingInterface::Message* msg) {
     Events::Configure();
   }
   if (msg->type == SKSE::MessagingInterface::kDataLoaded) {
-    logger::info("Reading form editor IDs from plugins...");
+    _INFO("Reading form editor IDs from plugins...");
     EditorIDCache::HydrateEditorIDCache();
-    logger::info("Reading materials from disk...");
+    _INFO("Reading materials from disk...");
     MaterialLoader::ReadMaterialsFromDisk(true);
+    ModState::GetSingleton()->SetReady(true);
   }
 }
 
@@ -56,13 +58,13 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
   InitializeLogging();
 
   SKSE::GetMessagingInterface()->RegisterListener(HandleMessage);
-  logger::info("Registering UI hooks...");
-  UI::RegisterHooks();
-  logger::info("Installing hooks...");
+  _INFO("Registering UI hooks...");
+  UI::Hooks::Install();
+  _INFO("Installing hooks...");
   Hooks::Install();
-  logger::info("Registering Papyrus functions...");
+  _INFO("Registering Papyrus functions...");
   SKSE::GetPapyrusInterface()->Register(MaterialPapyrus::RegisterFunctions);
-  logger::info("Registering save hooks...");
+  _INFO("Registering save hooks...");
   Save::Install();
 
   return true;

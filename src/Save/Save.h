@@ -12,3 +12,9 @@ void RevertCallback(SKSE::SerializationInterface* iface);
 
 bool Install();
 }  // namespace Save
+
+class ISaveable {
+ public:
+  virtual void ReadFromSave(Save::SaveData& saveData) = 0;
+  virtual void WriteToSave(Save::SaveData& saveData) const = 0;
+};

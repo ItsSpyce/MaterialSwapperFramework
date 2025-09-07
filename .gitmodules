@@ -7,4 +7,4 @@
 	url = https://github.com/Immediate-Mode-UI/Nuklear.git
 [submodule "lib/lcui"]
 	path = lib/lcui
-	url = https://github.com/lc-soft/LCUI/tree/develop
+	url = https://github.com/ItsSpyce/LCUI.git

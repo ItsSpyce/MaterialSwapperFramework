@@ -143,7 +143,7 @@ inline std::vector<RE::BSTriShape*> GetShapesWithDefaultMaterials(
 inline RE::BSTriShape* GetTriShape(RE::TESObjectREFR* refr,
                                    const char* nodeName) {
   if (!refr) {
-    logger::error("GetNode called with null refr");
+    logger::error("GetNode called with null refrHandle");
     return nullptr;
   }
   RE::BSTriShape* geometry = nullptr;

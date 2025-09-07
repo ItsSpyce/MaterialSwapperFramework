@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NifHelpers.h"
+#include "UI/ImGui_Sugar.h"
 
 namespace UI::Pages {
 struct DebuggerPageProps {
@@ -18,7 +19,8 @@ inline void DebuggerPage(const DebuggerPageProps& props) {
     auto* nif = props.actor->Get3D();
     if (nif) {
       NifHelpers::VisitNiObject(nif, [&](RE::NiAVObject* child) {
-        ImGui_TreeNodeEx(child->name.c_str(), ImGuiTreeNodeFlags_Leaf, "Node: %s", child->name.c_str()) {
+        ImGui_TreeNodeEx(child->name.c_str(), ImGuiTreeNodeFlags_Leaf,
+                         "Node: %s", child->name.c_str()) {
           if (auto* triShape = child->AsTriShape()) {
             if (auto* shaderProperty =
                     NifHelpers::GetShaderProperty(triShape)) {
@@ -38,8 +40,8 @@ inline void DebuggerPage(const DebuggerPageProps& props) {
                             ? shaderMaterial->normalTexture->name.c_str()
                             : "None");
                     if (auto* envmapMaterial =
-                            shaderMaterial
-                                ->As<RE::BSLightingShaderMaterialEnvmap>()) {
+                            skyrim_cast<RE::BSLightingShaderMaterialEnvmap*>(
+                                shaderMaterial)) {
                       ImGui::Text("EnvMap: %s",
                                   envmapMaterial->envTexture
                                       ? envmapMaterial->envTexture->name.c_str()
@@ -51,8 +53,8 @@ inline void DebuggerPage(const DebuggerPageProps& props) {
                               : "None");
                     }
                     if (auto* glowmapMaterial =
-                            shaderMaterial
-                                ->As<RE::BSLightingShaderMaterialGlowmap>()) {
+                            skyrim_cast<RE::BSLightingShaderMaterialGlowmap*>(
+                                shaderMaterial)) {
                       ImGui::Text(
                           "GlowMap: %s",
                           glowmapMaterial->glowTexture

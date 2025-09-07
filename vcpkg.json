@@ -13,9 +13,13 @@
     "srell",
     {
       "name": "imgui",
-      "version>=": "1.91.8",
-      "features": [ "dx11-binding", "win32-binding", "freetype", "wchar32" ]
-    }
+      "features": [ "dx11-binding", "win32-binding" ],
+      "version>=": "1.91.8"
+    },
+    "freetype",
+    "libiconv",
+    "libxml2",
+    "libyaml"
   ],
   "builtin-baseline": "cc288af760054fa489574bd8e22d05aa8fa01e5c"
 }

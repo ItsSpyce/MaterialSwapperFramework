@@ -18,7 +18,7 @@ void MaterialsPage(const MaterialsPageProps&) {
     ImGui_TabBar("MaterialsTabBar") {
       ImGui_TabItem("Armor") {
         ImGui_Table("ArmorTable", 2, ImGuiTableFlags_BordersInnerH,
-                    {ImGui::GetContentRegionAvail().x * .75f, 0.f}) {
+                    {ImGui::GetContentRegionAvail().x * .55f, 0.f}) {
           Helpers::VisitEquippedInventoryItems(
               actor,
               [&](const std::unique_ptr<Helpers::InventoryItem>& invItem) {
@@ -62,7 +62,7 @@ void MaterialsPage(const MaterialsPageProps&) {
 
         if (selectedArmor) {
           ImGui_Table("MaterialsTable", 1, ImGuiTableFlags_BordersInnerH,
-                      {ImGui::GetContentRegionAvail().x * 0.25f, 0.f}) {
+                      {ImGui::GetContentRegionAvail().x * 0.45f, 0.f}) {
             MaterialLoader::VisitMaterialFilesForFormID(
                 selectedArmor->GetFormID(),
                 [&](const MaterialConfig& material) {

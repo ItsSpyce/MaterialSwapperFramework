@@ -1,7 +1,5 @@
 #pragma once
 
-#include "MathTypes.h"
-
 class MaterialStream {
  public:
   explicit MaterialStream(IStreamPtr&& stream) : stream_(std::move(stream)) {}
