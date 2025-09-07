@@ -1,3 +1,10 @@
 [submodule "lib/commonlibsse-ng"]
 	path = lib/commonlibsse-ng
-	url = https://github.com/CharmedBaryon/CommonLibSSE-NG.git
+	url = https://github.com/alandtse/CommonLibVR.git
+	branch = ng
+[submodule "lib/nuklear"]
+	path = lib/nuklear
+	url = https://github.com/Immediate-Mode-UI/Nuklear.git
+[submodule "lib/lcui"]
+	path = lib/lcui
+	url = https://github.com/lc-soft/LCUI/tree/develop
