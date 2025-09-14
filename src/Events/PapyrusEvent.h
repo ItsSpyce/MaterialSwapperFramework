@@ -1,7 +1,7 @@
 #pragma once
 
 namespace Events {
-class PapyrusEvents : public RE::BSTEventSink<SKSE::ModCallbackEvent> {
+class PapyrusEvent : public RE::BSTEventSink<SKSE::ModCallbackEvent> {
  public:
   RE::BSEventNotifyControl ProcessEvent(
       const SKSE::ModCallbackEvent* event,
@@ -9,8 +9,8 @@ class PapyrusEvents : public RE::BSTEventSink<SKSE::ModCallbackEvent> {
     return RE::BSEventNotifyControl::kContinue;
   }
 
-  static PapyrusEvents* Configure() {
-    const auto playerEvents = new PapyrusEvents();
+  static PapyrusEvent* Configure() {
+    const auto playerEvents = new PapyrusEvent();
     if (const auto modCallbackDispatcher = SKSE::GetModCallbackEventSource()) {
       modCallbackDispatcher->AddEventSink<SKSE::ModCallbackEvent>(playerEvents);
     }

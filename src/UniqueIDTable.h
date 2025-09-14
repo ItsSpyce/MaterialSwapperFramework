@@ -1,10 +1,13 @@
 #pragma once
+
 #include "Save/Save.h"
 
 using namespace Save::V1;
 
-class UniqueIDTable : public Singleton<UniqueIDTable>, public ISaveable {
-  static constexpr u32 MAX_SAVE_LIFE = 500;  // seems reasonable enough?
+class UniqueIDTable : public Singleton<UniqueIDTable>,
+                      public ISaveable,
+                      public RE::BSTEventSink<RE::TESContainerChangedEvent> {
+  static constexpr u32 MAX_SAVE_LIFE = 100;  // seems reasonable enough?
   template <typename T, typename Container = std::deque<T> >
   class iterable_queue : public std::queue<T, Container> {
    public:
@@ -15,101 +18,55 @@ class UniqueIDTable : public Singleton<UniqueIDTable>, public ISaveable {
   };
 
  public:
-  void ReadFromSave(Save::SaveData& data) override {
-    rows_.clear();
-    for (const auto& row : data.uniqueIDHistory.rows) {
-      row.savesSinceLastAccess++;
-      if (row.savesSinceLastAccess > MAX_SAVE_LIFE) {
-        _TRACE("Removing stale UID: {} for owner: {}, form: {}", row.uid,
-               row.ownerID, row.editorID);
-        freeList_.emplace(row.uid);
-        continue;
-      }
-      rows_[row.uid] = row;
-    }
-    nextUID_ = data.uniqueIDHistory.nextUID;
-  }
+  UniqueIDTable();
 
-  void WriteToSave(Save::SaveData& data) const override {
-    auto values = rows_ | views::values;
-    data.uniqueIDHistory.rows = vector(values.begin(), values.end());
-    data.uniqueIDHistory.nextUID = nextUID_;
-    data.uniqueIDHistory.freedUIDs = vector(freeList_.begin(), freeList_.end());
-  }
+  RE::BSEventNotifyControl ProcessEvent(
+      const RE::TESContainerChangedEvent* event,
+      RE::BSTEventSource<RE::TESContainerChangedEvent>* src)
+      override;
+  void ReadFromSave(Save::SaveData& data) override;
+  void WriteToSave(Save::SaveData& data) const override;
+  u16 GetUID(RE::TESObjectREFR* refr, string& editorID, bool init);
 
-  size_t GetUID(RE::TESObjectREFR* refr, string& editorID, bool init) {
-    if (!refr) {
-      return 0;
-    }
-    if (editorID.empty()) {
-      _ERROR("Empty editor ID provided for reference: {}", refr->GetFormID());
-      return 0;
-    }
-    auto ownerID = refr->GetFormID();
-    for (const auto& [uid, row] : rows_) {
-      if (row.ownerID == ownerID && row.editorID == editorID) {
-        row.savesSinceLastAccess = 0;
-        return uid;
-      }
-    }
-    if (!init) {
-      return 0;
-    }
-    size_t uid;
-    if (!freeList_.empty()) {
-      uid = freeList_.front();
-      freeList_.pop();
-      _TRACE("Reusing freed UID: {} for owner: {}, form: {}", uid, ownerID,
-             editorID);
-    } else {
-      uid = nextUID_++;
-      _TRACE("Assigning new UID: {} for owner: {}, form: {}", uid, ownerID,
-             editorID);
-    }
-    if (uid == 0) {
-      _ERROR("UID wrapped around to 0, UID list exhausted!");
-      RE::DebugMessageBox(
-          "Material Swapper Framework: UID list exhausted! Report this to the "
-          "author.");
-      return 0;
-    }
-    rows_.emplace(uid, UniqueIDRow{.uid = uid,
-                                   .ownerID = ownerID,
-                                   .editorID = string(editorID),
-                                   .savesSinceLastAccess = 0});
-    string rowsJson;
-    if (auto err = glz::write_json(rows_, rowsJson)) {
-      auto cleanedError = glz::format_error(err);
-      _ERROR("Failed to serialize UID table to JSON: {}", cleanedError);
-    } else {
-      _DEBUG("Current UID table: {}", rowsJson);
-    }
-    return uid;
-  }
-
-  const string& GetEditorID(u32 uid) {
+  const string& GetEditorID(RE::FormID formID, u16 uid) {
     static constexpr string empty = "";
     if (uid == 0) {
       return empty;
     }
-    if (auto it = rows_.find(uid); it != rows_.end()) {
+    auto full = formID & 0xFFFF0000 | uid;
+    if (auto it = rows_.find(full); it != rows_.end()) {
       return it->second.editorID;
     }
     return empty;
   }
 
-  RE::FormID GetOwnerID(u32 uid) {
+  RE::FormID GetOwnerID(RE::FormID formID, u16 uid) {
     if (uid == 0) {
       return 0;
     }
-    if (auto it = rows_.find(uid); it != rows_.end()) {
+    auto full = formID & 0xFFFF0000 | uid;
+    if (auto it = rows_.find(full); it != rows_.end()) {
       return it->second.ownerID;
     }
     return 0;
   }
 
  private:
-  unordered_map<size_t, UniqueIDRow> rows_;
-  iterable_queue<size_t> freeList_;
-  size_t nextUID_ = 1;
+  unordered_map<UniqueIDFull, UniqueIDRow> rows_;
+  unordered_map<RE::FormID, UniqueID> nextUID_;
+  unordered_map<RE::FormID, iterable_queue<UniqueID>> freeLists_;
+
+  u16 GetNextAvailableUID(RE::FormID formID) {
+    auto& freeList = freeLists_[formID];
+    if (!freeList.empty()) {
+      auto uid = freeList.front();
+      freeList.pop();
+      return uid;
+    }
+    auto& next = nextUID_[formID];
+    if (next == 0) {
+      next = 1;  // Start from 1, as 0 is reserved for "no UID"
+    }
+    return next++;
+  }
 };

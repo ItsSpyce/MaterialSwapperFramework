@@ -2,7 +2,6 @@
 
 #include "Hooks/UpdatePlayerHook.h"
 #include "Hooks/CacheEditorIDsHook.h"
-#include "Hooks/Load3DHook.h"
 
 namespace Hooks {
 

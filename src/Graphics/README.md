@@ -1,1 +1,0 @@
-(A lot of this is taken from expired's work with RaceMenu)[https://github.com/expired6978/SKSE64Plugins]

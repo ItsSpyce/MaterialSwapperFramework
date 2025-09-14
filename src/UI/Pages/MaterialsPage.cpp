@@ -3,6 +3,7 @@
 #include "Factories/ArmorFactory.h"
 #include "Helpers.h"
 #include "UI/ImGui_Stylus.h"
+#include "Models/MaterialConfig.h"
 
 namespace UI::Pages {
 void MaterialsPage(const MaterialsPageProps&) {
@@ -21,7 +22,7 @@ void MaterialsPage(const MaterialsPageProps&) {
                     {ImGui::GetContentRegionAvail().x * .55f, 0.f}) {
           Helpers::VisitEquippedInventoryItems(
               actor,
-              [&](const std::unique_ptr<Helpers::InventoryItem>& invItem) {
+              [&](const Helpers::InventoryItem* invItem) {
                 if (auto armo =
                         invItem->data->object->As<RE::TESObjectARMO>()) {
                   ImGui_Row {

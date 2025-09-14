@@ -3,11 +3,19 @@
 #include <glaze/glaze.hpp>
 
 namespace Save::V1 {
+enum class UniqueItemLocation : u8 {
+  kInventory = 0,
+  kWorld = 1,
+  kContainer = 2,
+};
+
 struct UniqueIDRow {
-  size_t uid;
+  u16 uid;
   RE::FormID ownerID;
   string editorID;
   mutable u32 savesSinceLastAccess;
+  u16 index;  // useless right now, but might be useful later
+  UniqueItemLocation location;
 };
 
 struct SaveDataHeader {
@@ -23,8 +31,8 @@ struct ArmorRecordEntry {
 struct UniqueIDHistory {
   static constexpr uint32_t IDENTIFIER = 'UIDT';
   vector<UniqueIDRow> rows{};
-  vector<size_t> freedUIDs{};
-  size_t nextUID{1};
+  vector<u16> freedUIDs{};
+  u16 nextUID{1};
 };
 
 struct SaveData {

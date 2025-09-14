@@ -1,15 +1,15 @@
 #pragma once
 
-#include "Events/PlayerEvents.h"
-#include "Events/PapyrusEvents.h"
-#include "Events/NiNodeUpdateEvents.h"
-#include "Events/CellEvents.h"
+#include "Events/PlayerEquipEvent.h"
+#include "Events/PapyrusEvent.h"
+#include "Events/NiNodeUpdateEvent.h"
+#include "Events/InventoryOpenEvent.h"
 
 namespace Events {
 inline void Configure() noexcept {
-  PlayerEvents::Configure();
-  PapyrusEvents::Configure();
-  NiNodeUpdateEvents::Configure();
-  // CellEvents::Configure();
+  PlayerEquipEvent::Configure();
+  PapyrusEvent::Configure();
+  NiNodeUpdateEvent::Configure();
+  InventoryOpenEvent::Configure();
 }
 }

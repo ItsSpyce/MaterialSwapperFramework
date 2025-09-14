@@ -10,7 +10,7 @@
 #define NK_IMPLEMENTATION
 #define NK_D3D11_IMPLEMENTATION
 #define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_DEFAULT_ALLOCATOR 
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
 #define NK_STANDARD_VARARGS
 #define NK_STANDARD_BOOL
 #define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
@@ -26,11 +26,12 @@
 
 #include <RE/Skyrim.h>
 #include <REL/Relocation.h>
-#include <SKSE/SKSE.h>
 #include <REX/REX/Singleton.h>
+#include <SKSE/SKSE.h>
 #include <d3d11.h>
 #include <dxgi.h>
 #include <fmt/ostream.h>
+#include <wrl/client.h>
 
 #include <algorithm>
 #include <bs_thread_pool.hpp>
@@ -41,6 +42,9 @@
 
 template <class T>
 using Singleton = REX::Singleton<T>;
+
+using Microsoft::WRL::ComPtr;
+
 namespace logger = SKSE::log;
 using namespace std;
 using namespace std::literals;
@@ -64,7 +68,8 @@ void write_thunk_call() {
   SKSE::AllocTrampoline(14);
 
   auto& trampoline = SKSE::GetTrampoline();
-  T::func = trampoline.write_call<5>(T::rel.address() + T::offset.offset(), T::thunk);
+  T::func =
+      trampoline.write_call<5>(T::rel.address() + T::offset.offset(), T::thunk);
 }
 
 template <class F, class T>
@@ -87,12 +92,6 @@ constexpr auto enum_range(auto first, auto last) {
     logger::error("Failed condition: {}", #_VAR); \
     return false;                                 \
   }
-
-#ifdef SKYRIM_AE
-#define OFFSET(se, ae) ae
-#else
-#define OFFSET(se, ae) se
-#endif]
 
 template <typename... Args>
 using Visitor = function<RE::BSVisit::BSVisitControl(Args...)>;
@@ -133,3 +132,8 @@ using Visitor = function<RE::BSVisit::BSVisitControl(Args...)>;
 #define OFFSET_OF(_TYPE, _MEMBER) offsetof(_TYPE, _MEMBER)
 #define FIELD_SIZE(_TYPE, _MEMBER) sizeof(((_TYPE*)0)->_MEMBER)
 #define BITFIELD(_N) :_N
+#define NOT_IMPLEMENTED                                   \
+  {                                                       \
+    _ERROR("Function not implemented: {}", __FUNCTION__); \
+    throw std::exception("Function not implemented");     \
+  }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MaterialConfig.h"
+#include "Models/MaterialConfig.h"
 
 namespace Factories {
 

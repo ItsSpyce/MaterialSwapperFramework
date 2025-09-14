@@ -3,7 +3,7 @@
 #include "Factories.h"
 
 namespace Events {
-class NiNodeUpdateEvents : public RE::BSTEventSink<SKSE::NiNodeUpdateEvent> {
+class NiNodeUpdateEvent : public RE::BSTEventSink<SKSE::NiNodeUpdateEvent> {
 public:
   RE::BSEventNotifyControl ProcessEvent(
       const SKSE::NiNodeUpdateEvent* event,
@@ -18,8 +18,8 @@ public:
     });
     return RE::BSEventNotifyControl::kContinue;
   }
-  static NiNodeUpdateEvents* Configure() {
-    auto* events = new NiNodeUpdateEvents();
+  static NiNodeUpdateEvent* Configure() {
+    auto* events = new NiNodeUpdateEvent();
     auto* src = SKSE::GetNiNodeUpdateEventSource();
     src->AddEventSink(events);
     return events;

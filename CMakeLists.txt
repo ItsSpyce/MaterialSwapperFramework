@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(MaterialSwapperFramework VERSION 0.1.2.1)
+project(MaterialSwapperFramework VERSION 0.1.4.1)
 
 set(CMAKE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party)
@@ -24,6 +24,7 @@ set(GameVersion "Skyrim")
 include(CommonLibSSE)
 include(CPM)
 include(nuklear)
+include(CompileShaders)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
 
@@ -53,6 +54,8 @@ CPMAddPackage("gh:stephenberry/glaze@5.5.5")
 find_package(spdlog CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_path(SRELL_INCLUDE_DIRS "srell.hpp")
+find_package(directxtex CONFIG REQUIRED)
+find_package(directxtk CONFIG REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories(${SRELL_INCLUDE_DIRS})
@@ -69,7 +72,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   spdlog::spdlog
   imgui::imgui
   glaze::glaze
+  Microsoft::DirectXTex
+  Microsoft::DirectXTK
 )
+compile_shaders()
 
 # When your SKSE .dll is compiled, this will automatically copy the .dll into your mods folder.
 # Only works if you configure DEPLOY_ROOT above (or set the SKYRIM_MODS_FOLDER environment variable)
@@ -84,15 +90,17 @@ if(DEFINED OUTPUT_FOLDER)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Material Swapper Framework")
     file(MAKE_DIRECTORY "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
 
+    # TODO: make this actually work with the res folder
+
     add_custom_command(
         TARGET "${PROJECT_NAME}"
         POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E make_directory "${DLL_FOLDER}"
+        COMMAND "${CMAKE_COMMAND}" -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/res" "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/SKSE/Plugins/${PROJECT_NAME}"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${DLL_FOLDER}/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_PDB_FILE:${PROJECT_NAME}>" "${DLL_FOLDER}/$<TARGET_PDB_FILE_NAME:${PROJECT_NAME}>"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_PDB_FILE:${PROJECT_NAME}>" "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/SKSE/Plugins/$<TARGET_PDB_FILE_NAME:${PROJECT_NAME}>"
-        COMMAND "${CMAKE_COMMAND}" -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/res" "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/SKSE/Plugins/${PROJECT_NAME}"
         COMMAND "${CMAKE_COMMAND}" -E tar "cf" "${CMAKE_BINARY_DIR}/${PROJECT_NAME}-${PROJECT_VERSION}.zip" --format=zip "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}"
         VERBATIM
     )

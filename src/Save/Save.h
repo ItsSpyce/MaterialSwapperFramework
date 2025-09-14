@@ -1,6 +1,7 @@
 #pragma once
 
 #include "V1.h"
+#include "V2.h"
 
 namespace Save {
 using SaveData = V1::SaveData;

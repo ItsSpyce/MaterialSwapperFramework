@@ -1,9 +1,7 @@
 #pragma once
 
-#include "MaterialConfig.h"
-#include "Models/MaterialFileBase.h"
-
 struct MaterialRecord;
+struct MaterialConfig;
 
 class MaterialLoader {
  public:

@@ -3,7 +3,7 @@
 #include "Factories.h"
 
 namespace Events {
-class PlayerEvents : public RE::BSTEventSink<RE::TESEquipEvent> {
+class PlayerEquipEvent : public RE::BSTEventSink<RE::TESEquipEvent> {
   using ArmorFactory = Factories::ArmorFactory;
 
  public:
@@ -27,8 +27,8 @@ class PlayerEvents : public RE::BSTEventSink<RE::TESEquipEvent> {
     return RE::BSEventNotifyControl::kContinue;
   }
 
-  static PlayerEvents* Configure() {
-    const auto playerEvents = new PlayerEvents();
+  static PlayerEquipEvent* Configure() {
+    const auto playerEvents = new PlayerEquipEvent();
     if (const auto eventDispatcher =
             RE::ScriptEventSourceHolder::GetSingleton()) {
       eventDispatcher->AddEventSink<RE::TESEquipEvent>(playerEvents);

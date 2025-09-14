@@ -4,7 +4,7 @@
 
 #include "Filesystem.h"
 #include "Helpers.h"
-#include "MaterialConfig.h"
+#include "Models/MaterialConfig.h"
 #include "Models/MaterialRecord.h"
 #include "StringHelpers.h"
 

@@ -1,20 +1,22 @@
 #include "ArmorFactory.h"
 
+#include <DirectXTex.h>
+#include <d3d11.h>
 #include <fmt/format.h>
 
 #include <srell.hpp>
 
-#include "Graphics/D3DDevice.h"
-#include "Graphics/ShaderResource.h"
+#include "Graphics/TextureLoader.h"
 #include "Helpers.h"
+#include "MaterialHelpers.h"
+#include "Models/MaterialConfig.h"
 #include "Models/MaterialRecord.h"
 #include "NifHelpers.h"
+#include "RE/BSTextureSetClone.h"
 #include "RE/Misc.h"
-#include "TintMaskBuilder.h"
 
 using ArmorFactory = Factories::ArmorFactory;
 using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
-using ShaderFlag8 = RE::BSShaderProperty::EShaderPropertyFlag8;
 using Texture = RE::BSShaderTextureSet::Texture;
 using VisitControl = RE::BSVisit::BSVisitControl;
 
@@ -73,98 +75,37 @@ static void SetItemDisplayName(ArmorFactory* factory, RE::TESObjectREFR* refr,
   }
 }
 
+struct DirectXState {
+  ID3D11PixelShader* pixelShader;
+  ID3D11Buffer* constantBuffer;
+  ID3D11ShaderResourceView* srvs[2];
+  ID3D11SamplerState* sampler;
+  ID3D11RenderTargetView* rtv;
+
+  void Release() const {
+    if (pixelShader) {
+      pixelShader->Release();
+    }
+    if (constantBuffer) {
+      constantBuffer->Release();
+    }
+    if (srvs[0]) {
+      srvs[0]->Release();
+    }
+    if (srvs[1]) {
+      srvs[1]->Release();
+    }
+    if (sampler) {
+      sampler->Release();
+    }
+  }
+};
+
 static void ApplyColorToTexture(const RE::NiSourceTexturePtr& texture,
                                 const RE::NiSourceTexturePtr& colorMask,
                                 const MaterialRecord* material) {
-  auto* d3dTexture = texture->rendererTexture->texture;
-  auto& color = material->color;
-  if (!d3dTexture || !color) {
-    return;
-  }
-  auto blendMode = material->colorBlendMode.value_or(ColorBlendMode::kMultiply);
-
-  // Get device/context
-  auto* renderer = RE::BSGraphics::Renderer::GetSingleton();
-  auto* device = (ID3D11Device*)RE::BSGraphics::Renderer::GetDevice();
-  auto* context = (ID3D11DeviceContext*)renderer->GetRuntimeData().context;
-  if (!device || !context) {
-    return;
-  }
-  auto* d3dDevice = new Graphics::D3DDevice(device, context);
-
-  // Load/compile the pixel shader
-  Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
-  Graphics::ShaderFactory shaderFactory;
-  Graphics::ShaderFile* shaderFile = new Graphics::ShaderResource(
-      "Data/SKSE/MaterialSwapperFramework/shaders/ColorBlend.hlsl", "main");
-  shaderFactory.CreatePixelShader(d3dDevice, shaderFile, nullptr, pixelShader);
-
-  // Set up constant buffer
-  struct ColorBlendParams {
-    float blendColor[3];
-    int blendMode;
-  } params;
-  params.blendColor[0] = color->at(0);
-  params.blendColor[1] = color->at(1);
-  params.blendColor[2] = color->at(2);
-  params.blendMode = (blendMode == ColorBlendMode::kMultiply) ? 0 : 1;
-
-  Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
-  D3D11_BUFFER_DESC cbDesc = {};
-  cbDesc.ByteWidth = sizeof(ColorBlendParams);
-  cbDesc.Usage = D3D11_USAGE_DEFAULT;
-  cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-  D3D11_SUBRESOURCE_DATA initData = {&params, 0, 0};
-  device->CreateBuffer(&cbDesc, &initData, &constantBuffer);
-
-  // Set pipeline state
-  context->PSSetShader(pixelShader.Get(), nullptr, 0);
-  context->PSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
-
-  // Create SRVs for input and mask textures
-  Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> inputSRV;
-  Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> maskSRV;
-  device->CreateShaderResourceView(d3dTexture, nullptr,
-                                   inputSRV.GetAddressOf());
-  device->CreateShaderResourceView(colorMask->rendererTexture->texture, nullptr,
-                                   maskSRV.GetAddressOf());
-
-  // Create a sampler state
-  D3D11_SAMPLER_DESC samplerDesc = {};
-  samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-  samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-  samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-  samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
-  samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-  samplerDesc.MinLOD = 0;
-  samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-  Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler;
-  device->CreateSamplerState(&samplerDesc, sampler.GetAddressOf());
-
-  // Bind input texture and sampler
-
-  // Bind input texture and mask texture SRVs
-  ID3D11ShaderResourceView* srvs[2] = {inputSRV.Get(), maskSRV.Get()};
-  context->PSSetShaderResources(0, 2, srvs);
-
-  // Bind sampler
-  context->PSSetSamplers(0, 1, &sampler);
-}
-
-static RE::NiSourceTexture* LoadTexture(const char* path) {
-  auto texturePtr = RE::NiTexturePtr();
-  RE::GetTexture(path, true, texturePtr, false);
-  if (!texturePtr) {
-    _ERROR("Failed to get texture: {}", path);
-    return nullptr;
-  }
-  auto* newTexture = netimmerse_cast<RE::NiSourceTexture*>(&*texturePtr);
-  if (!newTexture) {
-    _ERROR("Failed to cast texture to NiSourceTexture for map: {}", path);
-    return nullptr;
-  }
-
-  return newTexture;
+  D3D11_TEXTURE2D_DESC originalDesc;
+  texture->rendererTexture->texture->GetDesc(&originalDesc);
 }
 
 static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
@@ -181,30 +122,30 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
            bsTriShape->name);
     return false;
   }
-  auto* newMaterial =
-      RE::BSLightingShaderMaterialBase::CreateMaterial(material->GetFeature());
+  auto* newMaterial = RE::BSLightingShaderMaterialBase::CreateMaterial(
+      record->pbr.value_or(false)
+          ? RE::BSLightingShaderMaterial::Feature::kDefault
+          : material->GetFeature());
   if (!newMaterial) {
     _ERROR("Failed to create BSLightingShaderMaterialBase for tri shape: {}",
            bsTriShape->name);
     return false;
   }
-
   newMaterial->CopyMembers(material);
-  lightingShader->SetFlags(
-      ShaderFlag8::kDecal,
-      record->decal.value_or(lightingShader->flags.any(ShaderFlag::kDecal)));
-  lightingShader->SetFlags(ShaderFlag8::kTwoSided,
-                           record->twoSided.value_or(lightingShader->flags.any(
-                               ShaderFlag::kTwoSided)));
+  auto* textureSet = new RE::BSTextureSetClone(newMaterial->GetTextureSet());
+  newMaterial->ClearTextures();
+  MaterialHelpers::ApplyFlags(lightingShader, record);
+
+  if (record->transparency.has_value()) {
+    newMaterial->materialAlpha = *record->transparency;
+  }
   if (record->emitEnabled) {
     if (record->emitColor.has_value()) {
       lightingShader->emissiveColor =
-          new RE::NiColor(record->emitColor->at(0), record->emitColor->at(1),
-                          record->emitColor->at(2));
+          MaterialHelpers::GetColorPtr(*record->emitColor);
     }
     lightingShader->emissiveMult =
         record->emitMult.value_or(lightingShader->emissiveMult);
-    lightingShader->SetFlags(ShaderFlag8::kOwnEmit, true);
   }
   if (alphaProperty) {
     alphaProperty->SetAlphaBlending(
@@ -214,87 +155,40 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
     alphaProperty->alphaThreshold =
         record->alphaTestThreshold.value_or(alphaProperty->alphaThreshold);
   }
-  if (record->diffuseMap.has_value() && !record->diffuseMap->empty()) {
-    auto diffuseTex = RE::NiSourceTexturePtr(LoadTexture(record->diffuseMap->c_str()));
-    newMaterial->diffuseTexture = diffuseTex;
-    if (record->color.has_value()) {
-      RE::NiSourceTexturePtr colorMask;
-      if (record->colorBlendMap.has_value()) {
-        colorMask = RE::NiSourceTexturePtr(LoadTexture(
-            record->colorBlendMap->c_str()));
-      } else {
-        colorMask = nullptr;
-      }
-      ApplyColorToTexture(diffuseTex, colorMask, record);
-    }
-  }
+  textureSet->SetTexturePath(Texture::kDiffuse, record->diffuseMap);
+  textureSet->SetTexturePath(Texture::kNormal, record->normalMap);
+  textureSet->SetTexturePath(Texture::kSpecular, record->specularMap);
+  textureSet->SetTexturePath(Texture::kEnvironment, record->envMap);
+  textureSet->SetTexturePath(Texture::kEnvironmentMask, record->envMapMask);
+  textureSet->SetTexturePath(Texture::kGlowMap, record->glowMap);
+
   if (record->uvOffset.has_value()) {
     newMaterial->texCoordOffset[0] =
-        RE::NiPoint2(record->uvOffset->at(0), record->uvOffset->at(0));
+        MaterialHelpers::GetPoint2(*record->uvOffset);
   }
   if (record->uvScale.has_value()) {
     newMaterial->texCoordScale[0] =
-        RE::NiPoint2(record->uvScale->at(0), record->uvScale->at(1));
+        MaterialHelpers::GetPoint2(*record->uvScale);
   }
-  if (record->normalMap.has_value() && !record->normalMap->empty()) {
-    newMaterial->normalTexture =
-        RE::NiSourceTexturePtr(LoadTexture(record->normalMap->c_str()));
-  }
-
   if (record->specularEnabled) {
-    if (record->smoothSpecMap.has_value() && !record->smoothSpecMap->empty()) {
-      newMaterial->specularBackLightingTexture =
-          RE::NiSourceTexturePtr(LoadTexture(record->smoothSpecMap->c_str()));
+    if (record->specularPower.has_value()) {
+      newMaterial->specularPower = *record->specularPower;
     }
-    newMaterial->specularPower = record->specularPower.value_or(
-        record->backLightPower.value_or(newMaterial->specularPower));
     newMaterial->refractionPower =
         record->refractionPower.value_or(newMaterial->refractionPower);
     newMaterial->specularColorScale =
         record->specularMult.value_or(newMaterial->specularColorScale);
     if (record->specularColor.has_value()) {
-      if (record->specularColor->at(0) > 1.0f) {
-        newMaterial->specularColor =
-            RE::NiColor(record->specularColor->at(0) / 255.0f,
-                        record->specularColor->at(1) / 255.0f,
-                        record->specularColor->at(2) / 255.0f);
-      }
+      newMaterial->specularColor =
+          MaterialHelpers::GetColor(*record->specularColor);
     }
   }
   if (record->rimLighting) {
     newMaterial->rimLightPower =
         record->rimPower.value_or(newMaterial->rimLightPower);
   }
-
-  newMaterial->materialAlpha =
-      record->transparency.value_or(newMaterial->materialAlpha);
-  if (lightingShader->flags.any(ShaderFlag::kEnvMap)) {
-    if (auto* envMaterial =
-            skyrim_cast<RE::BSLightingShaderMaterialEnvmap*>(newMaterial)) {
-      if (record->envMap.has_value() && !record->envMap->empty()) {
-        envMaterial->envTexture =
-            RE::NiSourceTexturePtr(LoadTexture(record->envMap->c_str()));
-      }
-      if (record->envMapMask.has_value() && !record->envMapMask->empty()) {
-        envMaterial->envMaskTexture =
-            RE::NiSourceTexturePtr(LoadTexture(record->envMapMask->c_str()));
-      }
-      envMaterial->envMapScale =
-          record->envMapMaskScale.value_or(envMaterial->envMapScale);
-      newMaterial = envMaterial;
-    }
-  }
-  if (lightingShader->flags.any(ShaderFlag::kGlowMap) &&
-      record->glowMapEnabled && record->glowMap.has_value() &&
-      !record->glowMap->empty()) {
-    auto* glowMaterial =
-        skyrim_cast<RE::BSLightingShaderMaterialGlowmap*>(newMaterial);
-    if (glowMaterial) {
-      glowMaterial->glowTexture =
-          RE::NiSourceTexturePtr(LoadTexture(record->glowMap->c_str()));
-    }
-    newMaterial = glowMaterial;
-  }
+  newMaterial->SetTextureSet(textureSet->Get());
+  newMaterial->OnLoadTextureSet(0, *textureSet);
   lightingShader->SetMaterial(newMaterial, true);
   lightingShader->SetupGeometry(bsTriShape);
   lightingShader->FinishSetupGeometry(bsTriShape);
@@ -305,7 +199,7 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
 
 static bool ApplySavedMaterial_Impl(
     ArmorFactory* factory, RE::Actor* refr,
-    const std::unique_ptr<Helpers::InventoryItem>& equippedItem) {
+    const Helpers::InventoryItem* equippedItem) {
   RETURN_IF_FALSE(refr)
   auto actor = refr->As<RE::Actor>();
   RETURN_IF_FALSE(actor)
@@ -375,7 +269,7 @@ void ArmorFactory::OnUpdate() {
       continue;
     }
     if (armo) {
-      auto uid = Helpers::GetUniqueID(&*actor, armo->GetSlotMask(), false);
+      auto uid = Helpers::GetUniqueID(actor, armo->GetSlotMask(), false);
       if (uid == NULL) {
         continue;
       }
@@ -439,8 +333,7 @@ void ArmorFactory::OnUpdate() {
           });
       // Apply all equipped armor
       Helpers::VisitEquippedInventoryItems(
-          actor->As<RE::Actor>(),
-          [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
+          actor->As<RE::Actor>(), [&](const Helpers::InventoryItem* item) {
             if (item->uid != NULL) {
               ApplySavedMaterial_Impl(this, actor->As<RE::Actor>(), item);
             }
@@ -449,7 +342,7 @@ void ArmorFactory::OnUpdate() {
     }
 
     Helpers::VisitEquippedInventoryItems(
-        actor, [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
+        actor, [&](const Helpers::InventoryItem* item) {
           if (item->uid != NULL) {
             ApplySavedMaterial_Impl(this, actor->As<RE::Actor>(), item);
           }
@@ -572,12 +465,12 @@ void ArmorFactory::ResetMaterials(RE::TESObjectREFR* refr) {
   if (!actor) {
     return;
   }
-  Helpers::VisitEquippedInventoryItems(
-      actor, [&](const std::unique_ptr<Helpers::InventoryItem>& item) {
-        knownArmorMaterials_.erase(item->uid);
-        ClearItemDisplayName(item->data);
-        return VisitControl::kContinue;
-      });
+  Helpers::VisitEquippedInventoryItems(actor,
+                                       [&](const Helpers::InventoryItem* item) {
+                                         knownArmorMaterials_.erase(item->uid);
+                                         ClearItemDisplayName(item->data);
+                                         return VisitControl::kContinue;
+                                       });
   updateStack_.push({.refr = refr});
 }
 
@@ -588,7 +481,6 @@ void ArmorFactory::VisitAppliedMaterials(
   }
   auto* armo = Helpers::GetFormFromUniqueID(uid);
   if (!armo) {
-    _TRACE("ARMO record not found for UID: {}", uid);
     knownArmorMaterials_.erase(uid);
     return;  // No armor form found for the given UID
   }

@@ -93,7 +93,7 @@ struct MaterialRecord {
   optional<string> rootMaterialPath;
   optional<bool> anisoLighting;
   optional<bool> emitEnabled;
-  optional<array<float, 4>> emitColor;
+  optional<array<float, 3>> emitColor;
   optional<float> emitMult;
   optional<bool> modelSpaceNormals;
   optional<bool> externalEmit;
