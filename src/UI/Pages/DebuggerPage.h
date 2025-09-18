@@ -1,7 +1,8 @@
 #pragma once
 
-#include "NifHelpers.h"
 #include "UI/ImGui_Sugar.h"
+#include "Factories/ArmorFactory.h"
+#include "UniqueIDTable.h"
 
 namespace UI::Pages {
 struct DebuggerPageProps {
@@ -13,61 +14,10 @@ inline void DebuggerPage(const DebuggerPageProps& props) {
   // This function will render the debugger page
   ImGui::Text("Debugger Page");
   ImGui::Separator();
-  ImGui_Child("NifInspection") {
-    ImGui::Text("NIF Inspection");
-    ImGui::Text("Actor: %s", props.actor ? props.actor->GetName() : "None");
-    auto* nif = props.actor->Get3D();
-    if (nif) {
-      NifHelpers::VisitNiObject(nif, [&](RE::NiAVObject* child) {
-        ImGui_TreeNodeEx(child->name.c_str(), ImGuiTreeNodeFlags_Leaf,
-                         "Node: %s", child->name.c_str()) {
-          if (auto* triShape = child->AsTriShape()) {
-            if (auto* shaderProperty =
-                    NifHelpers::GetShaderProperty(triShape)) {
-              ImGui_TreeNodeEx("BSLightingShaderProperty") {
-                if (auto* shaderMaterial =
-                        skyrim_cast<RE::BSLightingShaderMaterial*>(
-                            shaderProperty->material)) {
-                  ImGui_TreeNodeEx("Textures") {
-                    ImGui::Text(
-                        "Diffuse: %s",
-                        shaderMaterial->diffuseTexture
-                            ? shaderMaterial->diffuseTexture->name.c_str()
-                            : "None");
-                    ImGui::Text(
-                        "Normal: %s",
-                        shaderMaterial->normalTexture
-                            ? shaderMaterial->normalTexture->name.c_str()
-                            : "None");
-                    if (auto* envmapMaterial =
-                            skyrim_cast<RE::BSLightingShaderMaterialEnvmap*>(
-                                shaderMaterial)) {
-                      ImGui::Text("EnvMap: %s",
-                                  envmapMaterial->envTexture
-                                      ? envmapMaterial->envTexture->name.c_str()
-                                      : "None");
-                      ImGui::Text(
-                          "EnvMask: %s",
-                          envmapMaterial->envMaskTexture
-                              ? envmapMaterial->envMaskTexture->name.c_str()
-                              : "None");
-                    }
-                    if (auto* glowmapMaterial =
-                            skyrim_cast<RE::BSLightingShaderMaterialGlowmap*>(
-                                shaderMaterial)) {
-                      ImGui::Text(
-                          "GlowMap: %s",
-                          glowmapMaterial->glowTexture
-                              ? glowmapMaterial->glowTexture->name.c_str()
-                              : "None");
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      });
+  ImGui_Child("HelperButtons", ImVec2{ImGui::GetContentRegionAvail().x / 2, 0}) {
+    ImGui_Button("Clear save data") {
+      Factories::ArmorFactory::GetSingleton()->ClearAllData();
+      UniqueIDTable::GetSingleton()->ClearAllData();
     }
   }
   // Add more debugging features here as needed

@@ -14,6 +14,7 @@ class TextureLoader : public Singleton<TextureLoader> {
   TextureLoader() {}
 
   RE::NiSourceTexture* LoadTexture(const string& path) {
+    _TRACE("Loading texture: {}", path);
     RE::NiTexturePtr texturePtr;
     RE::GetTexture(path.c_str(), true, texturePtr, false);
     if (!texturePtr) {

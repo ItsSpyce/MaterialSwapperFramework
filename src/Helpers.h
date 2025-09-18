@@ -30,7 +30,7 @@ inline u32 GetFormID(const std::string& name) {
   return 0;  // Return 0 if not found
 }
 
-inline u16 GetUniqueID(RE::TESObjectREFR* refr,
+inline UniqueID GetUniqueID(RE::TESObjectREFR* refr,
                        const RE::InventoryEntryData* data, bool init) {
   if (!refr || !data) {
     return 0;
@@ -39,15 +39,10 @@ inline u16 GetUniqueID(RE::TESObjectREFR* refr,
   if (!armo) {
     return 0;
   }
-  string editorID(EditorIDCache::GetEditorID(armo->GetFormID()));
-  if (editorID.empty()) {
-    _WARN("Armor has no editor ID for form: {}", armo->GetFormID());
-    return 0;
-  }
-  return UniqueIDTable::GetSingleton()->GetUID(refr, editorID, init);
+  return UniqueIDTable::GetSingleton()->GetUID(refr, armo->GetFormID(), init);
 }
 
-inline u16 GetUniqueID(RE::TESObjectREFR* refr,
+inline UniqueID GetUniqueID(RE::TESObjectREFR* refr,
                        RE::BGSBipedObjectForm::BipedObjectSlot slot,
                        bool init) {
   if (!refr && !init) {
@@ -58,36 +53,17 @@ inline u16 GetUniqueID(RE::TESObjectREFR* refr,
     return 0;
   }
   if (auto* armo = actor->GetWornArmor(slot)) {
-    string editorID(EditorIDCache::GetEditorID(armo->GetFormID()));
-    if (editorID.empty()) {
-      _WARN("Armor has no editor ID for slot: {}", static_cast<int>(slot));
-      return 0;
-    }
-    return UniqueIDTable::GetSingleton()->GetUID(refr, editorID, init);
+    return UniqueIDTable::GetSingleton()->GetUID(refr, armo->GetFormID(), init);
   }
   _WARN("No armor found for slot: {}", static_cast<int>(slot));
   return 0;
-}
-
-inline RE::TESForm* GetFormFromUniqueID(u16 uid) {
-  // form ID is stored in the high 16 bits
-  auto editorID = UniqueIDTable::GetSingleton()->GetEditorID(uid);
-  if (editorID.empty()) {
-    return nullptr;
-  }
-  auto formID = EditorIDCache::GetFormID(editorID);
-  if (formID == 0) {
-    _WARN("Form ID not found for editor ID: {}", editorID);
-    return nullptr;
-  }
-  return RE::TESForm::LookupByID(formID);
 }
 
 struct InventoryItem {
   RE::TESBoundObject* object;
   i32 count;
   std::unique_ptr<RE::InventoryEntryData> data;
-  u16 uid;
+  UniqueID uid;
 };
 
 inline void VisitEquippedInventoryItems(
@@ -104,9 +80,9 @@ inline void VisitEquippedInventoryItems(
       }
       if (extraList->HasType(RE::ExtraDataType::kWorn)) {
         auto* inventoryItem = new InventoryItem{.object = obj,
-                                               .count = data.first,
-                                               .data = std::move(data.second),
-                                               .uid = uid};
+                                                .count = data.first,
+                                                .data = std::move(data.second),
+                                                .uid = uid};
         visitor(inventoryItem);
       }
     }
@@ -114,7 +90,7 @@ inline void VisitEquippedInventoryItems(
 }
 
 inline InventoryItem* GetInventoryItemWithFormID(RE::TESObjectREFR* refr,
-                                                 u32 formID) {
+                                                 RE::FormID formID) {
   auto inventoryData = refr->GetInventory(
       [&](const RE::TESBoundObject& obj) { return obj.GetFormID() == formID; });
   for (auto& [obj, data] : inventoryData) {
@@ -132,7 +108,7 @@ inline InventoryItem* GetInventoryItemWithFormID(RE::TESObjectREFR* refr,
 }
 
 inline InventoryItem* GetInventoryItemWithUID(RE::TESObjectREFR* refr,
-                                              u16 uid) {
+                                              UniqueID uid) {
   auto inventoryData = refr->GetInventory();
   for (auto& [obj, data] : inventoryData) {
     if (!obj || !data.second) {

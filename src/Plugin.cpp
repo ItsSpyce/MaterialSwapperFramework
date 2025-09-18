@@ -6,6 +6,7 @@
 #include "Events.h"
 #include "MaterialPapyrus.h"
 #include "ModState.h"
+#include "IO/MaterialLoader.h"
 
 static void InitializeLogging() {
   static bool initialized = false;

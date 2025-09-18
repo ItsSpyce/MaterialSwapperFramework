@@ -1,7 +1,8 @@
 #pragma once
 
-#include "IO/MaterialLoader.h"
 #include "Save/Save.h"
+
+struct MaterialConfig;
 
 namespace Factories {
 class ArmorFactory : public Singleton<ArmorFactory>, public ISaveable {
@@ -12,21 +13,19 @@ class ArmorFactory : public Singleton<ArmorFactory>, public ISaveable {
                      const MaterialConfig* material);
   bool ApplySavedMaterials(RE::TESObjectREFR* refr);
   bool ApplySavedMaterials(RE::TESObjectREFR* refr, RE::TESObjectARMO* armo);
-  void VisitAppliedMaterials(
-      int uid, const Visitor<const char*, const MaterialConfig&>& visitor);
-  void ReadFromSave(Save::SaveData& saveData) override;
-  void WriteToSave(Save::SaveData& saveData) const override;
+  void VisitAppliedMaterials(Save::Types::UniqueID uid,
+                             const Visitor<const char*, const MaterialConfig&>& visitor);
+  void ReadFromSave(SKSE::SerializationInterface* iface, Save::SaveData& saveData) override;
+  void WriteToSave(SKSE::SerializationInterface* iface, Save::SaveData& saveData) const override;
+  void ClearAllData() { knownArmorMaterials_.clear(); }
 
  private:
-  struct ArmorMaterialRecord {
-    vector<string> appliedMaterials;
-  };
 
   struct UpdateRequest {
     RE::TESObjectREFR* refr;
     RE::TESObjectARMO* armo;
   };
-  unordered_map<u32, ArmorMaterialRecord> knownArmorMaterials_;
+  unordered_map<Save::Types::UniqueID, vector<string>> knownArmorMaterials_;
   stack<UpdateRequest> updateStack_;
 };
 }  // namespace Factories

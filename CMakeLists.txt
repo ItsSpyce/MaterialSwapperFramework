@@ -49,7 +49,7 @@ set(LcuiPath ${CMAKE_LIB_DIR}/lcui)
 
 add_subdirectory(${CommonLibPath} EXCLUDE_FROM_ALL)
 
-CPMAddPackage("gh:stephenberry/glaze@5.5.5")
+CPMAddPackage("gh:stephenberry/glaze@5.7.1")
 
 find_package(spdlog CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)

@@ -1,109 +1,37 @@
 #pragma once
 
 #include <glaze/glaze.hpp>
+#include "Types.h"
+#include "Helpers.h"
 
 namespace Save::V1 {
-enum class UniqueItemLocation : u8 {
-  kInventory = 0,
-  kWorld = 1,
-  kContainer = 2,
-};
-
-struct UniqueIDRow {
-  u16 uid;
-  RE::FormID ownerID;
-  string editorID;
-  mutable u32 savesSinceLastAccess;
-  u16 index;  // useless right now, but might be useful later
-  UniqueItemLocation location;
-};
-
-struct SaveDataHeader {
-  static constexpr uint32_t IDENTIFIER = 'HEAD';
-};
-
-struct ArmorRecordEntry {
-  static constexpr uint32_t IDENTIFIER = 'ARMO';
-  size_t uid;
-  std::vector<std::string> appliedMaterials;
-};
-
-struct UniqueIDHistory {
-  static constexpr uint32_t IDENTIFIER = 'UIDT';
-  vector<UniqueIDRow> rows{};
-  vector<u16> freedUIDs{};
-  u16 nextUID{1};
-};
-
 struct SaveData {
   static constexpr u8 VERSION = 1;
-  std::vector<ArmorRecordEntry> armorRecords{};
-  UniqueIDHistory uniqueIDHistory{};
+  std::vector<Types::ArmorRecordEntryV1> armorRecords{};
+  Types::UniqueIDHistoryV1 uniqueIDHistory{};
   u8 version{VERSION};
-
-  template <typename T>
-  uint32_t ReadJsonObject(SKSE::SerializationInterface* iface, T& out) {
-    size_t jsonLength;
-    if (!iface->ReadRecordData(jsonLength)) {
-      _ERROR("Failed to read JSON size from serialization interface");
-      return 0;
-    }
-    string json(jsonLength, '\0');
-    if (!iface->ReadRecordData(json.data(), jsonLength)) {
-      _ERROR("Failed to read JSON data from serialization interface");
-      return 0;
-    }
-    _DEBUG("Deserializing from JSON: {}", json);
-    if (auto err = glz::read_json(out, json)) {
-      auto cleanedError = glz::format_error(err);
-      _ERROR("Failed to read object from JSON: {}", cleanedError);
-      return 0;
-    }
-    return jsonLength;
-  }
-
-  template <typename T>
-  bool WriteJsonObject(SKSE::SerializationInterface* iface,
-                       const T& obj) const {
-    string json{};
-    if (auto err = glz::write_json(obj, json)) {
-      auto cleanedError = glz::format_error(err);
-      _ERROR("Failed to write object to JSON: {}", cleanedError);
-      return false;
-    }
-    _DEBUG("Serialized to JSON: {}", json);
-    if (!iface->WriteRecordData(json.size())) {
-      _ERROR("Failed to write JSON size to serialization interface");
-      return false;
-    }
-    if (!iface->WriteRecordData(json.data(), json.size())) {
-      _ERROR("Failed to write JSON data to serialization interface");
-      return false;
-    }
-    return true;
-  }
 
   void Read(SKSE::SerializationInterface* iface, uint32_t type,
             uint32_t length) {
     _DEBUG("Reading record: type={}, version={}, length={}", type, 1, length);
-    if (type == SaveDataHeader::IDENTIFIER) {
+    if (type == Types::SaveDataHeaderV1::IDENTIFIER) {
       return;  // Header record, nothing to do here
     }
-    if (type == ArmorRecordEntry::IDENTIFIER) {
+    if (type == Types::ArmorRecordEntryV1::IDENTIFIER) {
       _DEBUG("Reading saved armor records");
-      if (!ReadJsonObject(iface, armorRecords)) {
+      if (!Helpers::ReadJsonObject(iface, armorRecords)) {
         _ERROR("Failed to read armor records from serialization interface");
         return;
       }
       _DEBUG("Deserialized {} armor records", armorRecords.size());
     }
-    if (type == UniqueIDHistory::IDENTIFIER) {
+    if (type == Types::UniqueIDHistoryV1::IDENTIFIER) {
       _DEBUG("Reading unique ID history");
       if (!iface->ReadRecordData(uniqueIDHistory.nextUID)) {
         _ERROR("Failed to read unique ID nextUID from serialization interface");
         return;
       }
-      if (!ReadJsonObject(iface, uniqueIDHistory.rows)) {
+      if (!Helpers::ReadJsonObject(iface, uniqueIDHistory.rows)) {
         _ERROR("Failed to read unique ID rows from serialization interface");
         return;
       }
@@ -115,16 +43,16 @@ struct SaveData {
 
   void Write(SKSE::SerializationInterface* iface) const {
     _DEBUG("Writing {} armor records", armorRecords.size());
-    if (!iface->OpenRecord(ArmorRecordEntry::IDENTIFIER, 1)) {
+    if (!iface->OpenRecord(Types::ArmorRecordEntryV1::IDENTIFIER, 1)) {
       _ERROR("Failed to open record for ArmorRecordEntry");
       return;
     }
-    if (!WriteJsonObject(iface, armorRecords)) {
+    if (!Helpers::WriteJsonObject(iface, armorRecords)) {
       _ERROR("Failed to write armor records to serialization interface");
       return;
     }
 
-    if (!iface->OpenRecord(UniqueIDHistory::IDENTIFIER, 1)) {
+    if (!iface->OpenRecord(Types::UniqueIDHistoryV1::IDENTIFIER, 1)) {
       _ERROR("Failed to open record for UniqueIDHistory");
       return;
     }
@@ -133,7 +61,7 @@ struct SaveData {
       _ERROR("Failed to write unique ID nextUID to serialization interface");
       return;
     }
-    if (!WriteJsonObject(iface, uniqueIDHistory.rows)) {
+    if (!Helpers::WriteJsonObject(iface, uniqueIDHistory.rows)) {
       _ERROR("Failed to write unique ID rows to serialization interface");
       return;
     }

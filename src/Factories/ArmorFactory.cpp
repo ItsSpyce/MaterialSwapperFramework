@@ -8,12 +8,14 @@
 
 #include "Graphics/TextureLoader.h"
 #include "Helpers.h"
+#include "IO/MaterialLoader.h"
 #include "MaterialHelpers.h"
 #include "Models/MaterialConfig.h"
 #include "Models/MaterialRecord.h"
 #include "NifHelpers.h"
 #include "RE/BSTextureSetClone.h"
 #include "RE/Misc.h"
+#include "Save/Types.h"
 
 using ArmorFactory = Factories::ArmorFactory;
 using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
@@ -36,7 +38,7 @@ static void ClearItemDisplayName(
 }
 
 static void SetItemDisplayName(ArmorFactory* factory, RE::TESObjectREFR* refr,
-                               int uid) {
+                               UniqueID uid) {
   _TRACE(__FUNCTION__);
   return;
   auto item = Helpers::GetInventoryItemWithUID(refr, uid);
@@ -46,7 +48,7 @@ static void SetItemDisplayName(ArmorFactory* factory, RE::TESObjectREFR* refr,
   }
   vector<const char*> filteredMaterials;
   factory->VisitAppliedMaterials(
-      item->uid, [&](const char* name, const MaterialConfig& config) {
+      uid, [&](const char* name, const MaterialConfig& config) {
         if (!config.isHidden && config.modifyName) {
           filteredMaterials.emplace_back(name);
         }
@@ -115,25 +117,14 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
   RETURN_IF_FALSE(bsTriShape)
   auto* lightingShader = NifHelpers::GetShaderProperty(bsTriShape);
   auto* alphaProperty = NifHelpers::GetAlphaProperty(bsTriShape);
-  auto* material =
-      skyrim_cast<RE::BSLightingShaderMaterialBase*>(lightingShader->material);
-  if (!material) {
-    _ERROR("Failed to get BSLightingShaderMaterialBase for tri shape: {}",
-           bsTriShape->name);
-    return false;
-  }
   auto* newMaterial = RE::BSLightingShaderMaterialBase::CreateMaterial(
-      record->pbr.value_or(false)
-          ? RE::BSLightingShaderMaterial::Feature::kDefault
-          : material->GetFeature());
+      lightingShader->material->GetFeature());
   if (!newMaterial) {
     _ERROR("Failed to create BSLightingShaderMaterialBase for tri shape: {}",
            bsTriShape->name);
     return false;
   }
-  newMaterial->CopyMembers(material);
-  auto* textureSet = new RE::BSTextureSetClone(newMaterial->GetTextureSet());
-  newMaterial->ClearTextures();
+  newMaterial->CopyMembers(lightingShader->material);
   MaterialHelpers::ApplyFlags(lightingShader, record);
 
   if (record->transparency.has_value()) {
@@ -155,12 +146,53 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
     alphaProperty->alphaThreshold =
         record->alphaTestThreshold.value_or(alphaProperty->alphaThreshold);
   }
-  textureSet->SetTexturePath(Texture::kDiffuse, record->diffuseMap);
+  /*textureSet->SetTexturePath(Texture::kDiffuse, record->diffuseMap);
   textureSet->SetTexturePath(Texture::kNormal, record->normalMap);
   textureSet->SetTexturePath(Texture::kSpecular, record->specularMap);
   textureSet->SetTexturePath(Texture::kEnvironment, record->envMap);
   textureSet->SetTexturePath(Texture::kEnvironmentMask, record->envMapMask);
-  textureSet->SetTexturePath(Texture::kGlowMap, record->glowMap);
+  textureSet->SetTexturePath(Texture::kGlowMap, record->glowMap);*/
+  auto* textureLoader = Graphics::TextureLoader::GetSingleton();
+
+  if (const auto diffuseMap =
+          MaterialHelpers::GetStringPtr(record->diffuseMap)) {
+    newMaterial->diffuseTexture =
+        RE::NiPointer(textureLoader->LoadTexture(diffuseMap));
+  }
+  if (const auto normalMap = MaterialHelpers::GetStringPtr(record->normalMap)) {
+    newMaterial->normalTexture =
+        RE::NiPointer(textureLoader->LoadTexture(normalMap));
+  }
+  if (const auto specularMap =
+          MaterialHelpers::GetStringPtr(record->specularMap)) {
+    newMaterial->specularBackLightingTexture =
+        RE::NiPointer(textureLoader->LoadTexture(specularMap));
+  }
+  if (record->envMapEnabled.value_or(lightingShader->flags.any(
+          RE::BSShaderProperty::EShaderPropertyFlag::kEnvMap))) {
+    auto* envMapMaterial =
+        skyrim_cast<RE::BSLightingShaderMaterialEnvmap*>(newMaterial);
+    if (const auto envMap = MaterialHelpers::GetStringPtr(record->envMap)) {
+      envMapMaterial->envTexture =
+          RE::NiPointer(textureLoader->LoadTexture(envMap));
+    }
+    if (const auto envMapMask =
+            MaterialHelpers::GetStringPtr(record->envMapMask)) {
+      envMapMaterial->envMaskTexture =
+          RE::NiPointer(textureLoader->LoadTexture(envMapMask));
+    }
+    newMaterial = envMapMaterial;
+  }
+  if (record->glowMapEnabled.value_or(lightingShader->flags.any(
+          RE::BSShaderProperty::EShaderPropertyFlag::kGlowMap))) {
+    auto* glowMapMaterial =
+        skyrim_cast<RE::BSLightingShaderMaterialGlowmap*>(newMaterial);
+    if (const auto glowMap = MaterialHelpers::GetStringPtr(record->glowMap)) {
+      glowMapMaterial->glowTexture =
+          RE::NiPointer(textureLoader->LoadTexture(glowMap));
+    }
+    newMaterial = glowMapMaterial;
+  }
 
   if (record->uvOffset.has_value()) {
     newMaterial->texCoordOffset[0] =
@@ -187,8 +219,7 @@ static bool ApplyMaterialToNode(RE::TESObjectREFR* refr,
     newMaterial->rimLightPower =
         record->rimPower.value_or(newMaterial->rimLightPower);
   }
-  newMaterial->SetTextureSet(textureSet->Get());
-  newMaterial->OnLoadTextureSet(0, *textureSet);
+
   lightingShader->SetMaterial(newMaterial, true);
   lightingShader->SetupGeometry(bsTriShape);
   lightingShader->FinishSetupGeometry(bsTriShape);
@@ -282,7 +313,7 @@ void ArmorFactory::OnUpdate() {
       if (RE::Demand(
               arma->bipedModels[actor->GetActorBase()->GetSex()].GetModel(),
               armoNifPtr, RE::BSModelDB::DBTraits::ArgsType{})) {
-        // Apply default material if no uid found
+        // Apply default material if no uniqueID found
         NifHelpers::VisitShapes(armoNifPtr, [&](RE::BSTriShape* shape) {
           auto& material = shape->properties[RE::BSGeometry::States::kEffect];
           if (!material) {
@@ -302,7 +333,7 @@ void ArmorFactory::OnUpdate() {
         });
         auto item = Helpers::GetInventoryItemWithUID(actor, uid);
         if (!item) {
-          _WARN("No inventory item found for uid: {}", uid);
+          _WARN("No inventory item found for uniqueID: {}", uid);
           continue;
         }
         ApplySavedMaterial_Impl(this, actor, item);
@@ -366,12 +397,15 @@ bool ArmorFactory::ApplyMaterial(RE::TESObjectREFR* refr,
            refr->GetFormID(), form->GetFormID(), uid);
     return false;
   }
+  if (!knownArmorMaterials_.contains(uid)) {
+    knownArmorMaterials_[uid] = {};
+  }
   auto& record = knownArmorMaterials_[uid];
-  if (std::ranges::contains(record.appliedMaterials, material->name)) {
+  if (std::ranges::contains(record, material->name)) {
     return true;  // Material already applied
   }
-  std::vector<std::string> newAppliedMaterials;
-  for (const auto& appliedMaterialName : record.appliedMaterials) {
+  vector<string> newAppliedMaterials;
+  for (const auto& appliedMaterialName : record) {
     auto appliedMaterialConfig = MaterialLoader::GetMaterialConfig(
         form->GetFormID(), appliedMaterialName);
     if (!appliedMaterialConfig) {
@@ -396,7 +430,7 @@ bool ArmorFactory::ApplyMaterial(RE::TESObjectREFR* refr,
     newAppliedMaterials.emplace_back(appliedMaterialName);
   }
   newAppliedMaterials.emplace_back(material->name);
-  record.appliedMaterials = std::move(newAppliedMaterials);
+  record = move(newAppliedMaterials);
   SetItemDisplayName(this, refr, uid);
 
   return true;
@@ -419,41 +453,47 @@ bool ArmorFactory::ApplySavedMaterials(RE::TESObjectREFR* refr,
   return true;
 }
 
-void ArmorFactory::ReadFromSave(Save::SaveData& saveData) {
+void ArmorFactory::ReadFromSave(SKSE::SerializationInterface* iface,
+                                Save::SaveData& saveData) {
   while (!updateStack_.empty()) {
     updateStack_.pop();
   }
-  for (const auto& saveRecord : saveData.armorRecords) {
-    if (saveRecord.appliedMaterials.empty()) {
-      _WARN("No materials applied to armor record with UID: {}",
-            saveRecord.uid);
-      continue;
-    }
-    ArmorMaterialRecord record;
-    for (const auto& material : saveRecord.appliedMaterials) {
-      if (material.empty()) {
-        continue;  // Skip empty material names
+  for (const auto& [uniqueID, saveRecords] : saveData.armorRecords) {
+    for (auto& [uid, appliedMaterials] : saveRecords) {
+      if (appliedMaterials.empty()) {
+        _WARN("No materials applied to armor record with UID: {}", uid);
+        continue;
       }
-      record.appliedMaterials.emplace_back(material);
+      vector<string> validMaterials;
+      for (const auto& material : appliedMaterials) {
+        if (material.empty()) {
+          continue;  // Skip empty material names
+        }
+        validMaterials.push_back(material);
+      }
+      if (validMaterials.empty()) {
+        continue;
+      }
+      knownArmorMaterials_[uniqueID] = std::move(validMaterials);
     }
-    knownArmorMaterials_[saveRecord.uid] = std::move(record);
   }
 }
 
-void ArmorFactory::WriteToSave(Save::SaveData& saveData) const {
-  for (auto& [uid, val] : knownArmorMaterials_) {
-    if (uid == NULL) {
-      _WARN("Received NULL uid for armor record {}", uid);
-    }
-    if (val.appliedMaterials.empty()) {
-      _WARN("No materials applied for armor record with UID: {}", uid);
+void ArmorFactory::WriteToSave(SKSE::SerializationInterface* iface,
+                               Save::SaveData& saveData) const {
+  saveData.armorRecords.clear();
+  for (auto& [uniqueID, records] : knownArmorMaterials_) {
+    if (records.empty()) {
       continue;
     }
-    ArmorRecordEntry entry{.uid = uid};
-    for (const auto& material : val.appliedMaterials) {
-      entry.appliedMaterials.emplace_back(material);
+    const auto formID = UniqueIDTable::GetSingleton()->GetFormID(uniqueID);
+    ArmorRecordEntryV2 record{.uniqueID = uniqueID,
+                              .appliedMaterials = records};
+    if (saveData.armorRecords.contains(formID)) {
+      saveData.armorRecords[formID].push_back(record);
+    } else {
+      saveData.armorRecords[formID] = {record};
     }
-    saveData.armorRecords.emplace_back(entry);
   }
 }
 
@@ -465,37 +505,36 @@ void ArmorFactory::ResetMaterials(RE::TESObjectREFR* refr) {
   if (!actor) {
     return;
   }
-  Helpers::VisitEquippedInventoryItems(actor,
+  /*Helpers::VisitEquippedInventoryItems(actor,
                                        [&](const Helpers::InventoryItem* item) {
-                                         knownArmorMaterials_.erase(item->uid);
+                                         knownArmorMaterials_.erase(item->uniqueID);
                                          ClearItemDisplayName(item->data);
                                          return VisitControl::kContinue;
-                                       });
+                                       });*/
   updateStack_.push({.refr = refr});
 }
 
 void ArmorFactory::VisitAppliedMaterials(
-    int uid, const Visitor<const char*, const MaterialConfig&>& visitor) {
+    const UniqueID uid,
+    const Visitor<const char*, const MaterialConfig&>& visitor) {
   if (uid == NULL) {
     return;
   }
-  auto* armo = Helpers::GetFormFromUniqueID(uid);
+  auto formID = UniqueIDTable::GetSingleton()->GetFormID(uid);
+  auto* armo = RE::TESForm::LookupByID<RE::TESObjectARMO>(formID);
   if (!armo) {
-    knownArmorMaterials_.erase(uid);
-    return;  // No armor form found for the given UID
+    return;
   }
-  if (auto it = knownArmorMaterials_.find(uid);
+  if (auto it = knownArmorMaterials_.find(formID);
       it != knownArmorMaterials_.end()) {
-    auto& [appliedMaterials] = it->second;
-    for (const auto& materialName : appliedMaterials) {
-      if (materialName.empty()) {
-        continue;  // Skip empty material names
-      }
-      if (const auto* config = MaterialLoader::GetMaterialConfig(
-              armo->GetFormID(), materialName)) {
-        BREAK_IF_STOP(visitor, materialName.c_str(), *config);
-      } else {
-        _WARN("Material config not found for name: {}", materialName);
+    auto materials = it->second;
+    for (const auto& materialName : materials) {
+      if (auto* materialConfig =
+              MaterialLoader::GetMaterialConfig(formID, materialName)) {
+        if (visitor(materialName.c_str(), *materialConfig) ==
+            VisitControl::kStop) {
+          return;
+        }
       }
     }
   }
