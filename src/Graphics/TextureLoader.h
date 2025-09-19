@@ -3,9 +3,7 @@
 #include <DirectXTex.h>
 #include <d3d11.h>
 
-#include "Filesystem.h"
 #include "RE/Misc.h"
-#include "Shaders/Generated/ColorBlend.h"
 
 namespace Graphics {
 
@@ -14,7 +12,6 @@ class TextureLoader : public Singleton<TextureLoader> {
   TextureLoader() {}
 
   RE::NiSourceTexture* LoadTexture(const string& path) {
-    _TRACE("Loading texture: {}", path);
     RE::NiTexturePtr texturePtr;
     RE::GetTexture(path.c_str(), true, texturePtr, false);
     if (!texturePtr) {

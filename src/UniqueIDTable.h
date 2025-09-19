@@ -100,6 +100,9 @@ class UniqueIDTable final
     if (formID == 0) {
       return 0;
     }
+    if (!nextUID_.contains(formID)) {
+      nextUID_.emplace(formID, 1);
+    }
     auto& nextUID = nextUID_[formID];
     auto& freeList = freeLists_[formID];
     if (!freeList.empty()) {

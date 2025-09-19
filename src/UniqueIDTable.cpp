@@ -2,6 +2,7 @@
 
 #include <unordered_set>
 
+#include "Helpers.h"
 #include "Save/Save.h"
 
 inline bool TryResolveFormID(const SKSE::SerializationInterface* iface,
@@ -78,13 +79,12 @@ void UniqueIDTable::WriteToSave(SKSE::SerializationInterface* iface,
 }
 
 UniqueID UniqueIDTable::GetUID(RE::TESObjectREFR* refr, const RE::FormID formID,
-                          bool init) {
+                               bool init) {
   // TODO: rework this whole function. Main things it needs:
   // - we should probably pass in the whole RE::TESBoundObject because we need
   //   to test if there's a UID already for that single item
   // - let the UI differentiate between multiple items in a stack. To do this,
-  // lets
-  //   get renaming working as a foot-hold
+  //   lets get renaming working as a foot-hold
   if (!refr) {
     return 0;
   }
@@ -92,12 +92,11 @@ UniqueID UniqueIDTable::GetUID(RE::TESObjectREFR* refr, const RE::FormID formID,
   auto inventory = refr->GetInventory(
       [&](const RE::TESBoundObject& obj) { return obj.GetFormID() == formID; });
   for (auto& data : inventory | views::values) {
-    auto* lists = data.second->extraLists;
-    if (lists->empty()) {
-      _TRACE("Found item {} but no lists", formID);
-      continue;
+    auto* front = Helpers::GetOrCreateExtraList(data.second.get());
+    if (!front) {
+      return 0;
     }
-    auto* front = lists->front();
+
     auto* uidExtra = front->GetByType<RE::ExtraUniqueID>();
     auto* rankExtra = front->GetByType<RE::ExtraRank>();
     if (uidExtra && uidExtra->pad16 > 0) {

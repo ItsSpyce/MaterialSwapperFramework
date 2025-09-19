@@ -31,7 +31,7 @@ inline u32 GetFormID(const std::string& name) {
 }
 
 inline UniqueID GetUniqueID(RE::TESObjectREFR* refr,
-                       const RE::InventoryEntryData* data, bool init) {
+                            const RE::InventoryEntryData* data, bool init) {
   if (!refr || !data) {
     return 0;
   }
@@ -43,8 +43,8 @@ inline UniqueID GetUniqueID(RE::TESObjectREFR* refr,
 }
 
 inline UniqueID GetUniqueID(RE::TESObjectREFR* refr,
-                       RE::BGSBipedObjectForm::BipedObjectSlot slot,
-                       bool init) {
+                            RE::BGSBipedObjectForm::BipedObjectSlot slot,
+                            bool init) {
   if (!refr && !init) {
     return 0;
   }
@@ -136,5 +136,29 @@ T* GetOrCreateType(RE::ExtraDataList* list, function<T*()> configure) {
   auto* extra = configure();
   list->Add(extra);
   return extra;
+}
+
+inline RE::ExtraDataList* ConstructExtraDataList(void* a_this) {
+  using func_t = decltype(&ConstructExtraDataList);
+  REL::Relocation<func_t> func{RELOCATION_ID(11437, 11583)};
+  return func(a_this);
+}
+
+inline RE::ExtraDataList* GetOrCreateExtraList(RE::InventoryEntryData* data) {
+  if (!data) {
+    return nullptr;
+  }
+  if (!data->extraLists) {
+    data->extraLists = new RE::BSSimpleList<RE::ExtraDataList*>();
+  }
+  if (!data->extraLists->empty()) {
+    return data->extraLists->front();
+  }
+  const auto memoryManager = RE::MemoryManager::GetSingleton();
+  auto alloc = memoryManager->Allocate(sizeof(RE::ExtraDataList), 0, false);
+  auto* newList = ConstructExtraDataList(alloc);
+  
+  data->AddExtraList(newList);
+  return newList;
 }
 }  // namespace Helpers

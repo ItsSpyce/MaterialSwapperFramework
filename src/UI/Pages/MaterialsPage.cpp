@@ -87,7 +87,7 @@ void MaterialsPage(const MaterialsPageProps&) {
                                 "item.");
                           }
                           Factories::ArmorFactory::GetSingleton()
-                              ->ApplyMaterial(actor, selectedArmor, &material);
+                              ->ApplyMaterial(actor, selectedArmor, &material, true);
                         }
                       }
                     }
