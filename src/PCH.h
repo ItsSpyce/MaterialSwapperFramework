@@ -108,7 +108,9 @@ using Visitor = function<RE::BSVisit::BSVisitControl(Args...)>;
 
 // logging macros
 
-#define _ERROR(...) logger::error(__VA_ARGS__)
+#define _ERROR(...)            \
+  logger::error(__FUNCTION__); \
+  logger::error(__VA_ARGS__)
 #define _WARN(...) logger::warn(__VA_ARGS__)
 #define _INFO(...) logger::info(__VA_ARGS__)
 #define _DEBUG(...) logger::debug(__VA_ARGS__)

@@ -1,17 +1,15 @@
 #include "Save.h"
 
 #include "Factories.h"
+#include "Translations.h"
 #include "UniqueIDTable.h"
 
 constexpr uint32_t IDENTIFIER = 'MSF_';
-static list<ISaveable*> saveables;
-
 void Save::SaveCallback(SKSE::SerializationInterface* iface) {
   _INFO("Saving data...");
   SaveData data;
-  for (const auto& saveable : saveables) {
-    saveable->WriteToSave(iface, data);
-  }
+  UniqueIDTable::GetSingleton()->WriteToSave(iface, data);
+  Factories::ArmorFactory::GetSingleton()->WriteToSave(iface, data);
   data.Write(iface);
 }
 
@@ -25,15 +23,11 @@ void Save::LoadCallback(SKSE::SerializationInterface* iface) {
     _INFO("Loading save data: type={}, version={}, length={}", type, version,
           length);
     if (version == V1::SaveData::VERSION) {
-      RE::DebugMessageBox(
-          "Material Swapper Framework\nExisting save is incompatible with the "
-          "latest version. Previously saved configurations will be lost due to "
-          "incompatibility. This message box will disappear when you resave.");
+      RE::DebugMessageBox(Translations::msfSaveDataIncompatibleWarning());
     } else if (version == V2::SaveData::VERSION) {
       data.Read(iface, type, length);
-      for (const auto& saveable : saveables) {
-        saveable->ReadFromSave(iface, data);
-      }
+      UniqueIDTable::GetSingleton()->ReadFromSave(iface, data);
+      Factories::ArmorFactory::GetSingleton()->ReadFromSave(iface, data);
     } else {
       _ERROR("Unknown version: {}", version);
     }
@@ -41,7 +35,7 @@ void Save::LoadCallback(SKSE::SerializationInterface* iface) {
   if (didReadSave) {
     _INFO("Finished loading save");
   } else {
-    logger::warn("No save data found, nothing to load");
+    _WARN("No save data found, nothing to load");
   }
 }
 
@@ -59,9 +53,6 @@ bool Save::Install() {
   iface->SetSaveCallback(SaveCallback);
   iface->SetLoadCallback(LoadCallback);
   iface->SetRevertCallback(RevertCallback);
-
-  saveables.push_back(Factories::ArmorFactory::GetSingleton());
-  saveables.push_back(UniqueIDTable::GetSingleton());
 
   return true;
 }

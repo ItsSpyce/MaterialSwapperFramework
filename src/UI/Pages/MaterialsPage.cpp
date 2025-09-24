@@ -4,6 +4,7 @@
 #include "Helpers.h"
 #include "IO/MaterialLoader.h"
 #include "Models/MaterialConfig.h"
+#include "Translations.h"
 #include "UI/ImGui_Stylus.h"
 
 namespace UI::Pages {
@@ -13,12 +14,12 @@ void MaterialsPage(const MaterialsPageProps&) {
   auto* actor = ref ? ref.get() : RE::PlayerCharacter::GetSingleton();
 
   ImGui_Child("MaterialsList") {
-    ImGui_Button("Reset Materials") {
+    ImGui_Button(Translations::materialsPageResetButton()) {
       Factories::ArmorFactory::GetSingleton()->ResetMaterials(actor);
     }
 
     ImGui_TabBar("MaterialsTabBar") {
-      ImGui_TabItem("Armor") {
+      ImGui_TabItem(Translations::materialsPageArmorsTabHeader()) {
         ImGui_Table("ArmorTable", 2, ImGuiTableFlags_BordersInnerH,
                     {ImGui::GetContentRegionAvail().x * .55f, 0.f}) {
           Helpers::VisitEquippedInventoryItems(
@@ -46,9 +47,8 @@ void MaterialsPage(const MaterialsPageProps&) {
                     ImGui_Column {
                       Factories::ArmorFactory::GetSingleton()
                           ->VisitAppliedMaterials(
-                              invItem->uid,
-                              [&](const char* materialName,
-                                  const MaterialConfig&) {
+                              invItem->uid, [&](const char* materialName,
+                                                const MaterialConfig&) {
                                 ImGui::Text("%s", materialName);
                                 ImGui::SameLine();
                                 ImGui::Text(";");
@@ -87,7 +87,8 @@ void MaterialsPage(const MaterialsPageProps&) {
                                 "item.");
                           }
                           Factories::ArmorFactory::GetSingleton()
-                              ->ApplyMaterial(actor, selectedArmor, &material, true);
+                              ->ApplyMaterial(actor, selectedArmor, &material,
+                                              true);
                         }
                       }
                     }
@@ -98,9 +99,14 @@ void MaterialsPage(const MaterialsPageProps&) {
           }
         }
       }
-      ImGui_TabItem("Weapons") { ImGui::Text("Weapon materials coming soon!"); }
-      ImGui_TabItem("Actors") {
-        //
+      ImGui_TabItem(Translations::materialsPageWeaponsTabHeader()) {
+        ImGui::Text(Translations::notImplemented());
+      }
+      ImGui_TabItem(Translations::materialsPageActorsTabHeader()) {
+        ImGui::Text(Translations::notImplemented());
+      }
+      ImGui_TabItem(Translations::materialsPagePresetsTabHeader()) {
+        ImGui::Text(Translations::notImplemented());
       }
     }
   }

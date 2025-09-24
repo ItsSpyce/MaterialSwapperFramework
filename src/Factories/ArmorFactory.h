@@ -16,7 +16,7 @@ class ArmorFactory : public Singleton<ArmorFactory>, public ISaveable {
   void VisitAppliedMaterials(Save::Types::UniqueID uid,
                              const Visitor<const char*, const MaterialConfig&>& visitor);
   void ReadFromSave(SKSE::SerializationInterface* iface, Save::SaveData& saveData) override;
-  void WriteToSave(SKSE::SerializationInterface* iface, Save::SaveData& saveData) const override;
+  void WriteToSave(SKSE::SerializationInterface* iface, Save::SaveData& saveData) override;
   void ClearAllData() { appliedMaterials_.clear(); }
 
  private:

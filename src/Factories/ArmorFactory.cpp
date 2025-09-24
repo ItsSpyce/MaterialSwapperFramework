@@ -2,24 +2,17 @@
 
 #include <DirectXTex.h>
 #include <d3d11.h>
-#include <d3dcompiler.h>
-#include <dxgi.h>
-#include <fmt/format.h>
-
 #include <srell.hpp>
 
-#include "FullScreenQuad.h"
-#include "Graphics/TextureLoader.h"
 #include "Helpers.h"
 #include "IO/MaterialLoader.h"
 #include "MaterialHelpers.h"
 #include "Models/MaterialConfig.h"
 #include "Models/MaterialRecord.h"
 #include "NifHelpers.h"
-#include "RE/BSLightingShaderMaterialDynamic.h"
-#include "RE/BSTextureSetClone.h"
 #include "RE/Misc.h"
 #include "Save/Types.h"
+#include "Graphics/CDXShaders.h"
 
 using ArmorFactory = Factories::ArmorFactory;
 using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
@@ -64,8 +57,6 @@ static void SetItemDisplayName(ArmorFactory* factory, RE::TESObjectREFR* refr,
   }
   const auto name = fmt::format("{} [{}]", item->object->GetName(),
                                 fmt::join(filteredMaterials, ", "));
-  _TRACE("Setting item display name to: {}", name);
-  return;
   auto* front = Helpers::GetOrCreateExtraList(item->data.get());
   if (!front) {
     return;
@@ -116,6 +107,7 @@ static bool ApplySavedMaterial_Impl(ArmorFactory* factory, RE::Actor* refr,
     return false;
   }
   if (equippedItem->uid == NULL) {
+    _WARN("Equipped item has no unique ID");
     return true;
   }
   factory->VisitAppliedMaterials(
@@ -262,14 +254,13 @@ bool ArmorFactory::ApplyMaterial(RE::TESObjectREFR* refr,
     _WARN("Failed to get unique ID for form: {}", form->GetFormID());
     return false;
   }
+  _TRACE("Applying material {} to UID {}", material->name, uid);
   if (!ApplyMaterialToRefr(refr, form, uid, material)) {
     _ERROR("Failed to apply material to reference: {}, form: {}, unique ID: {}",
            refr->GetFormID(), form->GetFormID(), uid);
     return false;
   }
-  if (!appliedMaterials_.contains(uid)) {
-    appliedMaterials_[uid] = {};
-  }
+  appliedMaterials_.try_emplace(uid, AppliedMaterials{});
   auto& appliedMaterials = appliedMaterials_[uid];
   if (std::ranges::contains(appliedMaterials.materials, material->name)) {
     return true;  // Material already applied
@@ -284,16 +275,9 @@ bool ArmorFactory::ApplyMaterial(RE::TESObjectREFR* refr,
   }
 
   newAppliedMaterials.push_back(material->name);
-  _TRACE("Applied materials for UID {}: {}", uid,
-                     fmt::join(newAppliedMaterials, ", "));
-  
   appliedMaterials.materials = newAppliedMaterials;
   if (overwriteName) {
     SetItemDisplayName(this, refr, uid);
-  }
-  // just to test
-  for (const auto& mat : appliedMaterials.materials) {
-    _TRACE(" - {}", mat);
   }
 
   return true;
@@ -321,10 +305,9 @@ void ArmorFactory::ReadFromSave(SKSE::SerializationInterface* iface,
   while (!updateStack_.empty()) {
     updateStack_.pop();
   }
-  for (const auto& [uniqueID, saveRecords] : saveData.armorRecords) {
+  for (const auto& saveRecords : saveData.armorRecords | views::values) {
     for (auto& [uid, appliedMaterials] : saveRecords) {
       if (appliedMaterials.empty()) {
-        _WARN("No materials applied to armor record with UID: {}", uid);
         continue;
       }
       vector<string> validMaterials;
@@ -337,25 +320,29 @@ void ArmorFactory::ReadFromSave(SKSE::SerializationInterface* iface,
       if (validMaterials.empty()) {
         continue;
       }
-      appliedMaterials_[uniqueID] = {.materials = std::move(validMaterials)};
+      appliedMaterials_.emplace(uid, AppliedMaterials{.materials = std::move(validMaterials)});
     }
   }
 }
 
 void ArmorFactory::WriteToSave(SKSE::SerializationInterface* iface,
-                               Save::SaveData& saveData) const {
+                               Save::SaveData& saveData) {
   saveData.armorRecords.clear();
   for (auto& [uniqueID, records] : appliedMaterials_) {
     if (records.materials.empty()) {
       continue;
     }
     const auto formID = UniqueIDTable::GetSingleton()->GetFormID(uniqueID);
+    if (formID == 0) {
+      _WARN("Invalid form ID for unique ID: {}", uniqueID);
+      continue;
+    }
     ArmorRecordEntryV2 record{.uniqueID = uniqueID,
                               .appliedMaterials = records.materials};
     if (saveData.armorRecords.contains(formID)) {
       saveData.armorRecords[formID].push_back(record);
     } else {
-      saveData.armorRecords[formID] = {record};
+      saveData.armorRecords.emplace(formID, vector{record});
     }
   }
 }
@@ -368,6 +355,15 @@ void ArmorFactory::ResetMaterials(RE::TESObjectREFR* refr) {
   if (!actor) {
     return;
   }
+  Helpers::VisitInventoryItems(actor, [&](const Helpers::InventoryItem* item) {
+    if (item->uid == NULL) {
+      return VisitControl::kContinue;
+    }
+    appliedMaterials_.erase(item->uid);
+    ClearItemDisplayName(item->data.get());
+    item->data->extraLists->front()->RemoveByType(RE::ExtraDataType::kUniqueID);
+    return VisitControl::kContinue;
+  });
   /*Helpers::VisitEquippedInventoryItems(actor,
                                        [&](const Helpers::InventoryItem* item) {
                                          appliedMaterials_.erase(item->uniqueID);
@@ -386,16 +382,19 @@ void ArmorFactory::VisitAppliedMaterials(
   auto formID = UniqueIDTable::GetSingleton()->GetFormID(uid);
   auto* armo = RE::TESForm::LookupByID<RE::TESObjectARMO>(formID);
   if (!armo) {
+    _ERROR("Form ID {} is not a valid armor", formID);
     return;
   }
-  if (auto it = appliedMaterials_.find(formID); it != appliedMaterials_.end()) {
-    for (const auto& materialName : it->second.materials) {
-      if (auto* materialConfig =
-              MaterialLoader::GetMaterialConfig(formID, materialName)) {
-        if (visitor(materialName.c_str(), *materialConfig) ==
-            VisitControl::kStop) {
-          return;
-        }
+  if (!appliedMaterials_.contains(uid)) {
+    return;
+  }
+  const auto& appliedMaterials = appliedMaterials_.at(uid);
+  for (const auto& materialName : appliedMaterials.materials) {
+    if (auto* materialConfig =
+            MaterialLoader::GetMaterialConfig(formID, materialName)) {
+      if (visitor(materialName.c_str(), *materialConfig) ==
+          VisitControl::kStop) {
+        return;
       }
     }
   }

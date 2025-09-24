@@ -17,5 +17,5 @@ bool Install();
 class ISaveable {
  public:
   virtual void ReadFromSave(SKSE::SerializationInterface* iface, Save::SaveData& saveData) = 0;
-  virtual void WriteToSave(SKSE::SerializationInterface* iface, Save::SaveData& saveData) const = 0;
+  virtual void WriteToSave(SKSE::SerializationInterface* iface, Save::SaveData& saveData) = 0;
 };

@@ -1,3 +1,4 @@
+#include "Translations.h"
 #include "UI.h"
 #include "UI/Pages/DebuggerPage.h"
 #include "UI/Pages/MaterialsPage.h"
@@ -41,16 +42,16 @@ void MainWindow::Initialize() {
 void MainWindow::Render() const {
   ConfigureStyles();
   ImGui_Window("MaterialSwapperFramework", NULL, ImGuiWindowFlags_NoTitleBar) {
-    ImGui::Text("Material Swapper Framework");
+    ImGui::Text(Translations::windowTitle());
     ImGui::Separator();
-    ImGui::Text("Press F10 to toggle this window.");
+    ImGui::Text(Translations::showWindowInstructions());
     ImGui::Separator();
     ImGui_Child("Sidenav", ImVec2{150, 0}) {
-      ImGui::Text("Navigation");
+      ImGui::Text(Translations::navigation());
       ImGui::Separator();
-      Link({.path = "/", .label = "Home"});
-      Link({.path = "/settings", .label = "Settings"});
-      Link({.path = "/debugger", .label = "Debugger"});
+      Link({.path = "/", .label = Translations::homeTitle()});
+      Link({.path = "/settings", .label = Translations::settingsTitle()});
+      Link({.path = "/debugger", .label = Translations::debuggerTitle()});
     }
     ImGui::SameLine();
     ImGui_Child("Content") { Router::GetSingleton()->operator()(); }

@@ -4,6 +4,7 @@
 
 #include "Helpers.h"
 #include "Save/Save.h"
+#include "InventoryPlus.h"
 
 inline bool TryResolveFormID(const SKSE::SerializationInterface* iface,
                              RE::FormID& formID) {
@@ -18,21 +19,27 @@ inline bool TryResolveFormID(const SKSE::SerializationInterface* iface,
 void UniqueIDTable::ReadFromSave(SKSE::SerializationInterface* iface,
                                  Save::SaveData& data) {
   rows_.clear();
+  freeLists_.clear();
+  nextUID_.clear();
   unordered_map<RE::FormID, u16> nextUID;
   for (const auto& row : data.uniqueIDHistory.rows) {
-    RE::FormID formID;
-    u16 uid, padding;
-    DecodeUID(row.uniqueID, formID, uid, padding);
-    if (!TryResolveFormID(iface, formID)) {
+    RE::FormID formID, newFormID;
+    u16 uid;
+    DecodeUID(row.uniqueID, formID, uid);
+    if (!iface->ResolveFormID(formID, newFormID)) {
       _WARN("Failed to resolve formID for uniqueID: {}", row.uniqueID);
       continue;
+    }
+    if (formID != newFormID) {
+      _TRACE("Moved form ID {} to {}", formID, newFormID);
+      formID = newFormID;
     }
     RE::VMHandle ownerID;
     if (!iface->ResolveHandle(row.ownerID, ownerID)) {
       _WARN("Failed to resolve ownerID for uniqueID: {}", row.uniqueID);
       continue;
     }
-    rows_.emplace(EncodeUID(formID, uid, padding),
+    rows_.emplace(EncodeUID(formID, uid),
                   UniqueIDRow{.ownerID = ownerID,
                               .savesSinceLastAccess = row.savesSinceLastAccess,
                               .location = row.location});
@@ -44,10 +51,11 @@ void UniqueIDTable::ReadFromSave(SKSE::SerializationInterface* iface,
       nextUID[formID] = uid + 1;
     }
   }
+  nextUID_ = std::move(nextUID);
   for (const auto& uniqueID : data.uniqueIDHistory.freedUIDs) {
     RE::FormID formID;
-    u16 uid, padding;
-    DecodeUID(uniqueID, formID, uid, padding);
+    u16 uid;
+    DecodeUID(uniqueID, formID, uid);
     if (freeLists_.contains(formID)) {
       freeLists_[formID].push(uniqueID);
     } else {
@@ -59,7 +67,8 @@ void UniqueIDTable::ReadFromSave(SKSE::SerializationInterface* iface,
 }
 
 void UniqueIDTable::WriteToSave(SKSE::SerializationInterface* iface,
-                                Save::SaveData& data) const {
+                                Save::SaveData& data) {
+  Locker lock(lock_);
   data.uniqueIDHistory.rows.clear();
   data.uniqueIDHistory.freedUIDs.clear();
   for (const auto& [uniqueID, row] : rows_) {
@@ -88,54 +97,56 @@ UniqueID UniqueIDTable::GetUID(RE::TESObjectREFR* refr, const RE::FormID formID,
   if (!refr) {
     return 0;
   }
+  Locker lock(lock_);
 
   auto inventory = refr->GetInventory(
       [&](const RE::TESBoundObject& obj) { return obj.GetFormID() == formID; });
   for (auto& data : inventory | views::values) {
     auto* front = Helpers::GetOrCreateExtraList(data.second.get());
     if (!front) {
+      _ERROR("Failed to get or create ExtraDataList for item in inventory");
       return 0;
     }
 
     auto* uidExtra = front->GetByType<RE::ExtraUniqueID>();
-    auto* rankExtra = front->GetByType<RE::ExtraRank>();
-    if (uidExtra && uidExtra->pad16 > 0) {
-      _TRACE("Item {} has extra padding: {}", formID, uidExtra->pad16);
-    }
-    if (uidExtra && !rankExtra) {
-      front->Remove(uidExtra);
-      continue;  // no UID or it was added by something else, skip
-    }
     if (uidExtra && uidExtra->uniqueID != 0) {
-      auto& nextUID = nextUID_[formID];
-      if (uidExtra->uniqueID >= nextUID) {
-        nextUID += uidExtra->uniqueID + 1;
+      if (init) {
+        nextUID_.try_emplace(formID, 1);
+        auto& nextUID = nextUID_.at(formID);
+        if (uidExtra->uniqueID >= nextUID) {
+          nextUID += uidExtra->uniqueID + 1;
+        }
       }
-      const auto fullID =
-          EncodeUID(formID, uidExtra->uniqueID, uidExtra->pad16);
+      const auto fullID = EncodeUID(formID, uidExtra->uniqueID);
       if (auto it = rows_.find(fullID); it == rows_.end()) {
-        rows_.emplace(fullID,
-                      UniqueIDRow{.ownerID = refr->GetFormID(),
+        if (init) {
+          rows_.emplace(
+              fullID, UniqueIDRow{.ownerID = refr->GetFormID(),
                                   .savesSinceLastAccess = 0,
                                   .location = UniqueItemLocation::kInventory});
+        }
+      } else {
+        it->second.savesSinceLastAccess = 0;
+        it->second.location = UniqueItemLocation::kInventory;
       }
       return fullID;
     }
     if (init) {
+      _TRACE("Item has no UID, assigning new one");
       uidExtra = new RE::ExtraUniqueID(formID, GetNextAvailableUID(formID));
       if (uidExtra->uniqueID == 0) {
         _ERROR("UID is zero for item in inventory!");
         return 0;
       }
-      rankExtra = new RE::ExtraRank(0xFFFFFFFF);
+      auto* rankExtra = new RE::ExtraRank(0xFFFFFFFF);
       front->Add(uidExtra);
       front->Add(rankExtra);
-      const auto fullID =
-          EncodeUID(formID, uidExtra->uniqueID, uidExtra->pad16);
+      const auto fullID = EncodeUID(formID, uidExtra->uniqueID);
       rows_.emplace(fullID,
                     UniqueIDRow{.ownerID = refr->GetFormID(),
                                 .savesSinceLastAccess = 0,
                                 .location = UniqueItemLocation::kInventory});
+      _TRACE("Assigned new UID for item in inventory: {}", fullID);
       return fullID;
     }
   }

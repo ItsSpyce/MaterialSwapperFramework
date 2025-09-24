@@ -68,8 +68,10 @@ void MaterialLoader::ReadMaterialsFromDisk(bool clearExisting) {
     if (modName.empty() || modName[0] == '_') {
       continue;  // Skip empty or hidden directories
     }
-    if (modName == "config") {
-      continue;  // Skip the config directory
+    static constexpr auto IGNORE_DIRECTORIES = {"config", "shaders", "translations"};
+    if (std::ranges::find(IGNORE_DIRECTORIES, StringHelpers::ToLower(modName)) !=
+        IGNORE_DIRECTORIES.end()) {
+      continue;  // Skip ignored directories
     }
     // format for a directory name is "MOD_NAME.es{m,p,l}"
     auto* plugin = RE::TESDataHandler::GetSingleton()->LookupModByName(modName);

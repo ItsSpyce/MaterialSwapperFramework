@@ -1,7 +1,12 @@
 #pragma once
 
+#include <dxgi.h>
+#include <d3dcompiler.h>
+
 #include "NifHelpers.h"
 #include "Models/MaterialRecord.h"
+#include "FullScreenQuad.h"
+#include "Graphics/TextureLoader.h"
 
 namespace MaterialHelpers {
 using ShaderFlag8 = RE::BSShaderProperty::EShaderPropertyFlag8;
@@ -88,6 +93,7 @@ inline void ApplyColorToTexture(const RE::NiSourceTexturePtr& texture,
                                 const RE::NiSourceTexturePtr& colorMask,
                                 const ColorBlendMode blendMode,
                                 const RE::NiColorA& color) {
+  return;
   _TRACE(__FUNCTION__);
   auto* d3dTexture = texture->rendererTexture->texture;
   D3D11_TEXTURE2D_DESC originalDesc;
@@ -436,8 +442,6 @@ inline bool ApplyMaterialToNode(const RE::TESObjectREFR* refr, RE::BSTriShape* b
   lightingShader->SetMaterial(newMaterial, true);
   lightingShader->SetupGeometry(bsTriShape);
   lightingShader->FinishSetupGeometry(bsTriShape);
-  newMaterial->~BSLightingShaderMaterialBase();
-  RE::free(newMaterial);
   return true;
 }
 }  // namespace MaterialHelpers

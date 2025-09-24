@@ -28,6 +28,8 @@ class UniqueIDTable final
     const_iterator begin() const { return this->c.begin(); }
     const_iterator end() const { return this->c.end(); }
   };
+  using Lock = std::mutex;
+  using Locker = std::scoped_lock<Lock>;
 
  public:
   UniqueIDTable();
@@ -36,7 +38,7 @@ class UniqueIDTable final
       const RE::TESContainerChangedEvent* event,
       BSTEventSource<RE::TESContainerChangedEvent>* src) override;
   void ReadFromSave(SKSE::SerializationInterface* iface, Save::SaveData& data) override;
-  void WriteToSave(SKSE::SerializationInterface* iface, Save::SaveData& data) const override;
+  void WriteToSave(SKSE::SerializationInterface* iface, Save::SaveData& data) override;
   UniqueID GetUID(RE::TESObjectREFR* refr, RE::FormID formID, bool init);
 
   RE::FormID GetFormID(const UniqueID uniqueID) const {
@@ -44,12 +46,13 @@ class UniqueIDTable final
       return 0;
     }
     RE::FormID formID;
-    u16 uid, padding;
-    DecodeUID(uniqueID, formID, uid, padding);
+    u16 uid;
+    DecodeUID(uniqueID, formID, uid);
     return formID;
   }
 
-  RE::VMHandle GetOwnerID(const UniqueID uniqueID) const {
+  RE::VMHandle GetOwnerID(const UniqueID uniqueID) {
+    Locker lock(lock_);
     if (uniqueID == 0) {
       return 0;
     }
@@ -59,7 +62,7 @@ class UniqueIDTable final
     return 0;
   }
 
-  RE::VMHandle GetOwnerID(const RE::FormID formID, u16 uid) const {
+  RE::VMHandle GetOwnerID(const RE::FormID formID, u16 uid) {
     if (uid == 0) {
       return 0;
     }
@@ -68,6 +71,7 @@ class UniqueIDTable final
   }
 
   void ClearAllData() {
+    Locker lock(lock_);
     rows_.clear();
     nextUID_.clear();
     freeLists_.clear();
@@ -80,23 +84,24 @@ class UniqueIDTable final
     UniqueItemLocation location;
   };
 
+  mutable Lock lock_;
   unordered_map<UniqueID, UniqueIDRow> rows_;
   unordered_map<RE::FormID, u16> nextUID_;
   unordered_map<RE::FormID, iterable_queue<u16>> freeLists_;
 
-  static u64 EncodeUID(RE::FormID formID, u16 uid, u16 padding = 0) {
-    return static_cast<u64>(formID) << 32 | static_cast<u64>(uid) << 16 |
-           static_cast<u64>(padding);
+  static UniqueID EncodeUID(RE::FormID formID, u16 uid) {
+    // a full ID consists of the formID (u32) in the high bits and the uid (u16)
+    // in the low bits
+    return (static_cast<u64>(formID) << 16) | static_cast<u64>(uid);
   }
 
-  static void DecodeUID(u64 fullID, RE::FormID& formID, u16& uid,
-                         u16& padding) {
-    formID = static_cast<RE::FormID>(fullID >> 32);
-    uid = static_cast<u16>(fullID >> 16 & 0xFFFF);
-    padding = static_cast<u16>(fullID & 0xFFFF);
+  static void DecodeUID(u64 fullID, RE::FormID& formID, u16& uid) {
+    formID = static_cast<RE::FormID>(fullID >> 16);
+    uid = static_cast<u16>(fullID & 0xFFFF);
   }
 
   u16 GetNextAvailableUID(RE::FormID formID) {
+    Locker lock(lock_);
     if (formID == 0) {
       return 0;
     }

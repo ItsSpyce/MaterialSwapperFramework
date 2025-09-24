@@ -66,6 +66,22 @@ struct InventoryItem {
   UniqueID uid;
 };
 
+inline void VisitInventoryItems(
+    RE::TESObjectREFR* refr, const Visitor<InventoryItem*>& visitor) {
+  auto inventoryData = refr->GetInventory();
+  for (auto& [obj, data] : inventoryData) {
+    if (!obj || !data.second) {
+      continue;  // Skip if object or data is null
+    }
+    auto uid = GetUniqueID(refr, data.second.get(), false);
+    auto* inventoryItem = new InventoryItem{.object = obj,
+                                            .count = data.first,
+                                            .data = std::move(data.second),
+                                            .uid = uid};
+    visitor(inventoryItem);
+  }
+}
+
 inline void VisitEquippedInventoryItems(
     RE::TESObjectREFR* refr, const Visitor<InventoryItem*>& visitor) {
   auto inventoryData = refr->GetInventory();

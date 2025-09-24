@@ -1,6 +1,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 
+#include "Translations.h"
 #include "UI.h"
 #include "Hooks.h"
 #include "Events.h"
@@ -57,6 +58,7 @@ static void HandleMessage(SKSE::MessagingInterface::Message* msg) {
 SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
   SKSE::Init(a_skse);
   InitializeLogging();
+  TranslationEX::UsePluginName("MSF");
 
   SKSE::GetMessagingInterface()->RegisterListener(HandleMessage);
   _INFO("Registering UI hooks...");
