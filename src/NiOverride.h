@@ -3,7 +3,7 @@
 #include "Papyrus.h"
 
 namespace NiOverride {
-enum : uint32_t {
+enum NiOverrideKey : uint32_t {
   kNiOverrideKey_ShaderEmissiveColor = 0,
   kNiOverrideKey_ShaderEmissiveMultiple = 1,
   kNiOverrideKey_ShaderGlossiness = 2,
@@ -21,7 +21,7 @@ enum : uint32_t {
   kNiOverrideKey_ControllerPhase = 24,
 };
 
-enum : uint32_t {
+enum NiOverrideTex : uint32_t {
   kNiOverrideTex_Diffuse,
   kNiOverrideTex_Normal,
   kNiOverrideTex_Glow,
@@ -38,7 +38,7 @@ enum : uint32_t {
 #define MAKE_NI_OVERRIDE_FUNCTION(_NAME, _RETURN_TYPE, ...)                \
   typedef _RETURN_TYPE (*_NAME##Fn)(                                       \
       MAKE_NI_OVERRIDE_FUNCTION_ARGS(__VA_ARGS__));                        \
-  static inline _NAME##Fn _NAME() {                                        \
+  inline _NAME##Fn _NAME() {                                               \
     static auto fn = *GetNativeFunction<_NAME##Fn*>("NiOverride", #_NAME); \
     return fn;                                                             \
   }
@@ -91,5 +91,10 @@ MAKE_NI_OVERRIDE_FUNCTION(HasNodeOverride, bool, RE::TESObjectREFR* refr,
 
 MAKE_NI_OVERRIDE_FUNCTION(GetItemUniqueID, int, RE::TESObjectREFR* actor,
                           int weaponSlot, int slotMask, bool makeUnique)
-MAKE_NI_OVERRIDE_FUNCTION(GetFormFromUniqueID, RE::TESForm*, int uniqueId);
+MAKE_NI_OVERRIDE_FUNCTION(GetFormFromUniqueID, RE::TESForm*, int uniqueID);
+
+MAKE_NI_OVERRIDE_FUNCTION(SetItemTextureLayerColor, void, int uniqueID,
+                          NiOverrideTex textureIndex, int layer, int color);
+MAKE_NI_OVERRIDE_FUNCTION(ClearItemTextureLayerColor, void, int uniqueID,
+                          NiOverrideTex textureIndex, int layer);
 };  // namespace NiOverride

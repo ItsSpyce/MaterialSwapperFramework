@@ -3,6 +3,7 @@
 #include <dxgi.h>
 #include <d3dcompiler.h>
 
+#include "NiOverride.h"
 #include "NifHelpers.h"
 #include "Models/MaterialRecord.h"
 #include "FullScreenQuad.h"
@@ -409,8 +410,8 @@ inline bool ApplyMaterialToNode(const RE::TESObjectREFR* refr, RE::BSTriShape* b
     const auto color = record->color.has_value()
                            ? GetColorA(*record->color)
                            : RE::NiColorA(1.0f, 1.0f, 1.0f, 0.0f);
-    ApplyColorToTexture(newMaterial->diffuseTexture, colorBlendTexture,
-                        colorBlendMode, color);
+    /*ApplyColorToTexture(newMaterial->diffuseTexture, colorBlendTexture,
+                        colorBlendMode, color);*/
   }
 
   if (record->uvOffset.has_value()) {

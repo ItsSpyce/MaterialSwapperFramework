@@ -30,14 +30,9 @@
 #include <SKSE/SKSE.h>
 #include <d3d11.h>
 #include <dxgi.h>
-#include <fmt/ostream.h>
 #include <wrl/client.h>
 
-#include <algorithm>
 #include <bs_thread_pool.hpp>
-#include <cctype>
-#include <future>
-#include <locale>
 #include <ranges>
 
 template <class T>

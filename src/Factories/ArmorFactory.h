@@ -13,11 +13,11 @@ class ArmorFactory : public Singleton<ArmorFactory>, public ISaveable {
                      const MaterialConfig* material, bool overwriteName);
   bool ApplySavedMaterials(RE::TESObjectREFR* refr);
   bool ApplySavedMaterials(RE::TESObjectREFR* refr, RE::TESObjectARMO* armo);
-  void VisitAppliedMaterials(Save::Types::UniqueID uid,
-                             const Visitor<const char*, const MaterialConfig&>& visitor);
+  void VisitAppliedMaterials(RE::FormID formID, Save::Types::UniqueID uid,
+                             const Visitor<const char*, const MaterialConfig&>& visitor) const;
   void ReadFromSave(SKSE::SerializationInterface* iface, Save::SaveData& saveData) override;
   void WriteToSave(SKSE::SerializationInterface* iface, Save::SaveData& saveData) override;
-  void ClearAllData() { appliedMaterials_.clear(); }
+  void ClearAllData() { armorData_.clear(); }
 
  private:
 
@@ -25,10 +25,10 @@ class ArmorFactory : public Singleton<ArmorFactory>, public ISaveable {
     RE::TESObjectREFR* refr;
     RE::TESObjectARMO* armo;
   };
-  struct AppliedMaterials {
+  struct ArmorData {
     vector<string> materials;
   };
-  unordered_map<Save::Types::UniqueID, AppliedMaterials> appliedMaterials_;
+  unordered_map<Save::Types::UniqueID, ArmorData> armorData_;
   stack<UpdateRequest> updateStack_;
 };
 }  // namespace Factories

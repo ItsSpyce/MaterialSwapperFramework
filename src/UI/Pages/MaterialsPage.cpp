@@ -47,8 +47,9 @@ void MaterialsPage(const MaterialsPageProps&) {
                     ImGui_Column {
                       Factories::ArmorFactory::GetSingleton()
                           ->VisitAppliedMaterials(
-                              invItem->uid, [&](const char* materialName,
-                                                const MaterialConfig&) {
+                              invItem->object->GetFormID(), invItem->uid,
+                              [&](const char* materialName,
+                                  const MaterialConfig&) {
                                 ImGui::Text("%s", materialName);
                                 ImGui::SameLine();
                                 ImGui::Text(";");

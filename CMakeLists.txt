@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(MaterialSwapperFramework VERSION 0.1.5.4)
+project(MaterialSwapperFramework VERSION 0.1.5.5)
 
 set(CMAKE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party)
