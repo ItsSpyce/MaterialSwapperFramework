@@ -3,6 +3,8 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 
+#include "TextureLoader.h"
+
 class CDXD3DDevice;
 class CDXShaderFile;
 class CDXShaderFactory;
@@ -1182,10 +1184,13 @@ class CDXTextureRenderer {
   }
   virtual ~CDXTextureRenderer() = default;
 
+  shared_ptr<CDXD3DDevice> GetDevice() const { return device_; }
+
   virtual bool Initialize(CDXD3DDevice* device, CDXShaderFactory* factory,
                           CDXShaderFile* sourceFile,
                           CDXShaderFile* precompiledFile,
                           CDXPixelShaderCache* cache) {
+    device_ = make_shared<CDXD3DDevice>(*device);
     shaderCache_ = cache;
     if (!InitializeVertices(device)) {
       return false;
@@ -1524,8 +1529,8 @@ class CDXTextureRenderer {
     return true;
   }
 
-  int GetWidth() const { return dstDesc_.Width; }
-  int GetHeight() const { return dstDesc_.Height; }
+  UINT GetWidth() const { return dstDesc_.Width; }
+  UINT GetHeight() const { return dstDesc_.Height; }
 
   ComPtr<ID3D11Texture2D> GetTexture() {
     if (srcDesc_.ArraySize > 1) {
@@ -1555,6 +1560,7 @@ class CDXTextureRenderer {
     string shader;
   };
 
+  shared_ptr<CDXD3DDevice> device_;
   CDXPixelShaderCache* shaderCache_;
   ComPtr<ID3D11ShaderResourceView> source_;
   vector<ResourceData> resources_;
@@ -1879,4 +1885,98 @@ class CDXTextureRenderer {
 
     return true;
   }
+};
+
+class CDXNifTextureRenderer : public CDXTextureRenderer, public CDXRenderState {
+ public:
+  bool Initialize(CDXD3DDevice* device, CDXPixelShaderCache* cache) {
+    static bool initialized = false;
+    if (initialized) {
+      return true;
+    }
+    CDXBSShaderResource sourceFile("SKSE/Plugins/NiOverride/Shaders/texture.fx",
+                                   "TextureVertex");
+    CDXBSShaderResource precompiledFile(
+        "SKSE/Plugins/NiOverride/Shaders/Compiled/texture.cso");
+    CDXShaderFactory factory;
+
+    return initialized = CDXTextureRenderer::Initialize(device, &factory, &sourceFile,
+                                          &precompiledFile, cache);
+  }
+  virtual ~CDXNifTextureRenderer() override = default;
+
+  struct MaskData {
+    string texture;
+    string technique = "normal";
+    u32 color = 0xFFFFFF;
+    TextureType textureType = TextureType::Mask;
+  };
+
+  bool ApplyMasksToTexture(RE::NiSourceTexturePtr& texture,
+                           vector<MaskData>& masks, const string& name,
+                           RE::NiSourceTexturePtr& output) {
+    auto* rendererData = texture->rendererTexture;
+    if (!rendererData) {
+      _ERROR("No renderer data for texture: {}", name.c_str());
+      return false;
+    }
+    bool hasMask = false;
+    for (const auto& mask : masks) {
+      if (const auto alpha = (mask.color >> 24 & 0xFF) / 255.0f; alpha > 0.f) {
+        hasMask = true;
+        break;
+      }
+    }
+    if (!hasMask) {
+      output = texture;
+      return true;
+    }
+    if (!SetTexture(device_.get(), rendererData->resourceView,
+                    DXGI_FORMAT_R8G8B8A8_UNORM)) {
+      return false;
+    }
+    resources_.clear();
+    vector<RE::NiSourceTexturePtr> textures;
+    for (const auto& mask : masks) {
+      RE::NiSourceTexture* loadedTexture = nullptr;
+      if (!mask.texture.empty()) {
+        loadedTexture = Graphics::TextureLoader::LoadTexture(mask.texture);
+      }
+      auto alpha = (mask.color >> 24 & 0xFF) / 255.0f;
+      if (alpha > 0.f) {
+        auto r = (mask.color >> 16 & 0xFF) / 255.0f;
+        auto g = (mask.color >> 8 & 0xFF) / 255.0f;
+        auto b = (mask.color & 0xFF) / 255.0f;
+        AddLayer((loadedTexture && loadedTexture->rendererTexture)
+                     ? loadedTexture->rendererTexture->resourceView
+                     : nullptr,
+                 mask.textureType, mask.technique, CDXVec4(r, g, b, alpha));
+      }
+      if (loadedTexture) {
+        textures.push_back(RE::NiPointer(loadedTexture));
+        delete loadedTexture;
+      }
+    }
+    textures_ = textures;
+    auto lock = RE::BSGraphics::Renderer::GetSingleton()->GetLock();
+    EnterCriticalSection(&lock);
+    BackupRenderState(device_.get());
+    Render(device_.get());
+    RestoreRenderState(device_.get());
+    LeaveCriticalSection(&lock);
+
+    RE::LoadTexture(name, output);
+    auto* sourceData =
+        RE::BSGraphics::Renderer::GetSingleton()->CreateRenderTexture(
+            GetWidth(), GetHeight());
+    sourceData->texture = GetTexture().Get();
+    sourceData->texture->AddRef();
+    sourceData->resourceView = GetResourceView().Get();
+    sourceData->resourceView->AddRef();
+    output->rendererTexture = reinterpret_cast<RE::BSGraphics::Texture*>(sourceData);
+    return true;
+  }
+
+ private:
+  vector<RE::NiSourceTexturePtr> textures_{};
 };

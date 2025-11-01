@@ -20,14 +20,9 @@ static void GetTexture(const char* a_path, bool a_demand,
   return func(a_path, a_demand, a_out, a_4);
 }
 
-static NiTexture* LoadTexture(const BSFixedString& name) {
-  using func_t = decltype(&LoadTexture);
-  static REL::Relocation<func_t> func{Offset::NiTexture::LoadTexture};
-  return func(name);
-}
-
 static bool LoadTexture(const string& name, NiPointer<NiSourceTexture>& out) {
-  const auto newTexture = NiPointer(static_cast<NiSourceTexture*>(LoadTexture(name)));
+  NiSourceTexturePtr newTexture;
+  LoadTexture(name, newTexture);
   if (!newTexture) {
     return false;
   }

@@ -11,7 +11,6 @@ constexpr auto Clone = REL::ID(70187);
 }
 namespace NiTexture {
 constexpr auto GetTexture = REL::VariantID(98986, 105640, 0);
-constexpr auto LoadTexture = REL::VariantID(69335, 70717, 0x00CAEF60);
 }
 namespace BSShaderTextureSet {
 constexpr auto SetTexture = REL::ID(21363);

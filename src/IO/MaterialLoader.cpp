@@ -10,7 +10,7 @@
 
 // Merge parent into child, preferring child's values
 #define MERGE_FIELD(_FIELD) \
-  record._FIELD = record._FIELD.value_or(parent._FIELD)
+  if (!record._FIELD.has_value()) record._FIELD = parent._FIELD
 
 static bool LoadMaterialFromDisk(const std::string& filename,
                                  MaterialRecord& record) {
@@ -38,6 +38,7 @@ static bool LoadMaterialFromDisk(const std::string& filename,
                     record.inherits.value());
       return false;
     }
+    
     MERGE_FIELD(shaderType);
     MERGE_FIELD(clamp);
     MERGE_FIELD(uvOffset);

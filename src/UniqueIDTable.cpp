@@ -4,7 +4,6 @@
 
 #include "Helpers.h"
 #include "Save/Save.h"
-#include "InventoryPlus.h"
 
 inline bool TryResolveFormID(const SKSE::SerializationInterface* iface,
                              RE::FormID& formID) {

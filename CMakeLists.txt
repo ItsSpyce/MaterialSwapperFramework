@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(MaterialSwapperFramework VERSION 0.1.5.5)
+project(MaterialSwapperFramework VERSION 0.1.6.1)
 
 set(CMAKE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party)
@@ -27,9 +27,9 @@ include(nuklear)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
 
-option(ENABLE_SKYRIM_SE "Enable support for Skyrim SE in the dynamic runtime feature." ON)
-option(ENABLE_SKYRIM_AE "Enable support for Skyrim AE in the dynamic runtime feature." ON)
-option(ENABLE_SKYRIM_VR "Enable support for Skyrim VR in the dynamic runtime feature." OFF)
+set(ENABLE_SKYRIM_SE ON)
+set(ENABLE_SKYRIM_AE ON)
+set(ENABLE_SKYRIM_VR OFF)
 set(BUILD_TESTS OFF)
 
 if(MSVC)
@@ -56,6 +56,10 @@ find_package(binary_io CONFIG REQUIRED)
 add_subdirectory(${CommonLibPath} EXCLUDE_FROM_ALL)
 
 CPMAddPackage("gh:stephenberry/glaze@5.7.1")
+CPMAddPackage(
+  NAME task-thread-pool
+  URL https://github.com/alugowski/task-thread-pool/archive/refs/heads/main.tar.gz
+)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories(${SRELL_INCLUDE_DIRS})

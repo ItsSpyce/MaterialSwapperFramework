@@ -36,45 +36,6 @@ inline bool IsMaterialSwappable(const RE::NiPointer<RE::NiObjectNET>& obj) {
   return IsMaterialSwappable(obj.get());
 }
 
-inline void VisitNiObject(RE::NiAVObject* obj,
-                          const std::function<void(RE::NiAVObject*)>& visitor) {
-  if (!obj) {
-    return;
-  }
-  visitor(obj);
-  if (const auto node = obj->AsNode()) {
-    for (auto& child : node->children) {
-      if (!child) {
-        continue;
-      }
-      VisitNiObject(child.get(), visitor);
-    }
-  }
-}
-
-inline void VisitNiObject(const RE::NiPointer<RE::NiAVObject>& obj,
-                          const std::function<void(RE::NiAVObject*)>& visitor) {
-  VisitNiObject(obj.get(), visitor);
-}
-
-inline void VisitShapes(RE::NiAVObject* obj,
-                        const std::function<void(RE::BSTriShape*)>& visitor) {
-  if (!obj) {
-    return;
-  }
-  VisitNiObject(obj, [&](RE::NiAVObject* avObj) {
-    if (const auto triShape = avObj->AsTriShape()) {
-      visitor(triShape);
-    }
-  });
-}
-
-inline void VisitShapes(
-    const RE::NiPointer<RE::NiAVObject>& obj,
-    const std::function<void(RE::BSTriShape*)>& visitor) {
-  VisitShapes(obj.get(), visitor);
-}
-
 inline RE::NiPointer<RE::NiAVObject> GetMaterialSwappableShape(
     RE::NiPointer<RE::NiAVObject> obj) {
   if (!obj) {
@@ -101,73 +62,71 @@ inline RE::NiPointer<RE::NiAVObject> GetMaterialSwappableShape(
   return nullptr;
 }
 
-inline std::vector<RE::BSTriShape*> GetAllTriShapes(RE::NiAVObject* obj) {
-  std::vector<RE::BSTriShape*> shapes;
+inline std::vector<RE::BSGeometry*> GetAllTriShapes(RE::NiAVObject* obj) {
+  std::vector<RE::BSGeometry*> shapes;
   if (!obj) {
     return shapes;
   }
-  VisitNiObject(obj, [&](RE::NiAVObject* avObj) {
-    if (const auto triShape = avObj->AsTriShape()) {
-      shapes.emplace_back(triShape);
-    }
+  RE::BSVisit::TraverseScenegraphGeometries(obj, [&](RE::BSGeometry* geometry) {
+    shapes.emplace_back(geometry);
+    return RE::BSVisit::BSVisitControl::kContinue;
   });
   return shapes;
 }
 
-inline std::vector<RE::BSTriShape*> GetAllTriShapes(
+inline std::vector<RE::BSGeometry*> GetAllTriShapes(
     const RE::NiPointer<RE::NiAVObject>& obj) {
   return GetAllTriShapes(obj.get());
 }
 
-inline std::vector<RE::BSTriShape*> GetShapesWithDefaultMaterials(
+inline std::vector<RE::BSGeometry*> GetShapesWithDefaultMaterials(
     RE::NiAVObject* obj) {
-  std::vector<RE::BSTriShape*> shapes;
+  std::vector<RE::BSGeometry*> shapes;
   if (!obj) {
     return shapes;
   }
-  VisitNiObject(obj, [&](RE::NiAVObject* avObj) {
+  RE::BSVisit::TraverseScenegraphGeometries(obj, [&](RE::BSGeometry* avObj) {
     if (const auto triShape = avObj->AsTriShape()) {
       if (triShape->HasExtraData("DefaultMaterial")) {
         shapes.emplace_back(triShape);
       }
     }
+    return RE::BSVisit::BSVisitControl::kContinue;
   });
   return shapes;
 }
 
-inline std::vector<RE::BSTriShape*> GetShapesWithDefaultMaterials(
+inline std::vector<RE::BSGeometry*> GetShapesWithDefaultMaterials(
     const RE::NiPointer<RE::NiAVObject>& obj) {
   return GetShapesWithDefaultMaterials(obj.get());
 }
 
-inline RE::BSTriShape* GetTriShape(RE::TESObjectREFR* refr,
+inline RE::BSGeometry* GetTriShape(RE::TESObjectREFR* refr,
                                    const char* nodeName) {
   if (!refr) {
     logger::error("GetNode called with null refrHandle");
     return nullptr;
   }
-  RE::BSTriShape* geometry = nullptr;
-  VisitNiObject(RE::NiPointer(refr->Get3D()), [&](RE::NiAVObject* avObj) {
-    if (avObj->name == nodeName) {
-      if (const auto geom = avObj->AsTriShape()) {
-        geometry = geom;
-      }
-    }
-  });
-  return geometry;
+  auto* nif = refr->Get3D();
+  if (!nif) {
+    return nullptr;
+  }
+  return nif->GetObjectByName(nodeName)->AsGeometry();
 }
 
 inline RE::BSLightingShaderProperty* GetShaderProperty(
-    RE::BSTriShape* bsTriShape) {
-  auto* properties = bsTriShape->properties[RE::BSGeometry::States::kEffect].get();
+    RE::BSGeometry* bsTriShape) {
+  auto* properties =
+      bsTriShape->properties[RE::BSGeometry::States::kEffect].get();
   auto* bsLightShader =
       properties ? netimmerse_cast<RE::BSLightingShaderProperty*>(properties)
                  : nullptr;
   return bsLightShader;
 }
 
-inline RE::NiAlphaProperty* GetAlphaProperty(RE::BSTriShape* bsTriShape) {
-  auto* properties = bsTriShape->properties[RE::BSGeometry::States::kProperty].get();
+inline RE::NiAlphaProperty* GetAlphaProperty(RE::BSGeometry* bsTriShape) {
+  auto* properties =
+      bsTriShape->properties[RE::BSGeometry::States::kProperty].get();
   auto* alphaProperty =
       properties ? netimmerse_cast<RE::NiAlphaProperty*>(properties) : nullptr;
   return alphaProperty;

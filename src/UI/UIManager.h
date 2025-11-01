@@ -88,7 +88,6 @@ class UIManager {
     for (auto event = *events; event; event = event->next) {
       if (const auto buttonEvent = event->AsButtonEvent()) {
         if (buttonEvent->IsDown() && IsShowKey(buttonEvent)) {
-          _DEBUG("Toggling UI visibility");
           isShowing_ = !isShowing_;
           return true;
         }

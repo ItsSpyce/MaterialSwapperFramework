@@ -1,18 +1,14 @@
 #include "ArmorFactory.h"
 
 #include <DirectXTex.h>
-#include <d3d11.h>
 
 #include <srell.hpp>
 
-#include "Graphics/CDXShaders.h"
 #include "Helpers.h"
 #include "IO/MaterialLoader.h"
 #include "MaterialHelpers.h"
 #include "Models/MaterialConfig.h"
 #include "Models/MaterialRecord.h"
-#include "NifHelpers.h"
-#include "RE/Misc.h"
 #include "Save/Types.h"
 
 using ArmorFactory = Factories::ArmorFactory;
@@ -74,7 +70,7 @@ static bool ApplySavedMaterial_Impl(ArmorFactory* factory, RE::Actor* refr,
                                     const Helpers::InventoryItem* equippedItem,
                                     bool firstLoad) {
   RETURN_IF_FALSE(refr)
-  auto actor = refr->As<RE::Actor>();
+  auto* actor = refr->As<RE::Actor>();
   RETURN_IF_FALSE(actor)
   auto* armo = equippedItem->data->object->As<RE::TESObjectARMO>();
   if (!armo) {
@@ -108,13 +104,17 @@ static bool ApplyMaterialToRefr(RE::TESObjectREFR* refr,
   RETURN_IF_FALSE(material)
   auto* refrModel = refr->Get3D();
   for (const auto& [shapeName, materialName] : material->applies) {
-    auto* nivAv = refrModel->GetObjectByName(shapeName);
-    auto* triShape = nivAv ? nivAv->AsTriShape() : nullptr;
+    auto* niAv = refrModel->GetObjectByName(shapeName);
+    if (!niAv) {
+      _WARN("No object found for shape name: {}", shapeName);
+      continue;
+    }
+    auto* triShape = niAv->AsTriShape();
     if (!triShape) {
       _WARN("No tri-shape found for shape name: {}", shapeName);
       continue;
     }
-    auto materialFile = MaterialLoader::LoadMaterial(materialName);
+    auto* materialFile = MaterialLoader::LoadMaterial(materialName);
     if (!materialFile) {
       _ERROR("Failed to load material file: {}", materialName);
       continue;
@@ -127,9 +127,6 @@ static bool ApplyMaterialToRefr(RE::TESObjectREFR* refr,
                       (static_cast<uint32_t>(color[0] * 255) << 16) |
                       (static_cast<uint32_t>(color[1] * 255) << 8) |
                       (static_cast<uint32_t>(color[2] * 255));
-      NiOverride::SetItemTextureLayerColor()(RE::StaticFunctionTag{}, uid,
-                                             NiOverride::kNiOverrideTex_Diffuse,
-                                             0, colorInt);
     }
   }
   return true;
@@ -164,35 +161,31 @@ void ArmorFactory::OnUpdate() {
         _WARN("No armor addon found for armor: {}", armo->GetFormID());
         continue;
       }
-      RE::NiPointer<RE::NiNode> armoNifPtr;
-      if (RE::Demand(
-              arma->bipedModels[actor->GetActorBase()->GetSex()].GetModel(),
-              armoNifPtr, RE::BSModelDB::DBTraits::ArgsType{})) {
-        // Apply default material if no uniqueID found
-        NifHelpers::VisitShapes(armoNifPtr, [&](RE::BSTriShape* shape) {
-          auto& material = shape->properties[RE::BSGeometry::States::kEffect];
-          if (!material) {
+      actor->VisitArmorAddon(armo, arma, [&](bool, RE::NiAVObject& obj) {
+        auto* shape = obj.AsTriShape();
+        auto* material =
+            shape ? shape->properties[RE::BSGeometry::States::kEffect].get()
+                  : nullptr;
+        if (!material) {
+          return VisitControl::kContinue;
+        }
+        if (std::string(material->name).ends_with(".json")) {
+          auto* materialFile =
+              MaterialLoader::LoadMaterial(material->name.c_str());
+          if (!materialFile) {
+            _ERROR("Failed to load material file: {}", material->name.c_str());
             return VisitControl::kContinue;
           }
-          if (std::string(material->name).ends_with(".json")) {
-            auto materialFile =
-                MaterialLoader::LoadMaterial(material->name.c_str());
-            if (!materialFile) {
-              _ERROR("Failed to load material file: {}",
-                     material->name.c_str());
-              return VisitControl::kContinue;
-            }
-            MaterialHelpers::ApplyMaterialToNode(actor, shape, materialFile);
-          }
-          return VisitControl::kContinue;
-        });
-        auto item = Helpers::GetInventoryItemWithUID(actor, uid);
-        if (!item) {
-          _WARN("No inventory item found for uniqueID: {}", uid);
-          continue;
+          MaterialHelpers::ApplyMaterialToNode(actor, shape, materialFile);
         }
-        ApplySavedMaterial_Impl(this, actor, item, false);
+        return VisitControl::kContinue;
+      });
+      auto* item = Helpers::GetInventoryItemWithUID(actor, uid);
+      if (!item) {
+        _WARN("No inventory item found for uniqueID: {}", uid);
+        continue;
       }
+      ApplySavedMaterial_Impl(this, actor, item, false);
     } else {
       RE::BSVisit::TraverseScenegraphObjects(
           actor->Get3D(), [&](RE::NiAVObject* geometry) {
@@ -305,8 +298,8 @@ void ArmorFactory::ReadFromSave(SKSE::SerializationInterface* iface,
       if (validMaterials.empty()) {
         continue;
       }
-      armorData_.emplace(
-          uid, ArmorData{.materials = std::move(validMaterials)});
+      armorData_.emplace(uid,
+                         ArmorData{.materials = std::move(validMaterials)});
     }
   }
 }

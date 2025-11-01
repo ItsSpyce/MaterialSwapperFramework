@@ -8,6 +8,8 @@
 #include "MaterialPapyrus.h"
 #include "ModState.h"
 #include "IO/MaterialLoader.h"
+#include "ThreadPool.h"
+#include "TaskManager.h"
 
 static void InitializeLogging() {
   static bool initialized = false;
