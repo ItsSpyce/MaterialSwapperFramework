@@ -7,9 +7,6 @@
 
 namespace Events {
 inline void Configure() noexcept {
-  PlayerEquipEvent::Configure();
-  PapyrusEvent::Configure();
-  NiNodeUpdateEvent::Configure();
-  InventoryOpenEvent::Configure();
+  //
 }
 }

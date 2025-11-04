@@ -13,9 +13,6 @@ public:
       return RE::BSEventNotifyControl::kContinue;
     }
     logger::debug("NiNodeUpdateEvents: Actor: {}", actor->GetFormID());
-    SKSE::GetTaskInterface()->AddTask([actor] {
-      Factories::ArmorFactory::GetSingleton()->ApplySavedMaterials(actor);
-    });
     return RE::BSEventNotifyControl::kContinue;
   }
   static NiNodeUpdateEvent* Configure() {

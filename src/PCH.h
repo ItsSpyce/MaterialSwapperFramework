@@ -28,12 +28,24 @@
 #include <REL/Relocation.h>
 #include <REX/REX/Singleton.h>
 #include <SKSE/SKSE.h>
+#include <detours/detours.h>
 #include <d3d11.h>
+#include <direct.h>
+#include <d3dcompiler.h>
+#pragma comment(lib, "d3dcompiler.lib")
 #include <dxgi.h>
+#include <DirectXMath.h>
+#include <DirectXTex.h>
+#include <dxcore_interface.h>
+#include <dxcore.h>
 #include <wrl/client.h>
+#include <concurrent_unordered_map.h>
+#include <concurrent_vector.h>
 
-#include <bs_thread_pool.hpp>
 #include <ranges>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/msvc_sink.h>
+
 
 template <class T>
 using Singleton = REX::Singleton<T>;
@@ -58,9 +70,9 @@ using f64 = double;
 namespace stl {
 using namespace SKSE::stl;
 
-template <class T>
+template <class T, size_t size = 14>
 void write_thunk_call() {
-  SKSE::AllocTrampoline(14);
+  SKSE::AllocTrampoline(size);
 
   auto& trampoline = SKSE::GetTrampoline();
   T::func =
@@ -72,6 +84,13 @@ void write_vfunc() {
   REL::Relocation vtbl{F::VTABLE[0]};
   T::func = vtbl.write_vfunc(T::idx, T::thunk);
 }
+
+#ifdef DETOURS_VERSION
+template <class F>
+void write_detour() {
+  DetourAttach(&(PVOID&)F::func, F::thunk);
+}
+#endif
 
 constexpr auto enum_range(auto first, auto last) {
   auto enum_range =

@@ -1,8 +1,5 @@
 #pragma once
 
-#include <DirectXTex.h>
-#include <concurrent_unordered_map.h>
-
 #include "Result.h"
 #include "ShaderManager.h"
 

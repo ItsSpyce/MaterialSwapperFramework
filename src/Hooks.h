@@ -1,7 +1,12 @@
 #pragma once
 
 #include "EditorIDCache.h"
-#include "Factories/ArmorFactory.h"
+#include "Events/EventListener.h"
+#include "RE/Offset.h"
+
+extern EventSource<FrameEvent> g_frameEventSource;
+extern EventSource<ArmorAttachEvent> g_armorAttachSource;
+extern EventSource<PlayerCellChangeEvent> g_cellChangeSource;
 
 namespace Hooks {
 struct TESObjectARMO_SetFormEditorID {
@@ -21,18 +26,83 @@ struct TESObjectARMO_SetFormEditorID {
   static constexpr size_t idx{0x33};
 };
 
-struct PlayerCharacter_Update {
-  static void thunk(RE::PlayerCharacter* player, float delta) {
-    func(player, delta);
-    Factories::ArmorFactory::GetSingleton()->OnUpdate();
+struct Actor_AttachArmor {
+  typedef RE::NiAVObject* (*_Actor_AttachArmor)(void*, RE::NiNode*, RE::NiNode*,
+                                                i32, void*, void*, void*, void*,
+                                                char, i32, void*);
+  static RE::NiAVObject* __fastcall thunk(void* _this, RE::NiNode* armor,
+                                          RE::NiNode* skeleton, i32 bipedSlot,
+                                          void* a3, void* a4, void* a5,
+                                          void* a6, char a7, i32 a8, void* a9) {
+    ArmorAttachEvent event{
+        .actor = skeleton ? skyrim_cast<RE::Actor*>(skeleton->GetUserData())
+                          : nullptr,
+        .armor = armor,
+        .bipedSlot = bipedSlot,
+    };
+    auto* ref =
+        func(_this, armor, skeleton, bipedSlot, a3, a4, a5, a6, a7, a8, a9);
+    if (ref) {
+      event.attachedAt = ref;
+      event.hasAttached = true;
+    }
+    _TRACE("Dispatching ArmorAttachEvent for actor: {0:X}, armor: {1}, bipedSlot: {2}, hasAttached: {3}",
+           event.actor ? event.actor->GetFormID() : 0,
+           armor ? armor->name.c_str() : "null", event.bipedSlot, event.hasAttached);
+    g_armorAttachSource.Dispatch(event);
+    return ref;
   }
 
-  static inline REL::Relocation<decltype(thunk)> func;
-  static inline auto idx = 0xAD;
+  static inline REL::Relocation<_Actor_AttachArmor> func{
+      RE::Offset::Actor::AttachArmor};
+};
+
+struct Main_Update {
+  static void thunk() {
+    func();
+    auto* main = RE::Main::GetSingleton();
+    if (main->quitGame) {
+      // do something later maybe
+      return;
+    }
+    auto* player = RE::PlayerCharacter::GetSingleton();
+    if (!player) {
+      return;
+    }
+    if (auto* currentCell = player->GetParentCell()) {
+      if (playerCurrentCell != currentCell->GetFormID()) {
+        const PlayerCellChangeEvent cellEvent{
+            .isExterior = currentCell->IsExteriorCell(),
+            .isChangedInOut = isExteriorCell != currentCell->IsExteriorCell(),
+        };
+        g_cellChangeSource.Dispatch(cellEvent);
+        _TRACE("PlayerCellChangeEvent dispatched: isExterior={}, isChangedInOut={}",
+            cellEvent.isExterior, cellEvent.isChangedInOut);
+      }
+      playerCurrentCell = currentCell->GetFormID();
+      isExteriorCell = currentCell->IsExteriorCell();
+    }
+    const FrameEvent frameEvent{
+        .gamePaused = main ? main->freezeTime : false,
+    };
+    g_frameEventSource.Dispatch(frameEvent);
+  }
+
+  static inline REL::Relocation<decltype(&thunk)> func;
+  static inline REL::Relocation rel{RE::Offset::Main::Update};
+  static inline REL::Relocation offset{RE::Offset::Main::UpdateOffset};
+  static inline RE::FormID playerCurrentCell;
+  static inline bool isExteriorCell;
 };
 
 inline void Install() noexcept {
-  stl::write_vfunc<RE::PlayerCharacter, PlayerCharacter_Update>();
+  DetourRestoreAfterWith();
+  DetourTransactionBegin();
+  DetourUpdateThread(GetCurrentThread());
+  stl::write_detour<Actor_AttachArmor>();
+  DetourTransactionCommit();
+
   stl::write_vfunc<RE::TESObjectARMO, TESObjectARMO_SetFormEditorID>();
+  stl::write_thunk_call<Main_Update>();
 }
-}
+}  // namespace Hooks

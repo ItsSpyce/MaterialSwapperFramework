@@ -1,61 +1,49 @@
 #pragma once
 
-#include "Events/EventListener.h"
+#include <atomic>
 #include <functional>
 #include <queue>
-#include <atomic>
 
-struct FrameEvent {
-  bool gamePaused;
-};
+#include "Events/EventListener.h"
 
-struct ArmorAttachEvent {
-  RE::Actor* actor;
-  RE::NiNode* armor;
-  RE::NiNode* skeleton;
-  RE::NiAVObject* attachedAt;
-  u32 bipedSlot;
-  bool hasAttached = false;
-};
+extern EventSource<FrameEvent> g_frameEventSource;
+extern EventSource<ArmorAttachEvent> g_armorAttachSource;
+extern EventSource<PlayerCellChangeEvent> g_cellChangeSource;
 
-struct PlayerCellChangeEvent {
-  bool isExterior = false;
-  bool isChangedInOut = false;
-};
-
-class TaskManager : public Singleton<TaskManager>,
-                    public EventListener<FrameEvent>,
-                    public EventListener<ArmorAttachEvent>,
-                    public EventListener<PlayerCellChangeEvent>,
-                    public RE::BSTEventSink<SKSE::NiNodeUpdateEvent> {
+class TaskManager final : public Singleton<TaskManager>,
+                          public EventListener<FrameEvent>,
+                          public EventListener<ArmorAttachEvent>,
+                          public EventListener<PlayerCellChangeEvent> {
  public:
   TaskManager() = default;
-  ~TaskManager() override = default;
+  ~TaskManager() = default;
 
   void Initialize() {
-    SKSE::GetNiNodeUpdateEventSource()->AddEventSink(this);
+    // todo?
   }
 
   void OnEvent(const ArmorAttachEvent& event) override {
     if (!event.actor || !event.hasAttached) {
       return;
     }
-    RE::FormID formID = event.actor->GetFormID();
-    RegisterDelayTask([this, formID] {
-      if (auto* actor = RE::TESForm::LookupByID<RE::Actor>(formID)) {
-        Factories::ArmorFactory::GetSingleton()->ApplySavedMaterials(actor);
-      }
-    }, 1);
+    auto formID = event.actor->GetFormID();
+    RegisterDelayTask(
+        [this, formID, event] {
+          if (auto* actor = RE::TESForm::LookupByID<RE::Actor>(formID)) {
+            Factories::ArmorFactory::GetSingleton()->ApplySavedMaterials(
+                actor, event.armor, event.attachedAt, event.bipedSlot);
+          }
+        },
+        1);
   }
 
   void OnEvent(const FrameEvent& event) override {
     if (!canRunTasks_.load()) {
       return;
     }
-    size_t taskCount = delayedTasks_.size();
+    const auto taskCount = delayedTasks_.size();
     for (size_t i = 0; i < taskCount; i++) {
-      auto& task = delayedTasks_.front();
-      if (task.remainingTicks == 0) {
+      if (auto& task = delayedTasks_.front(); task.remainingTicks == 0) {
         task();
         delayedTasks_.pop();
       } else {
@@ -66,11 +54,15 @@ class TaskManager : public Singleton<TaskManager>,
     }
   }
 
+  void OnEvent(const PlayerCellChangeEvent& event) override {
+    canRunTasks_.store(true);
+  }
+
   void RegisterDelayTask(const function<void()>& func, u16 delayTick) {
     delayedTasks_.push(DelayedTask{func, delayTick});
   }
 
-private:
+ private:
   struct DelayedTask {
     std::function<void()> func;
     u16 remainingTicks;

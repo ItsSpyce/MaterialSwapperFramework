@@ -1,15 +1,16 @@
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/msvc_sink.h>
-
-#include "Translations.h"
-#include "UI.h"
-#include "Hooks.h"
 #include "Events.h"
+#include "Hooks.h"
+#include "IO/MaterialLoader.h"
 #include "MaterialPapyrus.h"
 #include "ModState.h"
-#include "IO/MaterialLoader.h"
-#include "ThreadPool.h"
 #include "TaskManager.h"
+#include "ThreadPool.h"
+#include "Translations.h"
+#include "UI.h"
+
+EventSource<FrameEvent> g_frameEventSource;
+EventSource<ArmorAttachEvent> g_armorAttachSource;
+EventSource<PlayerCellChangeEvent> g_cellChangeSource;
 
 static void InitializeLogging() {
   static bool initialized = false;
@@ -55,6 +56,9 @@ static void HandleMessage(SKSE::MessagingInterface::Message* msg) {
     MaterialLoader::ReadMaterialsFromDisk(true);
     ModState::GetSingleton()->SetReady(true);
   }
+  if (msg->type == SKSE::MessagingInterface::kPostLoadGame) {
+    TaskManager::GetSingleton()->Initialize();
+  }
 }
 
 SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
@@ -67,6 +71,10 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
   UI::Hooks::Install();
   _INFO("Installing hooks...");
   Hooks::Install();
+  auto* taskManager = TaskManager::GetSingleton();
+  g_armorAttachSource.AddListener(taskManager);
+  g_frameEventSource.AddListener(taskManager);
+  g_cellChangeSource.AddListener(taskManager);
   _INFO("Registering Papyrus functions...");
   SKSE::GetPapyrusInterface()->Register(MaterialPapyrus::RegisterFunctions);
   _INFO("Registering save hooks...");

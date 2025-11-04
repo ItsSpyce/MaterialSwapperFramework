@@ -16,5 +16,12 @@ namespace BSShaderTextureSet {
 constexpr auto SetTexture = REL::ID(21363);
 constexpr auto SetTexturePath = REL::ID(21364);
 }
+namespace Actor {
+constexpr auto AttachArmor = REL::VariantID(15535, 15712, 0x001DB9E0);
+}
+namespace Main {
+constexpr auto Update = REL::VariantID(35565, 36564, 0x005BAB10);
+constexpr auto UpdateOffset = REL::VariantOffset(0x748, 0xC26, 0X7EE);
+}
 }  // namespace Offset
 }  // namespace RE

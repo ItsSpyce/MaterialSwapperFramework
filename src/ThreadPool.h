@@ -6,10 +6,13 @@
 
 class ThreadPool;
 
-unique_ptr<ThreadPool> actorThreads;
-unique_ptr<ThreadPool> updateThreads;
+inline unique_ptr<ThreadPool> g_actorThreads;
+inline unique_ptr<ThreadPool> g_updateThreads;
 
 class ThreadPool {
+  using Lock = mutex;
+  using Locker = unique_lock;
+
  public:
   ThreadPool() = delete;
   ThreadPool(u32 threadSize) {
@@ -35,22 +38,22 @@ class ThreadPool {
         bind(forward<F>(f), forward<Args>(args)...));
     auto result = task->get_future();
     {
-      unique_lock lock(queueMutex_);
+      Locker lock(queueMutex_);
       tasks_.emplace([task]() { (*task)(); });
     }
     condition_.notify_one();
     return result;
   }
 
-  size_t count() const {
-    unique_lock lock(queueMutex_);
+  size_t count() {
+    Locker lock(queueMutex_);
     return tasks_.size();
   }
 
  private:
   vector<thread> workers_;
   queue<function<void()>> tasks_;
-  mutex queueMutex_;
+  Lock queueMutex_;
   condition_variable condition_;
   atomic<bool> stop_{false};
 

@@ -1,9 +1,6 @@
 // original by Acro, stripped of unnecessary parts
 #pragma once
 
-#include <concurrent_unordered_map.h>
-#include <concurrent_vector.h>
-
 #include "Result.h"
 
 namespace Graphics {

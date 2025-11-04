@@ -18,10 +18,10 @@ class PlayerEquipEvent : public RE::BSTEventSink<RE::TESEquipEvent> {
         return RE::BSEventNotifyControl::kContinue;
       }
       auto refHandle = event->actor->GetHandle().get();
-      SKSE::GetTaskInterface()->AddTask([refHandle, form] {
+      /*SKSE::GetTaskInterface()->AddTask([refHandle, form] {
         ArmorFactory::GetSingleton()->ApplySavedMaterials(
             refHandle->As<RE::Actor>(), form);
-      });
+      });*/
     }
 
     return RE::BSEventNotifyControl::kContinue;

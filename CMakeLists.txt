@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(MaterialSwapperFramework VERSION 0.1.6.1)
+project(MaterialSwapperFramework VERSION 0.1.7.0)
 
 set(CMAKE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party)
@@ -52,6 +52,7 @@ find_path(SRELL_INCLUDE_DIRS "srell.hpp")
 find_package(directxtex CONFIG REQUIRED)
 find_package(directxtk CONFIG REQUIRED)
 find_package(binary_io CONFIG REQUIRED)
+find_package(detours)
 
 add_subdirectory(${CommonLibPath} EXCLUDE_FROM_ALL)
 
@@ -78,6 +79,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   glaze::glaze
   Microsoft::DirectXTex
   Microsoft::DirectXTK
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed/x64-windows-static-md/lib/detours.lib>
 )
 
 # When your SKSE .dll is compiled, this will automatically copy the .dll into your mods folder.

@@ -26,3 +26,21 @@ class EventSource {
  private:
   std::vector<EventListener<Event>*> listeners_;
 };
+
+struct FrameEvent {
+  bool gamePaused;
+};
+
+struct ArmorAttachEvent {
+  RE::Actor* actor;
+  RE::NiNode* armor;
+  RE::NiNode* skeleton;
+  RE::NiAVObject* attachedAt;
+  i32 bipedSlot;
+  bool hasAttached = false;
+};
+
+struct PlayerCellChangeEvent {
+  bool isExterior = false;
+  bool isChangedInOut = false;
+};
