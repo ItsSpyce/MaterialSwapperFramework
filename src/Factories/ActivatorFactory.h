@@ -1,17 +1,13 @@
 #pragma once
 
-#include "Factory.h"
-
 namespace Factories {
-class ActivatorFactory : public Factory<RE::TESObjectACTI>,
-                         public Singleton<ActivatorFactory> {
+class ActivatorFactory : public Singleton<ActivatorFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectACTI* form,
-                     const MaterialConfig& material) override {
+                     const MaterialConfig& material) {
     return false;
   }
-  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr,
-                            RE::TESObjectACTI*) override {
+  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr, RE::TESObjectACTI*) {
     return false;
   }
 };

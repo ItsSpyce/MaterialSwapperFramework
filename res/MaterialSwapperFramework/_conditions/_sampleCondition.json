@@ -1,0 +1,13 @@
+[
+  {
+    "type": "refId",
+    "mathOp": "equals",
+    "value": 14,
+    "applies": [
+      {
+        "type": "armor",
+        "material": "Default"
+      }
+    ]
+  }
+]

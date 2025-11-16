@@ -1,18 +1,14 @@
 #pragma once
 
-#include "Factory.h"
-
-
 namespace Factories {
-class AmmunitionFactory : public Factory<RE::TESAmmo>,
-                          public Singleton<AmmunitionFactory> {
+class AmmunitionFactory : public Singleton<AmmunitionFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESAmmo* form,
-                     const MaterialConfig& material) override {
+                     const MaterialConfig& material) {
     // Ammunition does not support materials
     return false;
   }
-  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr, RE::TESAmmo*) override {
+  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr, RE::TESAmmo*) {
     // Ammunition does not support materials
     return false;
   }

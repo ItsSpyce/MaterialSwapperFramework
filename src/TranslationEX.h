@@ -12,6 +12,7 @@ concept translation = requires(T t) {
   static inline TranslationEX::TranslationKey _NAME{.name = #_NAME};
 
 class TranslationEX {
+#define _S(_LITERAL) (const char*)u8##_LITERAL
  public:
   struct TranslationKey {
     string name;
@@ -61,7 +62,7 @@ class TranslationEX {
   }
 
  private:
-  static inline string_view directory_ = "interface/translations"sv;
+  static inline auto directory_ = "interface/translations"sv;
   static inline std::string currentLanguage_;
   static inline std::unordered_map<string, string> translationMap_;
   static inline auto pluginName_ = std::string(SKSE::GetPluginName());
@@ -72,8 +73,8 @@ class TranslationEX {
       return;
     }
     hasRead = true;
-    const auto iniSettingCollection = RE::INISettingCollection::GetSingleton();
-    auto setting = iniSettingCollection
+    auto* iniSettingCollection = RE::INISettingCollection::GetSingleton();
+    auto* setting = iniSettingCollection
                        ? iniSettingCollection->GetSetting("sLanguage:General")
                        : nullptr;
     currentLanguage_ =
@@ -83,7 +84,7 @@ class TranslationEX {
   }
 
   static void ReadTranslations() {
-    auto dir = std::filesystem::path("Data") / directory_;
+    const auto dir = std::filesystem::path("Data") / directory_;
     auto translationFile =
         (dir / fmt::format("{}_{}.json", pluginName_,
                            glz::to_lower_case(currentLanguage_)))
@@ -106,4 +107,5 @@ class TranslationEX {
       _TRACE("  {} => {}", key, value);
     }
   }
+#undef _S
 };

@@ -1,20 +1,15 @@
 #pragma once
 
-#include "Factory.h"
-
-
 namespace Factories {
-class DoorFactory : public Factory<RE::TESObjectDOOR>,
-                    public Singleton<DoorFactory> {
+class DoorFactory : public Singleton<DoorFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectDOOR* form,
-                     const MaterialConfig& material) override {
+                     const MaterialConfig& material) {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to door forms can be added here
     return false;
   }
-  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr,
-                            RE::TESObjectDOOR*) override {
+  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr, RE::TESObjectDOOR*) {
     RETURN_IF_FALSE(refr)
     // Default material application logic for doors can be added here
     return false;

@@ -44,8 +44,6 @@ void MainWindow::Render() const {
   ImGui_Window("MaterialSwapperFramework", NULL, ImGuiWindowFlags_NoTitleBar) {
     ImGui::Text(Translations::windowTitle());
     ImGui::Separator();
-    ImGui::Text(Translations::showWindowInstructions());
-    ImGui::Separator();
     ImGui_Child("Sidenav", ImVec2{150, 0}) {
       ImGui::Text(Translations::navigation());
       ImGui::Separator();

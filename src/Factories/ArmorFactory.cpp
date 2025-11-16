@@ -66,31 +66,6 @@ static void SetItemDisplayName(ArmorFactory* factory, RE::TESObjectREFR* refr,
   }
 }
 
-static bool ApplyMaterialToRefr(RE::TESObjectREFR* refr,
-                                const MaterialConfig* material) {
-  RETURN_IF_FALSE(refr)
-  RETURN_IF_FALSE(material)
-  auto* refrModel = refr->Get3D();
-  for (const auto& [shapeName, materialName] : material->applies) {
-    auto* niAv = refrModel->GetObjectByName(shapeName);
-    if (!niAv) {
-      _WARN("No object found for shape name: {}", shapeName);
-      continue;
-    }
-    auto* triShape = niAv->AsTriShape();
-    if (!triShape) {
-      _WARN("No tri-shape found for shape name: {}", shapeName);
-      continue;
-    }
-    auto* materialFile = MaterialLoader::LoadMaterial(materialName);
-    if (!materialFile) {
-      _ERROR("Failed to load material file: {}", materialName);
-      continue;
-    }
-    MaterialHelpers::ApplyMaterialToNode(refr, triShape, materialFile);
-  }
-  return true;
-}
 
 bool ArmorFactory::ApplyMaterial(RE::TESObjectREFR* refr,
                                  RE::TESObjectARMO* form,
@@ -104,7 +79,7 @@ bool ArmorFactory::ApplyMaterial(RE::TESObjectREFR* refr,
     return false;
   }
   _TRACE("Applying material {} to UID {}", material->name, uid);
-  if (!ApplyMaterialToRefr(refr, material)) {
+  if (!MaterialHelpers::ApplyMaterialToRefr(refr, material)) {
     _ERROR("Failed to apply material to reference: {}, form: {}, unique ID: {}",
            refr->GetFormID(), form->GetFormID(), uid);
     return false;
@@ -143,9 +118,7 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
   auto uid = armorInSlot ? Helpers::GetUniqueID(
                                actor, armorInSlot->GetSlotMask(), false)
                          : 0;
-  auto armorData = uid != 0 && !armorData_.contains(uid)
-                       ? nullopt
-                       : optional(armorData_[uid]);
+  auto armorData = uid != 0 ? armorData_.try_get(uid) : nullptr;
   RE::BSVisit::TraverseScenegraphObjects(
       actor->Get3D(), [&](RE::NiAVObject* geometry) {
         auto* triShape = geometry->AsTriShape();
@@ -158,9 +131,7 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
           return VisitControl::kContinue;
         }
 
-        if (armorData.has_value() && armorInSlot) {
-          _DEBUG("Applying saved materials to armor in slot: {0:X}, UID: {1}",
-                 armorInSlot->GetFormID(), uid);
+        if (armorData && armorInSlot) {
           for (const auto& materialName : armorData->materials) {
             auto* materialConfig = MaterialLoader::GetMaterialConfig(
                 armorInSlot->GetFormID(), materialName);
@@ -171,7 +142,6 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
             auto appliesEntry = materialConfig->applies.contains(triShape->name.c_str()) ?
                                     materialConfig->applies.at(triShape->name.c_str()) : "";
             if (appliesEntry.empty()) {
-              _DEBUG("No applies entry for shape: {}", triShape->name);
               continue;
             }
             auto* materialFile =
@@ -273,11 +243,11 @@ void ArmorFactory::VisitAppliedMaterials(
     _ERROR("Form ID {} is not a valid armor", formID);
     return;
   }
-  if (!armorData_.contains(uid)) {
+  const auto appliedMaterials = armorData_.try_get(uid);
+  if (!appliedMaterials) {
     return;
   }
-  const auto& appliedMaterials = armorData_.at(uid);
-  for (const auto& materialName : appliedMaterials.materials) {
+  for (const auto& materialName : appliedMaterials->materials) {
     if (auto* materialConfig =
             MaterialLoader::GetMaterialConfig(formID, materialName)) {
       if (visitor(materialName.c_str(), *materialConfig) ==

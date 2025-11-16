@@ -4,12 +4,15 @@ namespace fs = std::filesystem;
 
 namespace Filesystem {
 static constinit inline auto MATERIAL_FILES_DIR = R"(Data\Materials)";
+static constinit inline auto SKSE_PLUGINS_DIR = R"(Data\SKSE\Plugins)";
 static constinit inline auto MATERIAL_PLUGIN_DIR =
     R"(Data\SKSE\Plugins\MaterialSwapperFramework)";
 static constinit inline auto MATERIAL_SHADER_DIR =
     R"(Data\SKSE\Plugins\MaterialSwapperFramework\shaders)";
 static constinit inline auto MATERIAL_CONFIG_DIR =
     R"(Data\SKSE\Plugins\MaterialSwapperFramework\config)";
+static constinit inline auto MATERIAL_CONDITIONS_DIR =
+    R"(Data\SKSE\Plugins\MaterialSwapperFramework\_conditions)";
 
 inline fs::recursive_directory_iterator EnumerateMaterialFilesDir() {
   if (!fs::exists(MATERIAL_FILES_DIR) ||

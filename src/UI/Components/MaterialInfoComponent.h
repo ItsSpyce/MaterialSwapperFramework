@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Factories.h"
-#include "MaterialConfig.h"
+#include "Models/MaterialConfig.h"
 #include "UI/ImGui_Sugar.h"
 
 namespace UI::Components {
@@ -22,7 +22,7 @@ inline void MaterialInfoComponent(const MaterialInfoComponentProps& props) {
     if (ImGui::IsItemHovered()) {
       ImGui::SetTooltip("Click to apply this material to the selected item.");
     }
-    Factories::ArmorFactory::GetSingleton().ApplyMaterial(
+    Factories::ArmorFactory::GetSingleton()->ApplyMaterial(
         props.targetRef, props.armor, props.material);
   }
 

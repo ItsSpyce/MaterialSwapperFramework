@@ -1,0 +1,6 @@
+{
+  "logLevel": "info", // "trace", "debug", "info", "warn", "error", "fatal"
+  "applyMaterialTickDelay": 1, // Number of ticks to wait before applying material changes
+  "openWindowKey": 68, // https://gist.github.com/arithex/3e953d1eb096afe58ce05ba6846493e4
+  "maxCoroutineOpsPerFrame": 500
+}

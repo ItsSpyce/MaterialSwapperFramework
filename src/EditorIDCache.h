@@ -58,6 +58,8 @@ inline void HydrateEditorIDCache() {
   for (const auto& [editorID, form] : *map) {
     switch (form->GetFormType()) {
       case RE::FormType::Armor:
+      case RE::FormType::NPC:
+      case RE::FormType::Weapon:
         EditorID::GetSingleton()->CacheEditorID(form, editorID.c_str());
         break;
       default:

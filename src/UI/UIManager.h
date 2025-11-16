@@ -74,9 +74,13 @@ class UIManager {
     ForEachWindow([](Window* window) { window->Initialize(); });
   }
 
+  static void SetShowKey(const u8 key) {
+    openWindowKey_ = key;
+  }
+
   static bool IsShowKey(const RE::ButtonEvent* event) {
     return event->GetDevice() == RE::INPUT_DEVICE::kKeyboard &&
-           (event->GetIDCode() == RE::BSWin32KeyboardDevice::Keys::kF10 ||
+           (event->GetIDCode() == openWindowKey_ ||
             (event->GetIDCode() == RE::BSWin32KeyboardDevice::Keys::kEscape &&
              isShowing_));
   }
@@ -162,6 +166,7 @@ class UIManager {
   static inline std::mutex windowsLock_;
   static inline array<Window*, 16> windows_;
   static inline u8 windowsCount_;
+  static inline u8 openWindowKey_;
   std::mutex inputLock_;
   static UINT ConvertDirectInputKeyToVirtualKey(uint32_t key) {
     using namespace REX::W32;

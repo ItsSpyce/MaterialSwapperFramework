@@ -69,27 +69,27 @@ void MaterialsPage(const MaterialsPageProps&) {
             MaterialLoader::VisitMaterialFilesForFormID(
                 selectedArmor->GetFormID(),
                 [&](const MaterialConfig& material) {
-                  if (material.isHidden) {
-                    return RE::BSVisit::BSVisitControl::kContinue;
-                  }
-                  ImGui_Row {
-                    ImGui_Column {
-                      ImGui_Stylus(ImGui::Stylus::Styles{
-                          .framePadding = ImVec2{4.0f, 8.0f},
-                          .buttonTextAlign = ImVec2{0.0f, 0.5f},
-                          .borderColor = ImVec4{0.5f, 0.5f, 0.5, 1.0f},
-                          .buttonColor = ImVec4{0.f, 0.f, 0.f, 0.f}}) {
-                        ImGui_Button(
-                            material.name.c_str(),
-                            ImVec2{ImGui::GetContentRegionAvail().x, 0.0f}) {
-                          if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip(
-                                "Click to apply this material to the selected "
-                                "item.");
+                  if (!material.isHidden) {
+                    ImGui_Row {
+                      ImGui_Column {
+                        ImGui_Stylus(ImGui::Stylus::Styles{
+                            .framePadding = ImVec2{4.0f, 8.0f},
+                            .buttonTextAlign = ImVec2{0.0f, 0.5f},
+                            .borderColor = ImVec4{0.5f, 0.5f, 0.5, 1.0f},
+                            .buttonColor = ImVec4{0.f, 0.f, 0.f, 0.f}}) {
+                          ImGui_Button(
+                              material.name.c_str(),
+                              ImVec2{ImGui::GetContentRegionAvail().x, 0.0f}) {
+                            if (ImGui::IsItemHovered()) {
+                              ImGui::SetTooltip(
+                                  "Click to apply this material to the "
+                                  "selected "
+                                  "item.");
+                            }
+                            Factories::ArmorFactory::GetSingleton()
+                                ->ApplyMaterial(actor, selectedArmor, &material,
+                                                true);
                           }
-                          Factories::ArmorFactory::GetSingleton()
-                              ->ApplyMaterial(actor, selectedArmor, &material,
-                                              true);
                         }
                       }
                     }

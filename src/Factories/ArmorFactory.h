@@ -6,7 +6,7 @@ struct MaterialConfig;
 
 
 namespace Factories {
-class ArmorFactory : public Singleton<ArmorFactory>, public ISaveable {
+class ArmorFactory : public ISaveable, public Singleton<ArmorFactory> {
  public:
   void ResetMaterials(RE::TESObjectREFR* refr);
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectARMO* form,
@@ -22,6 +22,6 @@ class ArmorFactory : public Singleton<ArmorFactory>, public ISaveable {
   struct ArmorData {
     vector<string> materials;
   };
-  unordered_map<Save::Types::UniqueID, ArmorData> armorData_;
+  emhash8::HashMap<Save::Types::UniqueID, ArmorData> armorData_;
 };
 }  // namespace Factories

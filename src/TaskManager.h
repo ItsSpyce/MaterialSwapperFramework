@@ -5,10 +5,9 @@
 #include <queue>
 
 #include "Events/EventListener.h"
-
-extern EventSource<FrameEvent> g_frameEventSource;
-extern EventSource<ArmorAttachEvent> g_armorAttachSource;
-extern EventSource<PlayerCellChangeEvent> g_cellChangeSource;
+#include "Factories/ArmorFactory.h"
+#include "Options.h"
+#include "ThreadPool.h"
 
 class TaskManager final : public Singleton<TaskManager>,
                           public EventListener<FrameEvent>,
@@ -18,9 +17,7 @@ class TaskManager final : public Singleton<TaskManager>,
   TaskManager() = default;
   ~TaskManager() = default;
 
-  void Initialize() {
-    // todo?
-  }
+  void Initialize() {}
 
   void OnEvent(const ArmorAttachEvent& event) override {
     if (!event.actor || !event.hasAttached) {
@@ -34,7 +31,7 @@ class TaskManager final : public Singleton<TaskManager>,
                 actor, event.armor, event.attachedAt, event.bipedSlot);
           }
         },
-        1);
+        Options::GetSingleton()->GetApplyMaterialTickDelay());
   }
 
   void OnEvent(const FrameEvent& event) override {
@@ -74,6 +71,7 @@ class TaskManager final : public Singleton<TaskManager>,
       }
     }
   };
+  // do I need to make this thread safe?...
   std::queue<DelayedTask> delayedTasks_;
   std::atomic<bool> canRunTasks_{false};
 };

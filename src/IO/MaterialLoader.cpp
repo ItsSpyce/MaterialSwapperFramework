@@ -15,30 +15,28 @@
 static bool LoadMaterialFromDisk(const std::string& filename,
                                  MaterialRecord& record) {
   if (filename.empty() || !fs::exists(filename)) {
-    logger::error("Material file does not exist: {}", filename);
+    _ERROR("Material file does not exist: {}", filename);
     return false;
   }
   if (!StringHelpers::ToLower(filename).ends_with(".json")) {
-    logger::error("JSON file expected, but got: {}", filename);
+    _ERROR("JSON file expected, but got: {}", filename);
     return false;
   }
   if (auto err = glz::read_file_json<glz::opts{.error_on_unknown_keys = false,
                                                .new_lines_in_arrays = true}>(
           record, filename, std::string{})) {
     auto cleanedError = glz::format_error(err);
-    logger::error("Failed to read material file {}: {}", filename,
-                  cleanedError);
+    _ERROR("Failed to read material file {}: {}", filename, cleanedError);
     return false;
   }
   // load templated materials
   if (record.inherits.has_value()) {
     MaterialRecord parent;
     if (!LoadMaterialFromDisk(record.inherits.value(), parent)) {
-      logger::error("Failed to load parent material: {}",
-                    record.inherits.value());
+      _ERROR("Failed to load parent material: {}", record.inherits.value());
       return false;
     }
-    
+
     MERGE_FIELD(shaderType);
     MERGE_FIELD(clamp);
     MERGE_FIELD(uvOffset);
@@ -81,6 +79,9 @@ static bool LoadMaterialFromDisk(const std::string& filename,
     MERGE_FIELD(displacementMap);
     MERGE_FIELD(baseMap);
     MERGE_FIELD(envMapMask);
+    MERGE_FIELD(faceTintMap);
+    MERGE_FIELD(detailMap);
+    MERGE_FIELD(subsurfaceMap);
     MERGE_FIELD(enableEditorAlphaThreshold);
     MERGE_FIELD(translucency);
     MERGE_FIELD(translucencyThickObject);
@@ -165,31 +166,32 @@ void MaterialLoader::ReadMaterialsFromDisk(bool clearExisting) {
     materialConfigs_.clear();
   }
   for (auto& jsonFile : Filesystem::EnumerateMaterialConfigDir()) {
+    _DEBUG("Reading material config file: {}", jsonFile.path().string());
     auto loweredPath = StringHelpers::ToLower(jsonFile.path().string());
     auto filename = StringHelpers::ToLower(jsonFile.path().filename().string());
     if (!filename.ends_with(".json") || filename[0] == '_') {
       continue;
     }
-    logger::debug("Reading material config file: {}", loweredPath);
     MaterialConfigMap config;
-    if (auto err = glz::read_file_json(config, loweredPath, std::string{})) {
+    if (auto err =
+            glz::read_file_json<glz::opts{.error_on_missing_keys = false}>(
+                config, loweredPath, std::string{})) {
       auto cleanedError = glz::format_error(err);
-      logger::error("Failed to read material config file {}: {}", loweredPath,
-                    cleanedError);
+      _ERROR("Failed to read material config file {}: {}", loweredPath,
+             cleanedError);
       continue;
     }
     for (auto& [formID, entry] : config) {
       auto realFormID = Helpers::GetFormID(formID);
       if (realFormID == 0) {
-        logger::error("Invalid form ID in material config: {}", formID);
+        _ERROR("Invalid form ID in material config: {}", formID);
         continue;
       }
-      if (auto it = materialConfigs_.find(realFormID);
-          it != materialConfigs_.end()) {
-        it->second.insert_range(it->second.end(), entry);
-      } else {
-        materialConfigs_[realFormID] = entry;
+      auto storedMaterials = materialConfigs_.get_or_return_default(realFormID);
+      for (auto& record : entry) {
+        storedMaterials[record.name] = record;
       }
+      materialConfigs_[realFormID] = storedMaterials;
     }
   }
   for (auto& modDirectory : Filesystem::EnumerateModsInMaterialDir()) {
@@ -208,7 +210,7 @@ void MaterialLoader::ReadMaterialsFromDisk(bool clearExisting) {
     // format for a directory name is "MOD_NAME.es{m,p,l}"
     auto* plugin = RE::TESDataHandler::GetSingleton()->LookupModByName(modName);
     if (!plugin) {
-      logger::warn("Plugin not loaded for mod directory: {}", modName);
+      _WARN("Plugin not loaded for mod directory: {}", modName);
       continue;  // Skip if the plugin is not loaded
     }
     for (auto& jsonFile : fs::recursive_directory_iterator(modDirectory)) {
@@ -218,37 +220,38 @@ void MaterialLoader::ReadMaterialsFromDisk(bool clearExisting) {
         continue;  // Skip non-JSON files
       }
       auto loweredPath = StringHelpers::ToLower(jsonFile.path().string());
-      logger::debug("Reading material config file: {}", loweredPath);
-      if (auto err = glz::read_file_json(config, loweredPath, std::string{})) {
+      _DEBUG("Reading material config file: {}", loweredPath);
+      if (auto err = glz::read_file_json<glz::opts{.error_on_missing_keys = false}>(config, loweredPath, std::string{})) {
         auto cleanedError = glz::format_error(err);
-        logger::error("Failed to read material config file {}: {}", loweredPath,
-                      cleanedError);
+        _ERROR("Failed to read material config file {}: {}", loweredPath,
+               cleanedError);
         continue;
       }
       for (auto& [formID, entry] : config) {
         auto realFormID = Helpers::GetFormID(formID);
         if (realFormID == 0) {
-          logger::error("Invalid form ID in material config: {}", formID);
+          _ERROR("Invalid form ID in material config: {}", formID);
           continue;
         }
-        if (auto it = materialConfigs_.find(realFormID);
-            it != materialConfigs_.end()) {
-          it->second.insert_range(it->second.end(), entry);
-        } else {
-          materialConfigs_[realFormID] = entry;
+
+        auto storedMaterials =
+            materialConfigs_.get_or_return_default(realFormID);
+        for (auto& record : entry) {
+          storedMaterials[record.name] = record;
         }
+        materialConfigs_[realFormID] = storedMaterials;
       }
     }
   }
 }
 
-MaterialRecord* MaterialLoader::LoadMaterial(const std::string& filename) {
+MaterialRecord* MaterialLoader::LoadMaterial(const string& filename) {
   if (filename.empty()) {
-    logger::error("Filename is empty");
+    _ERROR("Filename is empty");
     return nullptr;
   }
   auto path = fs::path("Data") / "Materials" / filename;
-  static std::unordered_map<std::string, MaterialRecord> materialCache;
+  static emhash8::HashMap<string, MaterialRecord> materialCache;
   if (auto it = materialCache.find(path.string()); it != materialCache.end()) {
     return &it->second;  // Return cached record
   }
@@ -260,25 +263,19 @@ MaterialRecord* MaterialLoader::LoadMaterial(const std::string& filename) {
   return &(materialCache[path.string()] = std::move(record));
 }
 
-MaterialConfig* MaterialLoader::GetMaterialConfig(
-    RE::FormID formID, const std::string& materialName) {
-  if (auto it = materialConfigs_.find(formID); it != materialConfigs_.end()) {
-    for (auto& record : it->second) {
-      if (StringHelpers::ToLower(record.name) ==
-          StringHelpers::ToLower(materialName)) {
-        // Create a unique_ptr by copying the found record
-        return &record;
-      }
-    }
-  } else {
-    logger::warn("No material configs found for form ID: {:08X}", formID);
+MaterialConfig* MaterialLoader::GetMaterialConfig(RE::FormID formID,
+                                                  const string& materialName) {
+  auto* records = materialConfigs_.try_get(formID);
+  if (!records) {
+    _WARN("No material configs found for form ID: {:08X}", formID);
+    return nullptr;
   }
-  return nullptr;
+  return records->try_get(materialName);
 }
 
 MaterialConfig* MaterialLoader::GetDefaultMaterial(RE::FormID formID) {
   if (auto it = materialConfigs_.find(formID); it != materialConfigs_.end()) {
-    for (auto& record : it->second) {
+    for (auto& record : it->second | views::values) {
       if (!record.modifyName) {
         return &record;
       }
@@ -288,10 +285,9 @@ MaterialConfig* MaterialLoader::GetDefaultMaterial(RE::FormID formID) {
 }
 
 void MaterialLoader::VisitMaterialFilesForFormID(
-    uint32_t formID, const Visitor<const MaterialConfig&>& visitor) {
-  if (auto it = materialConfigs_.find(formID); it != materialConfigs_.end()) {
-    for (const auto& entry : it->second) {
-      BREAK_IF_STOP(visitor, entry);
-    }
+    u32 formID, const Visitor<const MaterialConfig&>& visitor) {
+  auto materialConfigs = materialConfigs_.get_or_return_default(formID);
+  for (const auto& val : materialConfigs | views::values) {
+    BREAK_IF_STOP(visitor, val);
   }
 }

@@ -2,6 +2,7 @@
 
 #include "EditorIDCache.h"
 #include "NiOverride.h"
+#include "StringHelpers.h"
 #include "UniqueIDTable.h"
 
 namespace Helpers {
@@ -14,14 +15,14 @@ inline i32 GetModIndex(std::string_view name) {
 }
 
 inline u32 GetFormID(const std::string& name) {
+  if (StringHelpers::ToLower(name) == "player") {
+    return RE::PlayerCharacter::GetSingleton()->GetFormID();
+  }
   if (auto pos = name.find('|'); pos != std::string::npos) {
     auto i = GetModIndex(name.substr(0, pos));
     return i | std::stoul(name.substr(pos + 1), nullptr, 16);
   }
-  if (name.starts_with("0x")) {
-    return std::stoul(name.substr(2), nullptr, 16);
-  }
-  if (name.starts_with("0X")) {
+  if (name[0] == '0' && (name[1] == 'x' || name[1] == 'X')) {
     return std::stoul(name.substr(2), nullptr, 16);
   }
   if (const auto formIDFromCache = EditorIDCache::GetFormID(name);
@@ -40,33 +41,32 @@ inline UniqueID GetUniqueID(RE::TESObjectREFR* refr,
   if (!armo) {
     return 0;
   }
-  return NiOverride::GetItemUniqueID()(
-      RE::StaticFunctionTag{}, refr, 0,
-      static_cast<int>(armo->GetSlotMask()), init);
-  /*auto* armo = data->object->As<RE::TESObjectARMO>();
-  if (!armo) {
-    return 0;
-  }
-  return UniqueIDTable::GetSingleton()->GetUID(refr, armo->GetFormID(), init);*/
+  return NiOverride::GetItemUniqueID()(RE::StaticFunctionTag{}, refr, 0,
+                                       static_cast<int>(armo->GetSlotMask()),
+                                       init);
 }
 
 inline UniqueID GetUniqueID(RE::TESObjectREFR* refr,
                             RE::BGSBipedObjectForm::BipedObjectSlot slot,
                             bool init) {
-  if (!refr && !init) {
+  if (!refr) {
     return 0;
   }
   return NiOverride::GetItemUniqueID()(RE::StaticFunctionTag{}, refr, 0,
                                        static_cast<int>(slot), init);
-  /*auto* actor = refr->As<RE::Actor>();
-  if (!actor) {
+}
+
+inline UniqueID GetUniqueID(RE::TESObjectREFR* refr, RE::BIPED_OBJECT slot,
+                            bool init) {
+  if (!refr) {
     return 0;
   }
-  if (auto* armo = actor->GetWornArmor(slot)) {
-    return UniqueIDTable::GetSingleton()->GetUID(refr, armo->GetFormID(), init);
+  if (slot > RE::BIPED_OBJECT::kEditorTotal) {
+    return NiOverride::GetItemUniqueID()(RE::StaticFunctionTag{}, refr,
+                                         static_cast<int>(slot), 0, init);
   }
-  _WARN("No armor found for slot: {}", static_cast<int>(slot));
-  return 0;*/
+  return NiOverride::GetItemUniqueID()(RE::StaticFunctionTag{}, refr, 0,
+                                       static_cast<int>(slot), init);
 }
 
 inline RE::FormID GetFormIDForUniqueID(UniqueID uid) {

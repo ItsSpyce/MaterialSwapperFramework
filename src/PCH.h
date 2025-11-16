@@ -45,6 +45,7 @@
 #include <ranges>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
+#include "hash_table8.hpp"
 
 
 template <class T>
@@ -153,3 +154,6 @@ using Visitor = function<RE::BSVisit::BSVisitControl(Args...)>;
     _ERROR("Function not implemented: {}", __FUNCTION__); \
     throw std::exception("Function not implemented");     \
   }
+
+#include "Models/MaterialConfig.h"
+#include "Models/MaterialRecord.h"

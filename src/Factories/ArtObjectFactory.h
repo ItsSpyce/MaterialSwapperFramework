@@ -1,19 +1,14 @@
 #pragma once
 
-#include "Factory.h"
-
-
 namespace Factories {
-class ArtObjectFactory : public Factory<RE::BGSArtObject>,
-                         public Singleton<ArtObjectFactory> {
+class ArtObjectFactory : public Singleton<ArtObjectFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::BGSArtObject* form,
-                     const MaterialConfig& material) override {
+                     const MaterialConfig& material) {
     // Art objects do not support materials
     return false;
   }
-  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr,
-                            RE::BGSArtObject*) override {
+  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr, RE::BGSArtObject*) {
     // Art objects do not support materials
     return false;
   }

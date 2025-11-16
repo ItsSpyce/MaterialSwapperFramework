@@ -7,9 +7,10 @@
 extern EventSource<FrameEvent> g_frameEventSource;
 extern EventSource<ArmorAttachEvent> g_armorAttachSource;
 extern EventSource<PlayerCellChangeEvent> g_cellChangeSource;
+extern EventSource<WeatherChangeEvent> g_weatherChangeSource;
 
 namespace Hooks {
-struct TESObjectARMO_SetFormEditorID {
+struct TESForm_SetFormEditorID {
   static bool thunk(RE::TESForm* form, const char* editorID) {
     if (std::strlen(editorID) > 0 && !form->IsDynamicForm()) {
       const auto& [map, lock] = RE::TESForm::GetAllFormsByEditorID();
@@ -46,9 +47,12 @@ struct Actor_AttachArmor {
       event.attachedAt = ref;
       event.hasAttached = true;
     }
-    _TRACE("Dispatching ArmorAttachEvent for actor: {0:X}, armor: {1}, bipedSlot: {2}, hasAttached: {3}",
-           event.actor ? event.actor->GetFormID() : 0,
-           armor ? armor->name.c_str() : "null", event.bipedSlot, event.hasAttached);
+    _TRACE(
+        "Dispatching ArmorAttachEvent for actor: {0:X}, armor: {1}, bipedSlot: "
+        "{2}, hasAttached: {3}",
+        event.actor ? event.actor->GetFormID() : 0,
+        armor ? armor->name.c_str() : "null", event.bipedSlot,
+        event.hasAttached);
     g_armorAttachSource.Dispatch(event);
     return ref;
   }
@@ -74,13 +78,26 @@ struct Main_Update {
         const PlayerCellChangeEvent cellEvent{
             .isExterior = currentCell->IsExteriorCell(),
             .isChangedInOut = isExteriorCell != currentCell->IsExteriorCell(),
+            .oldCell = playerCurrentCell,
+            .newCell = currentCell->GetFormID(),
         };
         g_cellChangeSource.Dispatch(cellEvent);
-        _TRACE("PlayerCellChangeEvent dispatched: isExterior={}, isChangedInOut={}",
+        _TRACE(
+            "PlayerCellChangeEvent dispatched: isExterior={}, "
+            "isChangedInOut={}",
             cellEvent.isExterior, cellEvent.isChangedInOut);
       }
       playerCurrentCell = currentCell->GetFormID();
       isExteriorCell = currentCell->IsExteriorCell();
+    }
+    if (auto* sky = RE::Sky::GetSingleton()) {
+      auto* weather = sky->overrideWeather  ? sky->overrideWeather
+                     : sky->currentWeather ? sky->currentWeather
+                                           : sky->defaultWeather;
+      if (weather && weather->data.flags.underlying() != currentWeather) {
+        g_weatherChangeSource.Dispatch(WeatherChangeEvent{});
+        currentWeather = weather->data.flags.underlying();
+      }
     }
     const FrameEvent frameEvent{
         .gamePaused = main ? main->freezeTime : false,
@@ -92,6 +109,7 @@ struct Main_Update {
   static inline REL::Relocation rel{RE::Offset::Main::Update};
   static inline REL::Relocation offset{RE::Offset::Main::UpdateOffset};
   static inline RE::FormID playerCurrentCell;
+  static inline u8 currentWeather;
   static inline bool isExteriorCell;
 };
 
@@ -102,7 +120,7 @@ inline void Install() noexcept {
   stl::write_detour<Actor_AttachArmor>();
   DetourTransactionCommit();
 
-  stl::write_vfunc<RE::TESObjectARMO, TESObjectARMO_SetFormEditorID>();
+  stl::write_vfunc<RE::TESForm, TESForm_SetFormEditorID>();
   stl::write_thunk_call<Main_Update>();
 }
 }  // namespace Hooks

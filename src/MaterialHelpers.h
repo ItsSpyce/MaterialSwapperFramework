@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Graphics/TextureLoader.h"
 #include "Graphics/ShaderManager.h"
+#include "Graphics/TextureLoader.h"
+#include "IO/MaterialLoader.h"
 #include "Models/MaterialRecord.h"
 #include "NifHelpers.h"
 
@@ -121,12 +122,15 @@ inline bool ApplyMaterialToNode(const RE::TESObjectREFR* refr,
     alphaProperty->alphaThreshold =
         record->alphaTestThreshold.value_or(alphaProperty->alphaThreshold);
   }
-  /*textureSet->SetTexturePath(Texture::kDiffuse, record->diffuseMap);
-  textureSet->SetTexturePath(Texture::kNormal, record->normalMap);
-  textureSet->SetTexturePath(Texture::kSpecular, record->specularMap);
-  textureSet->SetTexturePath(Texture::kEnvironment, record->envMap);
-  textureSet->SetTexturePath(Texture::kEnvironmentMask, record->envMapMask);
-  textureSet->SetTexturePath(Texture::kGlowMap, record->glowMap);*/
+  /*auto textureSet = newMaterial->GetTextureSet();
+  using Texture = RE::BSTextureSet::Textures;
+  textureSet->SetTexturePath(Texture::kDiffuse, record->diffuseMap->c_str());
+  textureSet->SetTexturePath(Texture::kNormal, record->normalMap->c_str());
+  textureSet->SetTexturePath(Texture::kSpecular, record->specularMap->c_str());
+  textureSet->SetTexturePath(Texture::kEnvironment, record->envMap->c_str());
+  textureSet->SetTexturePath(Texture::kEnvironmentMask,
+  record->envMapMask->c_str()); textureSet->SetTexturePath(Texture::kGlowMap,
+  record->glowMap->c_str());*/
   auto* textureLoader = Graphics::TextureLoader::GetSingleton();
 
   if (const auto diffuseMap = GetStringPtr(record->diffuseMap)) {
@@ -164,6 +168,23 @@ inline bool ApplyMaterialToNode(const RE::TESObjectREFR* refr,
           RE::NiPointer(textureLoader->LoadTexture(glowMap));
     }
     newMaterial = glowMapMaterial;
+  }
+  if (record->facegen.value_or(false)) {
+    auto* faceGenMaterial =
+        skyrim_cast<RE::BSLightingShaderMaterialFacegen*>(newMaterial);
+    if (const auto faceTintMap = GetStringPtr(record->faceTintMap)) {
+      faceGenMaterial->tintTexture =
+          RE::NiPointer(textureLoader->LoadTexture(faceTintMap));
+    }
+    if (const auto detailMap = GetStringPtr(record->detailMap)) {
+      faceGenMaterial->detailTexture =
+          RE::NiPointer(textureLoader->LoadTexture(detailMap));
+    }
+    if (const auto subsurfaceMap = GetStringPtr(record->subsurfaceMap)) {
+      faceGenMaterial->subsurfaceTexture =
+          RE::NiPointer(textureLoader->LoadTexture(subsurfaceMap));
+    }
+    newMaterial = faceGenMaterial;
   }
   if (const auto colorMap = GetStringPtr(record->colorBlendMap)) {
     const auto colorBlendTexture =
@@ -207,4 +228,32 @@ inline bool ApplyMaterialToNode(const RE::TESObjectREFR* refr,
   lightingShader->FinishSetupGeometry(bsTriShape);
   return true;
 }
+
+static bool ApplyMaterialToRefr(RE::TESObjectREFR* refr,
+                                const MaterialConfig* material) {
+  RETURN_IF_FALSE(refr)
+  RETURN_IF_FALSE(material)
+  auto* refrModel = refr->Get3D();
+  RETURN_IF_FALSE(refrModel);
+  for (const auto& [shapeName, materialName] : material->applies) {
+    auto* niAv = refrModel->GetObjectByName(shapeName);
+    if (!niAv) {
+      _WARN("No object found for shape name: {}", shapeName);
+      continue;
+    }
+    auto* geometry = niAv->AsGeometry();
+    if (!geometry) {
+      _WARN("No geometry found for shape name: {}", shapeName);
+      continue;
+    }
+    auto* materialFile = MaterialLoader::LoadMaterial(materialName);
+    if (!materialFile) {
+      _ERROR("Failed to load material file: {}", materialName);
+      continue;
+    }
+    ApplyMaterialToNode(refr, geometry, materialFile);
+  }
+  return true;
+}
+
 }  // namespace MaterialHelpers

@@ -3,18 +3,19 @@
 #include <dinput.h>
 #include <dxgi.h>
 #include <imgui.h>
-#include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
+#include <imgui_impl_win32.h>
 
 #include "UI/UIManager.h"
 
 namespace UI {
 class UIManagerImpl : public UIManager {
  public:
-  UIManagerImpl() {}
-  ~UIManagerImpl() override {}
-  bool InitializeRenderer(ID3D11Device* device, ID3D11DeviceContext* deviceContext,
-               DXGI_SWAP_CHAIN_DESC& desc) override {
+  UIManagerImpl() = default;
+  ~UIManagerImpl() override  = default;
+  bool InitializeRenderer(ID3D11Device* device,
+                          ID3D11DeviceContext* deviceContext,
+                          DXGI_SWAP_CHAIN_DESC& desc) override {
     ImGui::CreateContext();
     auto& io = ImGui::GetIO();
     io.ConfigFlags = ImGuiConfigFlags_NavEnableKeyboard |
@@ -22,6 +23,20 @@ class UIManagerImpl : public UIManager {
                      ImGuiConfigFlags_NoMouseCursorChange;
     io.ConfigWindowsMoveFromTitleBarOnly = true;
     io.IniFilename = nullptr;
+    io.FontDefault = io.Fonts->AddFontFromFileTTF(
+        "Data/interface/fonts/NotoSansDisplay-Regular.ttf", 18.0f);
+    io.Fonts->AddFontFromFileTTF(
+        "Data/interface/fonts/NotoSansDisplay-Regular.ttf", 18.0f, nullptr,
+        io.Fonts->GetGlyphRangesCyrillic());
+    io.Fonts->AddFontFromFileTTF(
+        "Data/interface/fonts/NotoSansDisplay-Regular.ttf", 18.0f, nullptr,
+        io.Fonts->GetGlyphRangesJapanese());
+    io.Fonts->AddFontFromFileTTF(
+        "Data/interface/fonts/NotoSansDisplay-Regular.ttf", 18.0f, nullptr,
+        io.Fonts->GetGlyphRangesKorean());
+    io.Fonts->AddFontFromFileTTF(
+        "Data/interface/fonts/NotoSansDisplay-Regular.ttf", 18.0f, nullptr,
+        io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
     if (!ImGui_ImplWin32_Init(desc.OutputWindow)) {
       _ERROR("ImGui_ImplWin32_Init failed");
       return false;
@@ -79,8 +94,7 @@ class UIManagerImpl : public UIManager {
       return;
     }
     auto& io = ImGui::GetIO();
-    io.AddInputCharacter(
-        ImGui_ImplWin32_VirtualKeyToImGuiKey(event->keyCode));
+    io.AddInputCharacter(ImGui_ImplWin32_VirtualKeyToImGuiKey(event->keyCode));
   }
 
   void HandleMouse(const RE::ButtonEvent* event) override {

@@ -22,6 +22,7 @@
 #include "Factories/LightFactory.h"
 #include "Factories/MiscItemFactory.h"
 #include "Factories/MoveableStaticFactory.h"
+#include "Factories/NPCFactory.h"
 #include "Factories/ProjectileFactory.h"
 #include "Factories/ScrollFactory.h"
 #include "Factories/SoulGemFactory.h"

@@ -43,4 +43,14 @@ struct ArmorAttachEvent {
 struct PlayerCellChangeEvent {
   bool isExterior = false;
   bool isChangedInOut = false;
+  RE::FormID oldCell;
+  RE::FormID newCell;
 };
+
+struct GameHourChangeEvent {
+  int newHour;
+  int oldHour;
+  int dayOfWeek;
+};
+
+struct WeatherChangeEvent {};

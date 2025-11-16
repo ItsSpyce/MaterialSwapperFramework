@@ -9,6 +9,7 @@ struct SaveData {
   static constexpr u8 VERSION = 2;
   unordered_map<RE::FormID, vector<Types::ArmorRecordEntryV2>> armorRecords{};
   Types::UniqueIDHistoryV2 uniqueIDHistory{};
+  vector<Types::NPCRecordEntryV2> npcRecords{};
   u8 version{VERSION};
 
   void Read(SKSE::SerializationInterface* iface, uint32_t type,
@@ -23,6 +24,12 @@ struct SaveData {
     if (type == Types::UniqueIDHistoryV2::IDENTIFIER) {
       if (!Helpers::ReadJsonObject(iface, uniqueIDHistory)) {
         _ERROR("Failed to read unique ID history from serialization interface");
+        return;
+      }
+    }
+    if (type == Types::NPCRecordEntryV2::IDENTIFIER) {
+      if (!Helpers::ReadJsonObject(iface, npcRecords)) {
+        _ERROR("Failed to read NPC records from serialization interface");
         return;
       }
     }
@@ -43,6 +50,14 @@ struct SaveData {
     }
     if (!Helpers::WriteJsonObject(iface, uniqueIDHistory)) {
       _ERROR("Failed to write unique ID history to serialization interface");
+      return;
+    }
+    if (!iface->OpenRecord(Types::NPCRecordEntryV2::IDENTIFIER, 2)) {
+      _ERROR("Failed to open record for NPCRecordEntry");
+      return;
+    }
+    if (!Helpers::WriteJsonObject(iface, npcRecords)) {
+      _ERROR("Failed to write NPC records to serialization interface");
       return;
     }
   }

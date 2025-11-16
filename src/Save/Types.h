@@ -53,4 +53,10 @@ struct UniqueIDHistoryV2 {
   vector<UniqueIDRowV2> rows{};
   vector<UniqueID> freedUIDs{};
 };
+
+struct NPCRecordEntryV2 {
+  static constexpr u32 IDENTIFIER = 'NPCD';
+  RE::VMHandle npcHandle;
+  vector<string> appliedMaterials;
+};
 }  // namespace Save::Types

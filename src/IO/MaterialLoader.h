@@ -7,11 +7,10 @@ class MaterialLoader {
  public:
   void static ReadMaterialsFromDisk(bool clearExisting);
 
-  _NODISCARD static MaterialRecord* LoadMaterial(
-      const std::string& filename);
+  _NODISCARD static MaterialRecord* LoadMaterial(const string& filename);
 
   _NODISCARD static MaterialConfig* GetMaterialConfig(
-      RE::FormID formID, const std::string& materialName);
+      RE::FormID formID, const string& materialName);
 
   _NODISCARD static MaterialConfig* GetDefaultMaterial(RE::FormID formID);
 
@@ -20,10 +19,9 @@ class MaterialLoader {
   }
 
   static void VisitMaterialFilesForFormID(
-      uint32_t formID,
-      const Visitor<const MaterialConfig&>& visitor);
+      u32 formID, const Visitor<const MaterialConfig&>& visitor);
 
  private:
-  static inline std::unordered_map<uint32_t, std::vector<MaterialConfig>>
+  static inline emhash8::HashMap<u32, emhash8::HashMap<string, MaterialConfig>>
       materialConfigs_{};
 };

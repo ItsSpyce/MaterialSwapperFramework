@@ -4,11 +4,6 @@
 
 #include <future>
 
-class ThreadPool;
-
-inline unique_ptr<ThreadPool> g_actorThreads;
-inline unique_ptr<ThreadPool> g_updateThreads;
-
 class ThreadPool {
   using Lock = mutex;
   using Locker = unique_lock;
@@ -39,7 +34,7 @@ class ThreadPool {
     auto result = task->get_future();
     {
       Locker lock(queueMutex_);
-      tasks_.emplace([task]() { (*task)(); });
+      tasks_.emplace([task] { (*task)(); });
     }
     condition_.notify_one();
     return result;

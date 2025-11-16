@@ -1,20 +1,15 @@
 #pragma once
 
-#include "Factory.h"
-
-
 namespace Factories {
-class StaticFactory : public Factory<RE::TESObjectSTAT>,
-                      public Singleton<StaticFactory> {
+class StaticFactory : public Singleton<StaticFactory> {
  public:
   bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectSTAT* form,
-                     const MaterialConfig& material) override {
+                     const MaterialConfig& material) {
     RETURN_IF_FALSE(refr)
     // Logic to apply material to static forms can be added here
     return false;
   }
-  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr,
-                            RE::TESObjectSTAT*) override {
+  bool ApplyDefaultMaterial(RE::TESObjectREFR* refr, RE::TESObjectSTAT*) {
     RETURN_IF_FALSE(refr)
     // Default material application logic for statics can be added here
     return false;
