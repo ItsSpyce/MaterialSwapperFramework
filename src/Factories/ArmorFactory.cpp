@@ -221,6 +221,7 @@ void ArmorFactory::ResetMaterials(RE::TESObjectREFR* refr) {
   if (!actor) {
     return;
   }
+  // TODO: fix this
   Helpers::VisitInventoryItems(actor, [&](const Helpers::InventoryItem* item) {
     if (item->uid == NULL) {
       return VisitControl::kContinue;

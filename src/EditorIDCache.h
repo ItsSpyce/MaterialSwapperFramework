@@ -14,24 +14,14 @@ class EditorID : public Singleton<EditorID> {
     CacheEditorID(form->GetFormID(), editorID);
   }
 
-  const std::string& GetEditorID(RE::FormID formID) {
-    if (const auto it = formIDToEditorIDMap_.find(formID);
-        it != formIDToEditorIDMap_.end()) {
-      return it->second;
-    }
-
-    static std::string emptyStr;
-    return emptyStr;  // Return empty string if not found
+  const std::string& GetEditorID(RE::FormID formID) const {
+    return formIDToEditorIDMap_.get_or_return_default(formID);
   }
-  const std::string& GetEditorID(const RE::TESForm* form) {
+  const std::string& GetEditorID(const RE::TESForm* form) const {
     return GetEditorID(form->GetFormID());
   }
-  RE::FormID GetFormID(const std::string& editorID) {
-    if (const auto it = editorIDToFormIDMap_.find(editorID);
-        it != editorIDToFormIDMap_.end()) {
-      return it->second;
-    }
-    return 0;  // Return 0 if not found
+  RE::FormID GetFormID(const std::string& editorID) const {
+    return editorIDToFormIDMap_.get_or_return_default(editorID);
   }
 
  private:
@@ -39,8 +29,8 @@ class EditorID : public Singleton<EditorID> {
   using Locker = std::scoped_lock<Lock>;
 
   mutable Lock lock_;
-  std::unordered_map<RE::FormID, std::string> formIDToEditorIDMap_;
-  std::unordered_map<std::string, RE::FormID> editorIDToFormIDMap_;
+  emhash8::HashMap<RE::FormID, std::string> formIDToEditorIDMap_;
+  emhash8::HashMap<std::string, RE::FormID> editorIDToFormIDMap_;
 };
 
 inline const std::string& GetEditorID(RE::FormID formID) {
@@ -60,6 +50,9 @@ inline void HydrateEditorIDCache() {
       case RE::FormType::Armor:
       case RE::FormType::NPC:
       case RE::FormType::Weapon:
+      case RE::FormType::Race:
+      case RE::FormType::ActorCharacter:
+      case RE::FormType::Keyword:
         EditorID::GetSingleton()->CacheEditorID(form, editorID.c_str());
         break;
       default:

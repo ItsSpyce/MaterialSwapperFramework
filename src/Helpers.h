@@ -37,13 +37,13 @@ inline UniqueID GetUniqueID(RE::TESObjectREFR* refr,
   if (!refr || !data) {
     return 0;
   }
-  auto* armo = data->object->As<RE::TESObjectARMO>();
-  if (!armo) {
-    return 0;
+  if (auto* armo = data->object->As<RE::TESObjectARMO>()) {
+    return NiOverride::GetItemUniqueID()(RE::StaticFunctionTag{}, refr, 0,
+                                         static_cast<int>(armo->GetSlotMask()),
+                                         init);
   }
-  return NiOverride::GetItemUniqueID()(RE::StaticFunctionTag{}, refr, 0,
-                                       static_cast<int>(armo->GetSlotMask()),
-                                       init);
+
+  return 0;
 }
 
 inline UniqueID GetUniqueID(RE::TESObjectREFR* refr,
@@ -195,5 +195,30 @@ inline RE::ExtraDataList* GetOrCreateExtraList(RE::InventoryEntryData* data) {
 
   data->AddExtraList(newList);
   return newList;
+}
+
+inline RE::BIPED_OBJECT GetWeaponSlot(RE::TESObjectWEAP* weap) {
+  if (!weap) {
+    return RE::BIPED_OBJECT::kNone;
+  }
+#define WEAP_CASE(_TYPE)       \
+  case RE::WEAPON_TYPE::_TYPE: \
+    return RE::BIPED_OBJECT::_TYPE;
+  switch (weap->GetWeaponType()) {
+    WEAP_CASE(kBow)
+    WEAP_CASE(kCrossbow)
+    WEAP_CASE(kHandToHandMelee)
+    WEAP_CASE(kOneHandAxe)
+    WEAP_CASE(kOneHandDagger)
+    WEAP_CASE(kOneHandMace)
+    WEAP_CASE(kOneHandSword)
+    WEAP_CASE(kStaff)
+    case RE::WEAPON_TYPE::kTwoHandAxe:
+    case RE::WEAPON_TYPE::kTwoHandSword:
+      return RE::BIPED_OBJECT::kTwoHandMelee;
+    default:
+      return RE::BIPED_OBJECT::kNone;
+  }
+#undef WEAP_CASE
 }
 }  // namespace Helpers

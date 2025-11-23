@@ -28,9 +28,6 @@ struct TESForm_SetFormEditorID {
 };
 
 struct Actor_AttachArmor {
-  typedef RE::NiAVObject* (*_Actor_AttachArmor)(void*, RE::NiNode*, RE::NiNode*,
-                                                i32, void*, void*, void*, void*,
-                                                char, i32, void*);
   static RE::NiAVObject* __fastcall thunk(void* _this, RE::NiNode* armor,
                                           RE::NiNode* skeleton, i32 bipedSlot,
                                           void* a3, void* a4, void* a5,
@@ -57,8 +54,22 @@ struct Actor_AttachArmor {
     return ref;
   }
 
-  static inline REL::Relocation<_Actor_AttachArmor> func{
+  static inline REL::Relocation<decltype(&thunk)> func{
       RE::Offset::Actor::AttachArmor};
+};
+
+struct Actor_CreateWeaponNodes {
+  static void __fastcall thunk(RE::TESObjectREFR* actor, RE::TESForm* weap, bool left) {
+    func(actor, weap, left);
+    RE::BSVisit::TraverseScenegraphObjects(actor->Get3D(), [](RE::NiAVObject* obj) {
+      _TRACE("Shape: {}", obj->name.c_str());
+      return RE::BSVisit::BSVisitControl::kContinue;
+    });
+  }
+
+  static inline REL::Relocation<decltype(&thunk)> func{
+    RE::Offset::Actor::CreateWeaponNodes
+  };
 };
 
 struct Main_Update {
@@ -118,6 +129,7 @@ inline void Install() noexcept {
   DetourTransactionBegin();
   DetourUpdateThread(GetCurrentThread());
   stl::write_detour<Actor_AttachArmor>();
+  stl::write_detour<Actor_CreateWeaponNodes>();
   DetourTransactionCommit();
 
   stl::write_vfunc<RE::TESForm, TESForm_SetFormEditorID>();

@@ -82,18 +82,6 @@ inline std::string PrefixTexturesPath(const std::string_view& path) {
   return fmt::format("textures\\{}", path);
 }
 
-inline bool HasMaterialName(std::string_view name, size_t& index) {
-  index = name.find(" (*");
-  return index != std::string::npos;
-}
-
-inline bool HasMaterialName(RE::TESForm* form, size_t& index) {
-  if (!form) {
-    return false;
-  }
-  return HasMaterialName(form->GetName(), index);
-}
-
 inline void Join(const std::vector<const char*>& strings,
                         const char* delimiter, std::string& out) {
   if (strings.empty()) {

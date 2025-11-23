@@ -64,6 +64,18 @@ bool Condition::EvaluateImpl(RE::TESObjectREFR* refr) const {
     }
     return currentWeather->data.flags.any(lookingFor);
   }
+  if (type == "race") {
+    if (auto* actor = refr->As<RE::Actor>()) {
+      auto strValue = value.get_string();
+      if (strValue == actor->GetRace()->GetFormEditorID()) {
+        return true;
+      }
+      if (auto formID = Helpers::GetFormID(strValue)) {
+        return formID == actor->GetRace()->GetFormID();
+      }
+    }
+    return false;
+  }
   return false;
 }
 }  // namespace Conditions

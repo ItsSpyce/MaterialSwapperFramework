@@ -56,7 +56,14 @@ struct UniqueIDHistoryV2 {
 
 struct NPCRecordEntryV2 {
   static constexpr u32 IDENTIFIER = 'NPCD';
-  RE::VMHandle npcHandle;
+  RE::FormID formID;
+  vector<string> appliedMaterials;
+};
+
+// should we consider just making this type an abstract for all other types
+struct WeaponRecordEntryV2 {
+  static constexpr u32 IDENTIFIER = 'WEAP';
+  UniqueID uniqueID;
   vector<string> appliedMaterials;
 };
 }  // namespace Save::Types
