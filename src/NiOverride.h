@@ -97,4 +97,28 @@ MAKE_NI_OVERRIDE_FUNCTION(SetItemTextureLayerColor, void, int uniqueID,
                           NiOverrideTex textureIndex, int layer, int color);
 MAKE_NI_OVERRIDE_FUNCTION(ClearItemTextureLayerColor, void, int uniqueID,
                           NiOverrideTex textureIndex, int layer);
+
+MAKE_NI_OVERRIDE_FUNCTION(SetMorphValue, void, RE::TESObjectREFR* refr,
+                          const char* morphName, float value);
+MAKE_NI_OVERRIDE_FUNCTION(GetMorphValue, float, RE::TESObjectREFR* refr,
+                          const char* morphName);
+MAKE_NI_OVERRIDE_FUNCTION(ClearMorphValue, void, RE::TESObjectREFR* refr,
+                          const char* morphName);
+MAKE_NI_OVERRIDE_FUNCTION(HasBodyMorph, bool, RE::TESObjectREFR* refr,
+                          const char* morphName, const char* keyName);
+MAKE_NI_OVERRIDE_FUNCTION(SetBodyMorph, void, RE::TESObjectREFR* refr,
+                          const char* morphName, const char* keyName,
+                          float value);
+MAKE_NI_OVERRIDE_FUNCTION(GetBodyMorph, float, RE::TESObjectREFR* refr,
+                          const char* morphName, const char* keyName);
+MAKE_NI_OVERRIDE_FUNCTION(ClearBodyMorph, void, RE::TESObjectREFR* refr,
+                          const char* morphName, const char* keyName);
+MAKE_NI_OVERRIDE_FUNCTION(HasBodyMorphKey, bool, RE::TESObjectREFR* refr,
+                          const char* keyName);
+MAKE_NI_OVERRIDE_FUNCTION(ClearBodyMorphKeys, void, RE::TESObjectREFR* refr,
+                          const char* keyName);
+MAKE_NI_OVERRIDE_FUNCTION(HasBodyMorphName, bool, RE::TESObjectREFR* refr, const char* morphName);
+MAKE_NI_OVERRIDE_FUNCTION(ClearBodyMorphNames, void, RE::TESObjectREFR* refr, const char* morphName);
+MAKE_NI_OVERRIDE_FUNCTION(ClearMorphs, void, RE::TESObjectREFR* refr);
+MAKE_NI_OVERRIDE_FUNCTION(GetMorphKeys, RE::BSTArray<const char*>, RE::TESObjectREFR* refr);
 };  // namespace NiOverride

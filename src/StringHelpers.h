@@ -96,4 +96,13 @@ inline void Join(const std::vector<const char*>& strings,
   }
   out = std::move(result);
 }
+
+inline size_t GetPosForOneOf(const string& str, const char* chars) {
+  for (const auto c : chars) {
+    if (auto pos = str.find(c); pos != string::npos) {
+      return pos;
+    }
+  }
+  return string::npos;
+}
 }  // namespace StringHelpers

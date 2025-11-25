@@ -2,6 +2,7 @@
 
 #include "EditorIDCache.h"
 #include "Helpers.h"
+#include "NiOverride.h"
 
 namespace Conditions {
 void Condition::Render() const {
@@ -75,6 +76,45 @@ bool Condition::EvaluateImpl(RE::TESObjectREFR* refr) const {
       }
     }
     return false;
+  }
+  if (type == "morph") {
+    // format is "keyName;morphName=|<|>" or "morphName=|<|>"
+    const auto condition = value.get_string();
+    string keyName, morphName, comparator, comparison;
+    auto comparatorPos = StringHelpers::GetPosForOneOf(condition, "=<>");
+    if (auto pos = condition.find(';'); pos != string::npos) {
+      keyName = condition.substr(0, pos);
+      morphName = condition.substr(pos + 1, comparatorPos - pos);
+    } else {
+      keyName = "RSMLegacy";
+      morphName = condition.substr(0, comparatorPos);
+    }
+    if (comparatorPos != string::npos) {
+      comparator = condition.at(comparatorPos);
+      comparison = condition.substr(comparatorPos + 1);
+    }
+    if (morphName.empty() || comparator.empty() || comparison.empty()) {
+      return false;
+    }
+    auto bodyMorphVal =
+        ceil(NiOverride::GetBodyMorph()(RE::StaticFunctionTag{}, refr,
+                                        morphName.c_str(), keyName.c_str()) *
+             100.0) /
+        100.0;  // round to 2 places
+    return bodyMorphVal == stof(comparison);
+  }
+  if (type == "hasmorph") {
+    const auto condition = value.get_string();
+    string keyName, morphName;
+    if (auto pos = condition.find(';'); pos != string::npos) {
+      keyName = condition.substr(0, pos);
+      morphName = condition.substr(pos + 1);
+    } else {
+      keyName = "RSMLegacy";
+      morphName = condition;
+    }
+    return NiOverride::HasBodyMorph()(RE::StaticFunctionTag{}, refr,
+                                      morphName.c_str(), keyName.c_str());
   }
   return false;
 }
