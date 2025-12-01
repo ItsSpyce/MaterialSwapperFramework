@@ -3,8 +3,6 @@
 #include "Events/EventListener.h"
 #include "Options.h"
 
-class Coroutine;
-
 class CoroutineManager : public Singleton<CoroutineManager>,
                          public EventListener<FrameEvent> {
  public:

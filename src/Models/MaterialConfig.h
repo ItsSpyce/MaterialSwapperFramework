@@ -9,6 +9,7 @@ struct MaterialConfig {
   bool modifyName = true;
   uint8_t layer = 0;
   vector<Conditions::Condition> conditions;
+  u8 gender;
 };
 
 struct FormIDConfigEntry {

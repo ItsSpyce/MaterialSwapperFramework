@@ -236,7 +236,7 @@ static bool ApplyMaterialToRefr(RE::TESObjectREFR* refr,
   auto* refrModel = refr->Get3D();
   RETURN_IF_FALSE(refrModel);
   for (const auto& [shapeName, materialName] : material->applies) {
-    auto* niAv = refrModel->GetObjectByName(shapeName);
+    auto* niAv = refrModel->GetObjectByName(RE::BSString(shapeName));
     if (!niAv) {
       _WARN("No object found for shape name: {}", shapeName);
       continue;

@@ -27,15 +27,15 @@ bool WeaponFactory::ApplySavedMaterial(RE::Actor* actor, bool leftHand) {
   auto* weaponData = actor->GetEquippedEntryData(leftHand);
   auto uid = Helpers::GetUniqueID(actor, slot, true);
   RE::NiPointer<RE::NiNode> weaponMesh;
-  if (!RE::Demand(weapon->GetModel(), weaponMesh, RE::BSModelDB::DBTraits::ArgsType{})) {
+  if (!RE::Demand(weapon->GetModel(), weaponMesh,
+                  RE::BSModelDB::DBTraits::ArgsType{})) {
     _ERROR("Failed to load model for weapon {0:X}", weapon->GetFormID());
     return false;
   }
-  RE::BSVisit::TraverseScenegraphObjects(weaponMesh.get(), [](RE::NiAVObject* obj) {
-
-
-    return RE::BSVisit::BSVisitControl::kContinue;
-  });
+  RE::BSVisit::TraverseScenegraphObjects(
+      weaponMesh.get(), [](RE::NiAVObject* obj) {
+        return RE::BSVisit::BSVisitControl::kContinue;
+      });
 }
 
 void WeaponFactory::ReadFromSave(SKSE::SerializationInterface* iface,

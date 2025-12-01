@@ -98,11 +98,24 @@ inline void Join(const std::vector<const char*>& strings,
 }
 
 inline size_t GetPosForOneOf(const string& str, const char* chars) {
-  for (const auto c : chars) {
+  for (size_t i = 0; i < strlen(chars); ++i) {
+    const auto c = chars[i];
     if (auto pos = str.find(c); pos != string::npos) {
       return pos;
     }
   }
   return string::npos;
+}
+
+constexpr u32 Hash(const char* data, const size_t size) noexcept {
+  u32 hash = 5381;
+  for (const char* c = data; c < data + size; ++c) {
+    hash = (hash << 5) + hash + (unsigned char)*c;
+  }
+  return hash;
+}
+
+constexpr u32 operator"" _h(const char* str, size_t size) noexcept {
+  return Hash(str, size);
 }
 }  // namespace StringHelpers

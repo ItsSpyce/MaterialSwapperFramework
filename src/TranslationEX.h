@@ -13,14 +13,17 @@ concept translation = requires(T t) {
 
 class TranslationEX {
 #define _S(_LITERAL) (const char*)u8##_LITERAL
+#ifdef EMH_NEW
+  using hash_map = emhash8::HashMap<std::string, std::string>;
+#else
+  using hash_map = std::unordered_map<std::string, std::string>;
+#endif
  public:
   struct TranslationKey {
     string name;
     string value;
 
-    const char* operator()() {
-      return TryTranslate(*this);
-    }
+    const char* operator()() { return TryTranslate(*this); }
   };
   static void UsePluginName(const std::string& pluginName) {
     pluginName_ = pluginName;
@@ -30,6 +33,10 @@ class TranslationEX {
   static void UseDirectory(const std::string& directory) {
     directory_ = directory;
     ReadSettings();
+  }
+
+  static void DefineVariable(const std::string& key, const std::string& value) {
+    translationMap_[key] = value;
   }
 
   template <translation Key>
@@ -64,7 +71,7 @@ class TranslationEX {
  private:
   static inline auto directory_ = "interface/translations"sv;
   static inline std::string currentLanguage_;
-  static inline std::unordered_map<string, string> translationMap_;
+  static inline hash_map translationMap_;
   static inline auto pluginName_ = std::string(SKSE::GetPluginName());
 
   static void ReadSettings() {
@@ -75,8 +82,8 @@ class TranslationEX {
     hasRead = true;
     auto* iniSettingCollection = RE::INISettingCollection::GetSingleton();
     auto* setting = iniSettingCollection
-                       ? iniSettingCollection->GetSetting("sLanguage:General")
-                       : nullptr;
+                        ? iniSettingCollection->GetSetting("sLanguage:General")
+                        : nullptr;
     currentLanguage_ =
         setting && setting->GetType() == RE::Setting::Type::kString
             ? setting->data.s
@@ -93,7 +100,7 @@ class TranslationEX {
       _WARN("Translation file does not exist: {}", translationFile);
       return;
     }
-    std::unordered_map<string, string> map;
+    hash_map map;
     if (auto err = glz::read_file_json(map, translationFile, std::string{})) {
       auto cleanedError = glz::format_error(err);
       _ERROR("Failed to read translation file {}: {}", translationFile,

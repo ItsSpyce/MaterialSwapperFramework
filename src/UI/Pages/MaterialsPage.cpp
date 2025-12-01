@@ -9,9 +9,11 @@
 
 namespace UI::Pages {
 void MaterialsPage(const MaterialsPageProps&) {
-  static RE::TESObjectARMO* selectedArmor;
+  static RE::InventoryEntryData* selectedItem;
   auto ref = RE::Console::GetSelectedRef();
-  auto* actor = ref ? ref.get() : RE::PlayerCharacter::GetSingleton();
+  auto* actor = ref && ref->As<RE::Actor>()
+                    ? ref->As<RE::Actor>()
+                    : RE::PlayerCharacter::GetSingleton();
 
   ImGui_Child("MaterialsList") {
     ImGui_Button(Translations::materialsPageResetButton()) {
@@ -23,7 +25,7 @@ void MaterialsPage(const MaterialsPageProps&) {
         ImGui_Table("ArmorTable", 2, ImGuiTableFlags_BordersInnerH,
                     {ImGui::GetContentRegionAvail().x * .55f, 0.f}) {
           Helpers::VisitEquippedInventoryItems(
-              actor, [&](const Helpers::InventoryItem* invItem) {
+              actor, [&](Helpers::InventoryItem* invItem) {
                 if (auto armo =
                         invItem->data->object->As<RE::TESObjectARMO>()) {
                   ImGui_Row {
@@ -33,14 +35,15 @@ void MaterialsPage(const MaterialsPageProps&) {
                           .buttonTextAlign = ImVec2{0.0f, 0.5f},
                           .borderColor = ImVec4{0.5f, 0.5f, 0.5, 1.0f},
                           .buttonColor =
-                              selectedArmor && selectedArmor->GetFormID() ==
-                                                   armo->GetFormID()
+                              selectedItem &&
+                                      selectedItem->object->GetFormID() ==
+                                          armo->GetFormID()
                                   ? ImVec4{0.2f, 0.4f, 0.8f, 1.0f}
                                   : ImVec4{0.f, 0.f, 0.f, 0.f}}) {
                         ImGui_Button(
                             armo->GetFullName(),
                             ImVec2{ImGui::GetContentRegionAvail().x, 0.0f}) {
-                          selectedArmor = armo;
+                          selectedItem = invItem->data.get();
                         }
                       }
                     }
@@ -63,11 +66,26 @@ void MaterialsPage(const MaterialsPageProps&) {
         }
         ImGui::SameLine();
 
-        if (selectedArmor) {
+        if (selectedItem) {
           ImGui_Table("MaterialsTable", 1, ImGuiTableFlags_BordersInnerH,
                       {ImGui::GetContentRegionAvail().x * 0.45f, 0.f}) {
+            ImGui_Row {
+              ImGui_Column {
+                ImGui_Stylus(ImGui::Stylus::Styles{
+                    .framePadding = ImVec2{4.0f, 8.0f},
+                    .buttonTextAlign = ImVec2{0.0f, 0.5f},
+                    .borderColor = ImVec4{0.5f, 0.5f, 0.5, 1.0f},
+                    .buttonColor = ImVec4{0.f, 0.f, 0.f, 0.f}}) {
+                  ImGui_Button("Default",
+                               ImVec2{ImGui::GetContentRegionAvail().x, 0.0f}) {
+                    Factories::ArmorFactory::GetSingleton()->ResetMaterial(
+                        actor, selectedItem);
+                  }
+                }
+              }
+            }
             MaterialLoader::VisitMaterialFilesForFormID(
-                selectedArmor->GetFormID(),
+                selectedItem->object->GetFormID(),
                 [&](const MaterialConfig& material) {
                   if (!material.isHidden) {
                     ImGui_Row {
@@ -87,7 +105,7 @@ void MaterialsPage(const MaterialsPageProps&) {
                                   "item.");
                             }
                             Factories::ArmorFactory::GetSingleton()
-                                ->ApplyMaterial(actor, selectedArmor, &material,
+                                ->ApplyMaterial(actor, selectedItem, &material,
                                                 true);
                           }
                         }

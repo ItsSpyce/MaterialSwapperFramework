@@ -8,8 +8,9 @@ struct MaterialConfig;
 namespace Factories {
 class ArmorFactory : public ISaveable, public Singleton<ArmorFactory> {
  public:
-  void ResetMaterials(RE::TESObjectREFR* refr);
-  bool ApplyMaterial(RE::TESObjectREFR* refr, RE::TESObjectARMO* form,
+  void ResetMaterials(RE::Actor* actor);
+  void ResetMaterial(RE::Actor* actor, const RE::InventoryEntryData* data);
+  bool ApplyMaterial(RE::Actor* actor, RE::InventoryEntryData* data,
                      const MaterialConfig* material, bool overwriteName);
   bool ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor, RE::NiAVObject* attachedAt, i32 bipedSlot);
   void VisitAppliedMaterials(RE::FormID formID, Save::Types::UniqueID uid,

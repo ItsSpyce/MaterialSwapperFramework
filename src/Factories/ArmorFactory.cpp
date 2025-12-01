@@ -30,16 +30,16 @@ static void ClearItemDisplayName(const RE::InventoryEntryData* data) {
   }
 }
 
-static void SetItemDisplayName(ArmorFactory* factory, RE::TESObjectREFR* refr,
-                               UniqueID uid) {
-  auto* item = Helpers::GetInventoryItemWithUID(refr, uid);
-  const auto data = item ? item->data.get() : nullptr;
+static void SetItemDisplayName(const ArmorFactory* factory,
+                               RE::TESObjectREFR* refr,
+                               RE::InventoryEntryData* data) {
   if (!data) {
     return;
   }
+  auto uid = Helpers::GetUniqueID(refr, data, false);
   vector<const char*> filteredMaterials;
   factory->VisitAppliedMaterials(
-      item->object->GetFormID(), uid,
+      data->object->GetFormID(), uid,
       [&](const char* name, const MaterialConfig& config) {
         if (!config.isHidden && config.modifyName) {
           filteredMaterials.emplace_back(name);
@@ -52,9 +52,9 @@ static void SetItemDisplayName(ArmorFactory* factory, RE::TESObjectREFR* refr,
     ClearItemDisplayName(data);
     return;
   }
-  const auto name = fmt::format("{} [{}]", item->object->GetName(),
+  const auto name = fmt::format("{} [{}]", data->object->GetName(),
                                 fmt::join(filteredMaterials, ", "));
-  auto* front = Helpers::GetOrCreateExtraList(item->data.get());
+  auto* front = Helpers::GetOrCreateExtraList(data);
   if (!front) {
     return;
   }
@@ -66,22 +66,21 @@ static void SetItemDisplayName(ArmorFactory* factory, RE::TESObjectREFR* refr,
   }
 }
 
-
-bool ArmorFactory::ApplyMaterial(RE::TESObjectREFR* refr,
-                                 RE::TESObjectARMO* form,
+bool ArmorFactory::ApplyMaterial(RE::Actor* actor, RE::InventoryEntryData* data,
                                  const MaterialConfig* material,
                                  bool overwriteName) {
-  RETURN_IF_FALSE(refr)
+  RETURN_IF_FALSE(data)
+  auto* form = data->object->As<RE::TESObjectARMO>();
   RETURN_IF_FALSE(form)
-  auto uid = Helpers::GetUniqueID(refr, form->GetSlotMask(), true);
+  auto uid = Helpers::GetUniqueID(actor, form->GetSlotMask(), true);
   if (uid == NULL) {
     _WARN("Failed to get unique ID for form: {}", form->GetFormID());
     return false;
   }
   _TRACE("Applying material {} to UID {}", material->name, uid);
-  if (!MaterialHelpers::ApplyMaterialToRefr(refr, material)) {
+  if (!MaterialHelpers::ApplyMaterialToRefr(actor, material)) {
     _ERROR("Failed to apply material to reference: {}, form: {}, unique ID: {}",
-           refr->GetFormID(), form->GetFormID(), uid);
+           actor->GetFormID(), form->GetFormID(), uid);
     return false;
   }
   armorData_.try_emplace(uid, ArmorData{});
@@ -101,7 +100,7 @@ bool ArmorFactory::ApplyMaterial(RE::TESObjectREFR* refr,
   newAppliedMaterials.push_back(material->name);
   appliedMaterials.materials = newAppliedMaterials;
   if (overwriteName) {
-    SetItemDisplayName(this, refr, uid);
+    SetItemDisplayName(this, actor, data);
   }
 
   return true;
@@ -139,13 +138,14 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
               _ERROR("No material config found for material: {}", materialName);
               continue;
             }
-            auto appliesEntry = materialConfig->applies.contains(triShape->name.c_str()) ?
-                                    materialConfig->applies.at(triShape->name.c_str()) : "";
+            auto appliesEntry =
+                materialConfig->applies.contains(triShape->name.c_str())
+                    ? materialConfig->applies.at(triShape->name.c_str())
+                    : "";
             if (appliesEntry.empty()) {
               continue;
             }
-            auto* materialFile =
-                MaterialLoader::LoadMaterial(appliesEntry);
+            auto* materialFile = MaterialLoader::LoadMaterial(appliesEntry);
             if (!materialFile) {
               _ERROR("Failed to load material file: {}", appliesEntry);
               continue;
@@ -213,11 +213,7 @@ void ArmorFactory::WriteToSave(SKSE::SerializationInterface* iface,
   }
 }
 
-void ArmorFactory::ResetMaterials(RE::TESObjectREFR* refr) {
-  if (!refr) {
-    return;
-  }
-  auto* actor = refr->As<RE::Actor>();
+void ArmorFactory::ResetMaterials(RE::Actor* actor) {
   if (!actor) {
     return;
   }
@@ -228,9 +224,23 @@ void ArmorFactory::ResetMaterials(RE::TESObjectREFR* refr) {
     }
     armorData_.erase(item->uid);
     ClearItemDisplayName(item->data.get());
-    item->data->extraLists->front()->RemoveByType(RE::ExtraDataType::kUniqueID);
     return VisitControl::kContinue;
   });
+  actor->DoReset3D(true);
+}
+
+void ArmorFactory::ResetMaterial(RE::Actor* actor,
+                                 const RE::InventoryEntryData* data) {
+  if (!actor) {
+    return;
+  }
+  auto uid = Helpers::GetUniqueID(actor, data, false);
+  if (!uid) {
+    return;
+  }
+  armorData_.erase(uid);
+  actor->DoReset3D(true);
+  ClearItemDisplayName(data);
 }
 
 void ArmorFactory::VisitAppliedMaterials(

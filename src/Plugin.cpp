@@ -72,6 +72,9 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
   Options::GetSingleton()->ReadFromDisk();
   InitializeLogging();
   TranslationEX::UsePluginName("MSF");
+  TranslationEX::DefineVariable(
+      "option.openWindowKey",
+      to_string(Options::GetSingleton()->GetOpenWindowKey()));
 
   SKSE::GetMessagingInterface()->RegisterListener(HandleMessage);
   _INFO("Registering UI hooks...");

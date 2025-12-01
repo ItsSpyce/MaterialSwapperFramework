@@ -93,6 +93,7 @@ bool Condition::EvaluateImpl(RE::TESObjectREFR* refr) const {
       comparator = condition.at(comparatorPos);
       comparison = condition.substr(comparatorPos + 1);
     }
+    _DEBUG("Key: {}, morph: {}, comparator: {}, comparison: {}", keyName, morphName, comparator, comparison);
     if (morphName.empty() || comparator.empty() || comparison.empty()) {
       return false;
     }

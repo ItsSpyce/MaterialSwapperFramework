@@ -2,15 +2,15 @@
   "msfSaveDataIncompatibleWarning": "Material Swapper Framework\nThe current save is incompatible with the latest version. The material configurations used will be cleaned. You can continue playing and using the mod. This window will disappear when you save it again.",
   "notImplemented": "Not implemented yet.",
   "windowTitle": "Material Swapper Framework",
-  "showWindowKey": "F10",
+  "showWindowKey": "$options.openWindowKey",
   "showWindowInstructions": "Press $showWindowKey to show/hide this window.",
   "navigation": "Navigation",
   "homeTitle": "Home",
   "settingsTitle": "Settings",
   "debuggerTitle": "Debugger",
   "materialsPageResetButton": "Reset Materials",
-  "materialsPageArmorTabHeader": "Armor",
-  "materialsPageWeaponTabHeader": "Weapons",
+  "materialsPageArmorsTabHeader": "Armor",
+  "materialsPageWeaponsTabHeader": "Weapons",
   "materialsPageActorsTabHeader": "Actors",
   "materialsPagePresetsTabHeader":  "Presets"
 }
