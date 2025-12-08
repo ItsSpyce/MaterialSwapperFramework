@@ -22,5 +22,17 @@ namespace Main {
 constexpr auto Update = REL::VariantID(35565, 36564, 0x005BAB10);
 constexpr auto UpdateOffset = REL::VariantOffset(0x748, 0xC26, 0X7EE);
 }  // namespace Main
+namespace BSLightingShaderMaterial {
+constexpr auto Ctor = RELOCATION_ID(100004, 106711);
+}
+namespace BSLightingShaderMaterialEnvmap {
+constexpr auto Ctor = RELOCATION_ID(100021, 106728);
+}
+namespace BSLightingShaderMaterialFacegen {
+constexpr auto Ctor = RELOCATION_ID(100077, 106784);
+}
+namespace BSLightingShaderMaterialGlowmap {
+constexpr auto Ctor = RELOCATION_ID(100045, 106752);
+}
 }  // namespace Offset
 }  // namespace RE

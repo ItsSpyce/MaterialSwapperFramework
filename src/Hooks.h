@@ -61,10 +61,7 @@ struct Actor_AttachArmor {
 struct Actor_CreateWeaponNodes {
   static void __fastcall thunk(RE::TESObjectREFR* actor, RE::TESForm* weap, bool left) {
     func(actor, weap, left);
-    RE::BSVisit::TraverseScenegraphObjects(actor->Get3D(), [](RE::NiAVObject* obj) {
-      _TRACE("Shape: {}", obj->name.c_str());
-      return RE::BSVisit::BSVisitControl::kContinue;
-    });
+    Factories::WeaponFactory::GetSingleton()->ApplySavedMaterial(actor->As<RE::Actor>(), left);
   }
 
   static inline REL::Relocation<decltype(&thunk)> func{

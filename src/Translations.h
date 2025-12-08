@@ -24,4 +24,5 @@ struct Translations {
 
   TRANSLATION_KEY(msfSaveDataIncompatibleWarning);
   TRANSLATION_KEY(notImplemented);
+  TRANSLATION_KEY(notificationsTitle);
 };

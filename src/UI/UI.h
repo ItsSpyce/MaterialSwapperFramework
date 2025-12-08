@@ -26,7 +26,7 @@ inline void Install() { Hooks::Install(); }
 
 inline void Initialize() {
   if (auto* ui = GetCurrentUI()) {
-    ui->AddWindow(new MainWindow());
+    ui->AddWindow(MainWindow::GetSingleton());
     ui->Initialize();
   }
 }

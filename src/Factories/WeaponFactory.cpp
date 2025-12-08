@@ -2,6 +2,8 @@
 
 #include "Helpers.h"
 #include "RE/Misc.h"
+#include "IO/MaterialLoader.h"
+#include "MaterialHelpers.h"
 
 namespace Factories {
 bool WeaponFactory::ApplyMaterial(RE::Actor* actor, bool leftHand,
@@ -26,16 +28,45 @@ bool WeaponFactory::ApplySavedMaterial(RE::Actor* actor, bool leftHand) {
   }
   auto* weaponData = actor->GetEquippedEntryData(leftHand);
   auto uid = Helpers::GetUniqueID(actor, slot, true);
-  RE::NiPointer<RE::NiNode> weaponMesh;
-  if (!RE::Demand(weapon->GetModel(), weaponMesh,
-                  RE::BSModelDB::DBTraits::ArgsType{})) {
-    _ERROR("Failed to load model for weapon {0:X}", weapon->GetFormID());
+  auto& weaponModel = actor->IsPlayerRef()
+                         ? weapon->firstPersonModelObject->model
+                         : weapon->model;
+  RE::NiPointer<RE::NiNode> weaponNode;
+  if (RE::BSModelDB::Demand(weaponModel.c_str(), weaponNode,
+                            RE::BSModelDB::DBTraits::ArgsType{}) !=
+      RE::BSResource::ErrorCode::kNone) {
+    _ERROR("Failed to load weapon model: {}", weaponModel.c_str());
     return false;
   }
-  RE::BSVisit::TraverseScenegraphObjects(
-      weaponMesh.get(), [](RE::NiAVObject* obj) {
-        return RE::BSVisit::BSVisitControl::kContinue;
-      });
+  auto* rootNode = actor->Get3D()->GetObjectByName(fmt::format("Weapon  ({:08X})", weapon->GetFormID()));
+  auto* materialInfo = weaponData_.try_get(uid);
+  if (!materialInfo) {
+    return false;
+  }
+  for (const auto& materialName : materialInfo->materials) {
+    const auto* materialInfo = MaterialLoader::GetMaterialConfig(weapon->GetFormID(), materialName);
+    if (!materialInfo) {
+      _WARN("Material config not found: {}", materialName);
+      continue;
+    }
+    for (const auto& [shape, materialFile] : materialInfo->applies) {
+      auto* childShape = rootNode->GetObjectByName(shape)->AsGeometry();
+      if (!childShape) {
+        _WARN("Shape not found: {}", shape);
+        continue;
+      }
+      const auto* material = MaterialLoader::LoadMaterial(materialFile);
+      if (!material) {
+        _WARN("Material file not found: {}", materialFile);
+        continue;
+      }
+      if (!MaterialHelpers::ApplyMaterialToNode(childShape, material)) {
+        _WARN("Failed to apply material: {} to shape: {}", materialFile, shape);
+        continue;
+      }
+    }
+  }
+  return true;
 }
 
 void WeaponFactory::ReadFromSave(SKSE::SerializationInterface* iface,

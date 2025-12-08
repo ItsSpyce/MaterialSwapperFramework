@@ -150,7 +150,7 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
               _ERROR("Failed to load material file: {}", appliesEntry);
               continue;
             }
-            MaterialHelpers::ApplyMaterialToNode(actor, triShape, materialFile);
+            MaterialHelpers::ApplyMaterialToNode(triShape, materialFile);
           }
         } else if (std::string(material->name).ends_with(".json")) {
           _DEBUG("Applying default material from file: {}", material->name);
@@ -160,7 +160,7 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
             _ERROR("Failed to load material file: {}", material->name.c_str());
             return VisitControl::kContinue;
           }
-          MaterialHelpers::ApplyMaterialToNode(actor, triShape, materialFile);
+          MaterialHelpers::ApplyMaterialToNode(triShape, materialFile);
         }
         return VisitControl::kContinue;
       });

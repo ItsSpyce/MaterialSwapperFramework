@@ -1,4 +1,6 @@
+#include "CommunityShaders/CS.h"
 #include "Conditions.h"
+#include "Factories.h"
 #include "Hooks.h"
 #include "IO/MaterialLoader.h"
 #include "MaterialPapyrus.h"
@@ -59,6 +61,11 @@ static void HandleMessage(SKSE::MessagingInterface::Message* msg) {
     EditorIDCache::HydrateEditorIDCache();
     _INFO("Reading materials from disk...");
     MaterialLoader::ReadMaterialsFromDisk(true);
+    _INFO("Checking for ENB and CS...");
+    if (CommunityShaders::IsInstalled()) {
+      _INFO("CommunityShaders detected, enabling compatibility mode");
+      ModState::GetSingleton()->SetCSInstalled(true);
+    }
     ModState::GetSingleton()->SetReady(true);
   }
   if (msg->type == SKSE::MessagingInterface::kNewGame ||

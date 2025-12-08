@@ -5,8 +5,10 @@
 #include "IO/MaterialLoader.h"
 #include "Models/MaterialRecord.h"
 #include "NifHelpers.h"
+#include "CommunityShaders/BSLightingShaderMaterialPBR.h"
 
 namespace MaterialHelpers {
+using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
 using ShaderFlag8 = RE::BSShaderProperty::EShaderPropertyFlag8;
 
 inline void ApplyFlags(RE::BSLightingShaderProperty* lightingShader,
@@ -87,10 +89,18 @@ inline const char* GetStringPtr(const std::optional<std::string>& str) {
   return nullptr;
 }
 
-inline bool ApplyMaterialToNode(const RE::TESObjectREFR* refr,
+inline void CopyMembers(RE::BSShaderMaterial* from,
+                 RE::BSLightingShaderMaterialBase* to) {
+  if (auto* fromBase =
+          skyrim_cast<RE::BSLightingShaderMaterialBase*>(from)) {
+    to->CopyBaseMembers(fromBase);
+  }
+  to->CopyMembers(to);
+}
+
+inline bool ApplyMaterialToNode(
                                 RE::BSGeometry* bsTriShape,
                                 const MaterialRecord* record) {
-  RETURN_IF_FALSE(refr)
   RETURN_IF_FALSE(bsTriShape)
   auto* lightingShader = NifHelpers::GetShaderProperty(bsTriShape);
   auto* alphaProperty = NifHelpers::GetAlphaProperty(bsTriShape);
@@ -101,8 +111,16 @@ inline bool ApplyMaterialToNode(const RE::TESObjectREFR* refr,
            bsTriShape->name);
     return false;
   }
-  newMaterial->CopyMembers(lightingShader->material);
+  CopyMembers(lightingShader->material, newMaterial);
   ApplyFlags(lightingShader, record);
+  auto* textureLoader = Graphics::TextureLoader::GetSingleton();
+
+  if (record->pbr) {
+    auto* pbrMaterial = (BSLightingShaderMaterialPBR*)newMaterial;
+    _TRACE("PBR material rmaos: {}",
+           pbrMaterial->rmaosTexture ? "yes" : "no");
+    _TRACE("Input file path: {}", pbrMaterial->inputFilePath);
+  }
 
   if (record->transparency.has_value()) {
     newMaterial->materialAlpha = *record->transparency;
@@ -122,16 +140,6 @@ inline bool ApplyMaterialToNode(const RE::TESObjectREFR* refr,
     alphaProperty->alphaThreshold =
         record->alphaTestThreshold.value_or(alphaProperty->alphaThreshold);
   }
-  /*auto textureSet = newMaterial->GetTextureSet();
-  using Texture = RE::BSTextureSet::Textures;
-  textureSet->SetTexturePath(Texture::kDiffuse, record->diffuseMap->c_str());
-  textureSet->SetTexturePath(Texture::kNormal, record->normalMap->c_str());
-  textureSet->SetTexturePath(Texture::kSpecular, record->specularMap->c_str());
-  textureSet->SetTexturePath(Texture::kEnvironment, record->envMap->c_str());
-  textureSet->SetTexturePath(Texture::kEnvironmentMask,
-  record->envMapMask->c_str()); textureSet->SetTexturePath(Texture::kGlowMap,
-  record->glowMap->c_str());*/
-  auto* textureLoader = Graphics::TextureLoader::GetSingleton();
 
   if (const auto diffuseMap = GetStringPtr(record->diffuseMap)) {
     newMaterial->diffuseTexture =
@@ -147,8 +155,7 @@ inline bool ApplyMaterialToNode(const RE::TESObjectREFR* refr,
   }
   if (record->envMapEnabled.value_or(lightingShader->flags.any(
           RE::BSShaderProperty::EShaderPropertyFlag::kEnvMap))) {
-    auto* envMapMaterial =
-        skyrim_cast<RE::BSLightingShaderMaterialEnvmap*>(newMaterial);
+    auto* envMapMaterial = (RE::BSLightingShaderMaterialEnvmap*)newMaterial;
     if (const auto envMap = GetStringPtr(record->envMap)) {
       envMapMaterial->envTexture =
           RE::NiPointer(textureLoader->LoadTexture(envMap));
@@ -157,21 +164,17 @@ inline bool ApplyMaterialToNode(const RE::TESObjectREFR* refr,
       envMapMaterial->envMaskTexture =
           RE::NiPointer(textureLoader->LoadTexture(envMapMask));
     }
-    newMaterial = envMapMaterial;
   }
   if (record->glowMapEnabled.value_or(lightingShader->flags.any(
           RE::BSShaderProperty::EShaderPropertyFlag::kGlowMap))) {
-    auto* glowMapMaterial =
-        skyrim_cast<RE::BSLightingShaderMaterialGlowmap*>(newMaterial);
+    auto* glowMapMaterial = (RE::BSLightingShaderMaterialGlowmap*)newMaterial;
     if (const auto glowMap = GetStringPtr(record->glowMap)) {
       glowMapMaterial->glowTexture =
           RE::NiPointer(textureLoader->LoadTexture(glowMap));
     }
-    newMaterial = glowMapMaterial;
   }
   if (record->facegen.value_or(false)) {
-    auto* faceGenMaterial =
-        skyrim_cast<RE::BSLightingShaderMaterialFacegen*>(newMaterial);
+    auto* faceGenMaterial = (RE::BSLightingShaderMaterialFacegen*)newMaterial;
     if (const auto faceTintMap = GetStringPtr(record->faceTintMap)) {
       faceGenMaterial->tintTexture =
           RE::NiPointer(textureLoader->LoadTexture(faceTintMap));
@@ -184,7 +187,6 @@ inline bool ApplyMaterialToNode(const RE::TESObjectREFR* refr,
       faceGenMaterial->subsurfaceTexture =
           RE::NiPointer(textureLoader->LoadTexture(subsurfaceMap));
     }
-    newMaterial = faceGenMaterial;
   }
   if (const auto colorMap = GetStringPtr(record->colorBlendMap)) {
     const auto colorBlendTexture =
@@ -251,7 +253,7 @@ static bool ApplyMaterialToRefr(RE::TESObjectREFR* refr,
       _ERROR("Failed to load material file: {}", materialName);
       continue;
     }
-    ApplyMaterialToNode(refr, geometry, materialFile);
+    ApplyMaterialToNode(geometry, materialFile);
   }
   return true;
 }
