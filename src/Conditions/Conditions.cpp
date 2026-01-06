@@ -3,6 +3,7 @@
 #include "EditorIDCache.h"
 #include "Helpers.h"
 #include "NiOverride.h"
+#include "CommunityShaders/CS.h"
 
 namespace Conditions {
 void Condition::Render() const {
@@ -116,6 +117,10 @@ bool Condition::EvaluateImpl(RE::TESObjectREFR* refr) const {
     }
     return NiOverride::HasBodyMorph()(RE::StaticFunctionTag{}, refr,
                                       morphName.c_str(), keyName.c_str());
+  }
+  if (type == "ispbrcapable") {
+    const auto condition = value.get_boolean();
+    return CommunityShaders::IsInstalled() == condition;
   }
   return false;
 }

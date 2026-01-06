@@ -6,6 +6,7 @@
 #include "MaterialHelpers.h"
 #include "TaskManager.h"
 #include "ThreadPool.h"
+#include "Graphics/MaterialManager.h"
 
 extern unique_ptr<ThreadPool> g_updateThreads;
 
@@ -78,7 +79,7 @@ class EvaluationContext : public Singleton<EvaluationContext>,
           if (didPass) {
             TaskManager::GetSingleton()->RegisterDelayTask(
                 [refr, config] {
-                  MaterialHelpers::ApplyMaterialToRefr(refr, &config);
+                  MaterialManager::ApplyMaterialToRefr(refr, &config);
                 },
                 delay);
           }

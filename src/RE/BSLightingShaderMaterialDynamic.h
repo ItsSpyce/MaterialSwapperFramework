@@ -3,20 +3,6 @@
 namespace RE {
 class BSLightingShaderMaterialDynamic : public BSLightingShaderMaterialBase {
  public:
-  enum class ColorBlendMode {
-    kNone = 0,
-    kAdd = 1,
-    kMultiply = 2,
-    kScreen = 3,
-    kOverlay = 4,
-    kDarken = 5,
-    kLighten = 6,
-    kColorDodge = 7,
-    kColorBurn = 8,
-    kHardLight = 9,
-    kSoftLight = 10,
-  };
-
   static constexpr auto FEATURE = static_cast<Feature>(28);
   static constexpr auto DiffuseTexture = BSTextureSet::Texture::kDiffuse;
   static constexpr auto NormalTexture = BSTextureSet::Texture::kNormal;
@@ -27,7 +13,15 @@ class BSLightingShaderMaterialDynamic : public BSLightingShaderMaterialBase {
       BSTextureSet::Texture::kEnvironmentMask;
   static constexpr auto GlowTexture = BSTextureSet::Texture::kGlowMap;
   static constexpr auto ColorTexture = BSTextureSet::Texture::kUnused08;
+  static constexpr auto GlossTexture = BSTextureSet::Texture::kGloss;
+  static constexpr auto SubsurfaceTintTexture =
+      BSTextureSet::Texture::kSubsurfaceTint;
+  static constexpr auto DetailTexture = BSTextureSet::Texture::kDetailMap;
+  static constexpr auto HeightTexture = BSTextureSet::Texture::kHeight;
+  static constexpr auto MultilayerTexture = BSTextureSet::Texture::kMultilayer;
 
+  explicit BSLightingShaderMaterialDynamic(BSShaderMaterial* base)
+      : original_(base) {}
   ~BSLightingShaderMaterialDynamic() = default;
 
   BSShaderMaterial* Create() override;
@@ -42,11 +36,22 @@ class BSLightingShaderMaterialDynamic : public BSLightingShaderMaterialBase {
   u32 GetTextures(NiSourceTexture** textures) override;
   void LoadBinary(NiStream& stream) override;
 
-  NiPointer<NiSourceTexture> environmentTexture;
-  NiPointer<NiSourceTexture> environmentMaskTexture;
-  NiPointer<NiSourceTexture> glowTexture;
-  NiPointer<NiSourceTexture> colorTexture;
-  NiColorA* color;
+  static BSLightingShaderMaterialDynamic* CreateMaterial(
+      MaterialRecord* material);
+
+  RE::BSLightingShaderMaterialBase* CastToUnderlying() const;
+  void SetMaterial(const MaterialRecord* material);
+
+  NiSourceTexturePtr environmentTexture = NiSourceTexturePtr{};
+  NiSourceTexturePtr environmentMaskTexture = NiSourceTexturePtr{};
+  NiSourceTexturePtr specularTexture = NiSourceTexturePtr{};
+  NiSourceTexturePtr glowTexture = NiSourceTexturePtr{};
+  NiSourceTexturePtr colorTexture = NiSourceTexturePtr{};
+  NiColorA color = NiColorA();
   ColorBlendMode colorBlendMode{ColorBlendMode::kNone};
+  const MaterialRecord* material;
+
+ private:
+  BSShaderMaterial* original_;
 };
 }  // namespace RE

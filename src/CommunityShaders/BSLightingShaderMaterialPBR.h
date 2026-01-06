@@ -34,23 +34,27 @@ class BSLightingShaderMaterialPBR : public RE::BSLightingShaderMaterialBase {
     TruePBR::PBRTextureSetData* textureSetData = nullptr;
     TruePBR::PBRMaterialObjectData* materialObjectData = nullptr;
   };
-  inline static constexpr auto FEATURE = static_cast<RE::BSShaderMaterial::Feature>(32);
+  inline static constexpr auto FEATURE =
+      static_cast<RE::BSShaderMaterial::Feature>(32);
 
   ~BSLightingShaderMaterialPBR() = 0;
 
   // override (BSLightingShaderMaterialBase)
-  RE::BSShaderMaterial* Create() override = 0;                // 01
-  void CopyMembers(RE::BSShaderMaterial* that) override = 0;  // 02
-  std::uint32_t ComputeCRC32(uint32_t srcHash) override = 0;  // 04
-  Feature GetFeature() const override = 0;                    // 06
-  void OnLoadTextureSet(std::uint64_t arg1,
-                        RE::BSTextureSet* inTextureSet) override = 0;  // 08
-  void ClearTextures() override = 0;                                   // 09
-  void ReceiveValuesFromRootMaterial(bool skinned, bool rimLighting,
-                                     bool softLighting, bool backLighting,
-                                     bool MSN) override = 0;          // 0A
-  uint32_t GetTextures(RE::NiSourceTexture** textures) override = 0;  // 0B
-  void LoadBinary(RE::NiStream& stream) override = 0;                 // 0D
+  virtual RE::BSShaderMaterial* Create() override = 0;                // 01
+  virtual void CopyMembers(RE::BSShaderMaterial* that) override = 0;  // 02
+  virtual std::uint32_t ComputeCRC32(uint32_t srcHash) override = 0;  // 04
+  virtual Feature GetFeature() const override = 0;                    // 06
+  virtual void OnLoadTextureSet(
+      std::uint64_t arg1,
+      RE::BSTextureSet* inTextureSet) override = 0;  // 08
+  virtual void ClearTextures() override = 0;         // 09
+  virtual void ReceiveValuesFromRootMaterial(bool skinned, bool rimLighting,
+                                             bool softLighting,
+                                             bool backLighting,
+                                             bool MSN) override = 0;  // 0A
+  virtual uint32_t GetTextures(
+      RE::NiSourceTexture** textures) override = 0;            // 0B
+  virtual void LoadBinary(RE::NiStream& stream) override = 0;  // 0D
 
   // members
   RE::BSShaderMaterial::Feature loadedWithFeature;

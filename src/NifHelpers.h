@@ -48,7 +48,7 @@ inline RE::NiPointer<RE::NiAVObject> GetMaterialSwappableShape(
   if (!node) {
     return nullptr;
   }
-  for (auto& child : node->children) {
+  for (auto& child : node->GetChildren()) {
     if (!child) {
       continue;
     }
@@ -112,24 +112,6 @@ inline RE::BSGeometry* GetTriShape(RE::TESObjectREFR* refr,
     return nullptr;
   }
   return nif->GetObjectByName(nodeName)->AsGeometry();
-}
-
-inline RE::BSLightingShaderProperty* GetShaderProperty(
-    RE::BSGeometry* bsTriShape) {
-  auto* properties =
-      bsTriShape->properties[RE::BSGeometry::States::kEffect].get();
-  auto* bsLightShader =
-      properties ? netimmerse_cast<RE::BSLightingShaderProperty*>(properties)
-                 : nullptr;
-  return bsLightShader;
-}
-
-inline RE::NiAlphaProperty* GetAlphaProperty(RE::BSGeometry* bsTriShape) {
-  auto* properties =
-      bsTriShape->properties[RE::BSGeometry::States::kProperty].get();
-  auto* alphaProperty =
-      properties ? netimmerse_cast<RE::NiAlphaProperty*>(properties) : nullptr;
-  return alphaProperty;
 }
 
 }  // namespace NifHelpers

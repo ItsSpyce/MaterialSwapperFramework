@@ -73,12 +73,14 @@ struct Main_Update {
   static void thunk() {
     func();
     auto* main = RE::Main::GetSingleton();
-    if (main->quitGame) {
+    if (!main->gameActive) {
       // do something later maybe
+      _TRACE("Quit game called");
       return;
     }
     auto* player = RE::PlayerCharacter::GetSingleton();
     if (!player) {
+      _TRACE("No player found");
       return;
     }
     if (auto* currentCell = player->GetParentCell()) {

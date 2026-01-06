@@ -27,9 +27,6 @@ include(nuklear)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
 
-set(ENABLE_SKYRIM_SE ON)
-set(ENABLE_SKYRIM_AE ON)
-set(ENABLE_SKYRIM_VR OFF)
 set(BUILD_TESTS OFF)
 
 if(MSVC)

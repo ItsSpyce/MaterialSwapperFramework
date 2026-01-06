@@ -23,13 +23,10 @@ class TaskManager final : public Singleton<TaskManager>,
     if (!event.actor || !event.hasAttached) {
       return;
     }
-    auto formID = event.actor->GetFormID();
     RegisterDelayTask(
-        [this, formID, event] {
-          if (auto* actor = RE::TESForm::LookupByID<RE::Actor>(formID)) {
-            Factories::ArmorFactory::GetSingleton()->ApplySavedMaterials(
-                actor, event.armor, event.attachedAt, event.bipedSlot);
-          }
+        [event] {
+          Factories::ArmorFactory::GetSingleton()->ApplySavedMaterials(
+              event.actor, event.armor, event.attachedAt, event.bipedSlot);
         },
         Options::GetSingleton()->GetApplyMaterialTickDelay());
   }

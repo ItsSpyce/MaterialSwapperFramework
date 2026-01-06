@@ -4,6 +4,7 @@
 #include "RE/Misc.h"
 #include "IO/MaterialLoader.h"
 #include "MaterialHelpers.h"
+#include "Graphics/MaterialManager.h"
 
 namespace Factories {
 bool WeaponFactory::ApplyMaterial(RE::Actor* actor, bool leftHand,
@@ -60,7 +61,7 @@ bool WeaponFactory::ApplySavedMaterial(RE::Actor* actor, bool leftHand) {
         _WARN("Material file not found: {}", materialFile);
         continue;
       }
-      if (!MaterialHelpers::ApplyMaterialToNode(childShape, material)) {
+      if (!MaterialManager::ApplyMaterialToNode(childShape, material)) {
         _WARN("Failed to apply material: {} to shape: {}", materialFile, shape);
         continue;
       }

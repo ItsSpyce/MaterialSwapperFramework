@@ -6,7 +6,7 @@
 
 #include "Helpers.h"
 #include "IO/MaterialLoader.h"
-#include "MaterialHelpers.h"
+#include "Graphics/MaterialManager.h"
 #include "Models/MaterialConfig.h"
 #include "Models/MaterialRecord.h"
 #include "Save/Types.h"
@@ -43,7 +43,6 @@ static void SetItemDisplayName(const ArmorFactory* factory,
       [&](const char* name, const MaterialConfig& config) {
         if (!config.isHidden && config.modifyName) {
           filteredMaterials.emplace_back(name);
-          _TRACE("Adding material to display name: {}", name);
         }
         return VisitControl::kContinue;
       });
@@ -77,8 +76,7 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* actor, RE::InventoryEntryData* data,
     _WARN("Failed to get unique ID for form: {}", form->GetFormID());
     return false;
   }
-  _TRACE("Applying material {} to UID {}", material->name, uid);
-  if (!MaterialHelpers::ApplyMaterialToRefr(actor, material)) {
+  if (!MaterialManager::ApplyMaterialToRefr(actor, material)) {
     _ERROR("Failed to apply material to reference: {}, form: {}, unique ID: {}",
            actor->GetFormID(), form->GetFormID(), uid);
     return false;
@@ -109,9 +107,6 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* actor, RE::InventoryEntryData* data,
 bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
                                        RE::NiAVObject*, i32 bipedSlot) {
   RETURN_IF_FALSE(actor)
-  if (!actor->Is3DLoaded()) {
-    return false;
-  }
   auto* armorInSlot = actor->GetWornArmor(
       static_cast<RE::BGSBipedObjectForm::BipedObjectSlot>(1 << bipedSlot));
   auto uid = armorInSlot ? Helpers::GetUniqueID(
@@ -125,10 +120,7 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
           return VisitControl::kContinue;
         }
         const auto& material =
-            triShape->properties[RE::BSGeometry::States::kEffect];
-        if (!material) {
-          return VisitControl::kContinue;
-        }
+            triShape->GetGeometryRuntimeData().properties[RE::BSGeometry::States::kEffect];
 
         if (armorData && armorInSlot) {
           for (const auto& materialName : armorData->materials) {
@@ -150,17 +142,17 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
               _ERROR("Failed to load material file: {}", appliesEntry);
               continue;
             }
-            MaterialHelpers::ApplyMaterialToNode(triShape, materialFile);
+            _TRACE("Applying saved material: {}", materialName);
+            MaterialManager::ApplyMaterialToNode(triShape, materialFile);
           }
-        } else if (std::string(material->name).ends_with(".json")) {
-          _DEBUG("Applying default material from file: {}", material->name);
+        } else if (material && std::string(material->name).ends_with(".json")) {
           auto materialFile =
               MaterialLoader::LoadMaterial(material->name.c_str());
           if (!materialFile) {
             _ERROR("Failed to load material file: {}", material->name.c_str());
             return VisitControl::kContinue;
           }
-          MaterialHelpers::ApplyMaterialToNode(triShape, materialFile);
+          MaterialManager::ApplyMaterialToNode(triShape, materialFile);
         }
         return VisitControl::kContinue;
       });

@@ -8,7 +8,7 @@ constexpr auto Demand = REL::ID(75782);
 constexpr auto Clone = REL::ID(70187);
 }  // namespace NiAVObject
 namespace NiTexture {
-constexpr auto GetTexture = REL::VariantID(98986, 105640, 0);
+constexpr auto GetTexture = RELOCATION_ID(98986, 105640);
 }
 namespace BSShaderTextureSet {
 constexpr auto SetTexture = REL::ID(21363);
@@ -16,7 +16,8 @@ constexpr auto SetTexturePath = REL::ID(21364);
 }  // namespace BSShaderTextureSet
 namespace Actor {
 constexpr auto AttachArmor = REL::VariantID(15535, 15712, 0x001DB9E0);
-constexpr auto CreateWeaponNodes = REL::VariantID(19342, 19769, 0);
+constexpr auto CreateWeaponNodes = RELOCATION_ID(19342, 19769);
+constexpr auto CreateArmorNodes = RELOCATION_ID(15535, 15712);
 }  // namespace Actor
 namespace Main {
 constexpr auto Update = REL::VariantID(35565, 36564, 0x005BAB10);
@@ -33,6 +34,9 @@ constexpr auto Ctor = RELOCATION_ID(100077, 106784);
 }
 namespace BSLightingShaderMaterialGlowmap {
 constexpr auto Ctor = RELOCATION_ID(100045, 106752);
+}
+namespace BSShaderProperty {
+constexpr auto SetMaterial = RELOCATION_ID(98897, 105544);
 }
 }  // namespace Offset
 }  // namespace RE
