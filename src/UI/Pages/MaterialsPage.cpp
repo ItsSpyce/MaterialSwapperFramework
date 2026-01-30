@@ -25,7 +25,7 @@ void MaterialsPage(const MaterialsPageProps&) {
         ImGui_Table("ArmorTable", 2, ImGuiTableFlags_BordersInnerH,
                     {ImGui::GetContentRegionAvail().x * .55f, 0.f}) {
           Helpers::VisitEquippedInventoryItems(
-              actor, [&](Helpers::InventoryItem* invItem) {
+              actor, [&](const Helpers::InventoryItem* invItem) {
                 if (auto armo =
                         invItem->data->object->As<RE::TESObjectARMO>()) {
                   ImGui_Row {
@@ -41,7 +41,7 @@ void MaterialsPage(const MaterialsPageProps&) {
                                   ? ImVec4{0.2f, 0.4f, 0.8f, 1.0f}
                                   : ImVec4{0.f, 0.f, 0.f, 0.f}}) {
                         ImGui_Button(
-                            armo->GetFullName(),
+                            armo->GetName(),
                             ImVec2{ImGui::GetContentRegionAvail().x, 0.0f}) {
                           selectedItem = invItem->data.get();
                         }

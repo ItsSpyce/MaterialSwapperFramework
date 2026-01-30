@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(MaterialSwapperFramework VERSION 0.2.2.1)
+project(MaterialSwapperFramework VERSION 0.2.2.2)
 
 set(CMAKE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party)
@@ -53,7 +53,7 @@ find_package(detours)
 
 add_subdirectory(${CommonLibPath} EXCLUDE_FROM_ALL)
 
-CPMAddPackage("gh:stephenberry/glaze@5.7.1")
+CPMAddPackage("gh:stephenberry/glaze@7.0.0")
 CPMAddPackage(
   NAME task-thread-pool
   URL https://github.com/alugowski/task-thread-pool/archive/refs/heads/main.tar.gz
@@ -79,13 +79,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed/x64-windows-static-md/lib/detours.lib>
 )
 
-# When your SKSE .dll is compiled, this will automatically copy the .dll into your mods folder.
-# Only works if you configure DEPLOY_ROOT above (or set the SKYRIM_MODS_FOLDER environment variable)
 if(DEFINED OUTPUT_FOLDER)
-    # If you specify an <OUTPUT_FOLDER> (including via environment variables)
-    # then we'll copy your mod files into Skyrim or a mod manager for you!
-
-    # Copy the SKSE plugin .dll files into the SKSE/Plugins/ folder
     set(DLL_FOLDER "${OUTPUT_FOLDER}/SKSE/Plugins")
 
     message(STATUS "SKSE plugin output folder: ${DLL_FOLDER}")

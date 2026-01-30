@@ -45,12 +45,12 @@ bool WeaponFactory::ApplySavedMaterial(RE::Actor* actor, bool leftHand) {
     return false;
   }
   for (const auto& materialName : materialInfo->materials) {
-    const auto* materialInfo = MaterialLoader::GetMaterialConfig(weapon->GetFormID(), materialName);
+    const auto* materialConfig = MaterialLoader::GetMaterialConfig(weapon->GetFormID(), materialName);
     if (!materialInfo) {
       _WARN("Material config not found: {}", materialName);
       continue;
     }
-    for (const auto& [shape, materialFile] : materialInfo->applies) {
+    for (const auto& [shape, materialFile] : materialConfig->applies) {
       auto* childShape = rootNode->GetObjectByName(shape)->AsGeometry();
       if (!childShape) {
         _WARN("Shape not found: {}", shape);
@@ -63,7 +63,6 @@ bool WeaponFactory::ApplySavedMaterial(RE::Actor* actor, bool leftHand) {
       }
       if (!MaterialManager::ApplyMaterialToNode(childShape, material)) {
         _WARN("Failed to apply material: {} to shape: {}", materialFile, shape);
-        continue;
       }
     }
   }

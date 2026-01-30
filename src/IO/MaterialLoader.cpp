@@ -22,8 +22,7 @@ static bool LoadMaterialFromDisk(const std::string& filename,
     _ERROR("JSON file expected, but got: {}", filename);
     return false;
   }
-  if (auto err = glz::read_file_json<glz::opts{.error_on_unknown_keys = false,
-                                               .new_lines_in_arrays = true}>(
+  if (auto err = glz::read_file_json<glz::opts{.error_on_unknown_keys = false}>(
           record, filename, std::string{})) {
     auto cleanedError = glz::format_error(err);
     _ERROR("Failed to read material file {}: {}", filename, cleanedError);

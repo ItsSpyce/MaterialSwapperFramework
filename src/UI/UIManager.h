@@ -8,8 +8,8 @@ class Window {
   virtual void Initialize() {}
   virtual void Render() const = 0;
   virtual void Update(u32 timer) = 0;
-  void Show() { isOpen_ = true; }
-  void Hide() { isOpen_ = false; }
+  virtual void Show() { isOpen_ = true; }
+  virtual void Hide() { isOpen_ = false; }
   NODISCARD bool IsOpen() const { return isOpen_; }
   NODISCARD Vector2 GetWindowSize() const { return windowSize_; }
   NODISCARD Vector2 GetWindowPos() const { return windowPos_; }
@@ -74,9 +74,7 @@ class UIManager {
     ForEachWindow([](Window* window) { window->Initialize(); });
   }
 
-  static void SetShowKey(const u8 key) {
-    openWindowKey_ = key;
-  }
+  static void SetShowKey(const u8 key) { openWindowKey_ = key; }
 
   static bool IsShowKey(const RE::ButtonEvent* event) {
     return event->GetDevice() == RE::INPUT_DEVICE::kKeyboard &&

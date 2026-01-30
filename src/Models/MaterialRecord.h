@@ -68,6 +68,9 @@ struct MaterialRecord {
   optional<string> subsurfaceMap;
   optional<string> parallaxMap;
   optional<string> rmaosMap;
+  optional<string> coatMap;
+  optional<string> coatNormalMap;
+  optional<string> fuzzMap;
   optional<bool> enableEditorAlphaThreshold;
   optional<bool> translucency;
   optional<bool> translucencyThickObject;

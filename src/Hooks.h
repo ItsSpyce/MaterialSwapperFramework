@@ -61,7 +61,7 @@ struct Actor_AttachArmor {
 struct Actor_CreateWeaponNodes {
   static void __fastcall thunk(RE::TESObjectREFR* actor, RE::TESForm* weap, bool left) {
     func(actor, weap, left);
-    Factories::WeaponFactory::GetSingleton()->ApplySavedMaterial(actor->As<RE::Actor>(), left);
+    // Factories::WeaponFactory::GetSingleton()->ApplySavedMaterial(actor->As<RE::Actor>(), left);
   }
 
   static inline REL::Relocation<decltype(&thunk)> func{

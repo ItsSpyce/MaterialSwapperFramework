@@ -12,7 +12,7 @@ namespace UI {
 class UIManagerImpl : public UIManager {
  public:
   UIManagerImpl() = default;
-  ~UIManagerImpl() override  = default;
+  ~UIManagerImpl() override = default;
   bool InitializeRenderer(ID3D11Device* device,
                           ID3D11DeviceContext* deviceContext,
                           DXGI_SWAP_CHAIN_DESC& desc) override {
@@ -23,20 +23,12 @@ class UIManagerImpl : public UIManager {
                      ImGuiConfigFlags_NoMouseCursorChange;
     io.ConfigWindowsMoveFromTitleBarOnly = true;
     io.IniFilename = nullptr;
-    io.FontDefault = io.Fonts->AddFontFromFileTTF(
-        "Data/interface/fonts/NotoSansDisplay-Regular.ttf", 18.0f);
-    io.Fonts->AddFontFromFileTTF(
-        "Data/interface/fonts/NotoSansDisplay-Regular.ttf", 18.0f, nullptr,
-        io.Fonts->GetGlyphRangesCyrillic());
-    io.Fonts->AddFontFromFileTTF(
-        "Data/interface/fonts/NotoSansDisplay-Regular.ttf", 18.0f, nullptr,
-        io.Fonts->GetGlyphRangesJapanese());
-    io.Fonts->AddFontFromFileTTF(
-        "Data/interface/fonts/NotoSansDisplay-Regular.ttf", 18.0f, nullptr,
-        io.Fonts->GetGlyphRangesKorean());
-    io.Fonts->AddFontFromFileTTF(
-        "Data/interface/fonts/NotoSansDisplay-Regular.ttf", 18.0f, nullptr,
-        io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+    io.Fonts->Clear();
+    io.FontDefault =
+        AddFontStyle("Data/interface/fonts/NotoSansDisplay-Regular.ttf", 18.f);
+    AddFontStyle("Data/interface/fonts/NotoSansDisplay-Regular.ttf", 24.f);
+    AddFontStyle("Data/interface/fonts/NotoSansDisplay-Regular.ttf", 32.f);
+    AddFontStyle("Data/interface/fonts/NotoSansDisplay-Regular.ttf", 40.f);
     if (!ImGui_ImplWin32_Init(desc.OutputWindow)) {
       _ERROR("ImGui_ImplWin32_Init failed");
       return false;
@@ -130,6 +122,20 @@ class UIManagerImpl : public UIManager {
     kMouseOffset = 256,
     kGamepadOffset = 266
   };
+
+  static ImFont* AddFontStyle(const char* name, const float fontSize) {
+    auto& io = ImGui::GetIO();
+    io.Fonts->AddFontFromFileTTF(name, fontSize, nullptr,
+                                 io.Fonts->GetGlyphRangesCyrillic());
+    io.Fonts->AddFontFromFileTTF(name, fontSize, nullptr,
+                                 io.Fonts->GetGlyphRangesJapanese());
+    io.Fonts->AddFontFromFileTTF(name, fontSize, nullptr,
+                                 io.Fonts->GetGlyphRangesKorean());
+    io.Fonts->AddFontFromFileTTF(
+        name, fontSize, nullptr,
+        io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+    return io.Fonts->AddFontFromFileTTF(name, fontSize);
+  }
 
   static std::uint32_t GetGamepadIndex(RE::BSWin32GamepadDevice::Key key) {
     using Key = RE::BSWin32GamepadDevice::Key;

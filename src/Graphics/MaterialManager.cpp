@@ -15,6 +15,7 @@ using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
 using ShaderFlag8 = RE::BSShaderProperty::EShaderPropertyFlag8;
 using Texture = RE::BSTextureSet::Texture;
 using ShaderProperty = RE::BSLightingShaderProperty;
+using EffectProperty = RE::BSEffectShaderProperty;
 using MaterialBase = RE::BSLightingShaderMaterialBase;
 
 static void ApplyFlags(ShaderProperty* lightingShader,
@@ -60,7 +61,7 @@ static const char* GetStringPtr(const std::optional<std::string>& str) {
   return nullptr;
 }
 
-static void ApplyNonPBRTextures(ShaderProperty* lightingShader,
+static void ApplyNonPBRTextures(const ShaderProperty* lightingShader,
                                 MaterialBase* newMaterial,
                                 const MaterialRecord* record) {
   auto* textureLoader = Graphics::TextureLoader::GetSingleton();
@@ -113,7 +114,7 @@ static void ApplyNonPBRTextures(ShaderProperty* lightingShader,
   }
 }
 
-static void ApplyPBRTextures(ShaderProperty* lightingShader,
+static void ApplyPBRTextures(const ShaderProperty* lightingShader,
                              BSLightingShaderMaterialPBR* newMaterial,
                              const MaterialRecord* record) {
   auto* textureLoader = Graphics::TextureLoader::GetSingleton();
@@ -137,6 +138,14 @@ static void ApplyPBRTextures(ShaderProperty* lightingShader,
     newMaterial->displacementTexture =
         RE::NiPointer(textureLoader->LoadTexture(displacementMap));
   }
+  if (const auto subsurfaceMap = GetStringPtr(record->subsurfaceMap)) {
+    newMaterial->featuresTexture0 =
+        RE::NiPointer(textureLoader->LoadTexture(subsurfaceMap));
+  }
+  if (const auto coatMap = GetStringPtr(record->coatMap)) {
+    newMaterial->featuresTexture0 =
+        RE::NiPointer(textureLoader->LoadTexture(coatMap));
+  }
   if (const auto parallaxMap = GetStringPtr(record->parallaxMap)) {
     newMaterial->featuresTexture1 =
         RE::NiPointer(textureLoader->LoadTexture(parallaxMap));
@@ -148,20 +157,16 @@ static void ApplyPBRTextures(ShaderProperty* lightingShader,
 bool MaterialManager::ApplyMaterialToNode(RE::BSGeometry* geometry,
                                           const MaterialRecord* record) {
   RETURN_IF_FALSE(geometry)
-  auto& shapeEffect = geometry->GetGeometryRuntimeData()
-                          .properties[RE::BSGeometry::States::kEffect];
   auto& shapeProperty = geometry->GetGeometryRuntimeData()
                             .properties[RE::BSGeometry::States::kProperty];
-  auto* lightingShader =
-      shapeEffect ? static_cast<ShaderProperty*>(shapeEffect.get()) : nullptr;
+  auto* lightingShader = geometry->lightingShaderProp_cast();
   RETURN_IF_FALSE(lightingShader)
   auto* alphaProperty =
       shapeProperty ? static_cast<RE::NiAlphaProperty*>(shapeProperty.get())
                     : nullptr;
-  auto* newMaterial =
-      new RE::BSLightingShaderMaterialDynamic(lightingShader->material);
-  newMaterial->SetMaterial(record);
-
+  /* auto* newMaterial =
+       new RE::BSLightingShaderMaterialDynamic(lightingShader->material);
+   newMaterial->SetMaterial(record);*/
   ApplyFlags(lightingShader, record);
 
   if (record->emitEnabled) {
@@ -181,20 +186,24 @@ bool MaterialManager::ApplyMaterialToNode(RE::BSGeometry* geometry,
         record->alphaTestThreshold.value_or(alphaProperty->alphaThreshold);
   }
 
-  /* if (record->pbr && ModState::GetSingleton()->IsCSInstalled()) {
-     ApplyPBRTextures(lightingShader,
-                      (BSLightingShaderMaterialPBR*)lightingShader->material,
-                      record);
-   } else {
-     ApplyNonPBRTextures(lightingShader, newMaterial, record);
-     lightingShader->SetMaterial(newMaterial, true);
-   }*/
-  ApplyNonPBRTextures(lightingShader, newMaterial, record);
-
-  newMaterial->OnLoadTextureSet(0, nullptr);
-  lightingShader->SetMaterial(newMaterial->CastToUnderlying(), false);
+  if (record->pbr && ModState::GetSingleton()->IsCSInstalled()) {
+    auto* pbrMaterial = (BSLightingShaderMaterialPBR*)lightingShader->material->Create();
+    RETURN_IF_FALSE(pbrMaterial)
+    pbrMaterial->CopyMembers(lightingShader->material);
+    ApplyPBRTextures(lightingShader, pbrMaterial, record);
+    lightingShader->SetMaterial(pbrMaterial, true);
+  } else {
+    auto* newMaterial =
+        skyrim_cast<MaterialBase*>(lightingShader->GetBaseMaterial());
+    newMaterial->CopyMembers(lightingShader->material);
+    ApplyNonPBRTextures(lightingShader, newMaterial, record);
+    lightingShader->SetMaterial(newMaterial, true);
+  }
   lightingShader->SetupGeometry(geometry);
   lightingShader->FinishSetupGeometry(geometry);
+  geometry->SetMaterialNeedsUpdate(true);
+
+  // newMaterial->OnLoadTextureSet(0, nullptr);
 
   return true;
 }

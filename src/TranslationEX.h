@@ -13,11 +13,7 @@ concept translation = requires(T t) {
 
 class TranslationEX {
 #define _S(_LITERAL) (const char*)u8##_LITERAL
-#ifdef EMH_NEW
   using hash_map = emhash8::HashMap<std::string, std::string>;
-#else
-  using hash_map = std::unordered_map<std::string, std::string>;
-#endif
  public:
   struct TranslationKey {
     string name;
@@ -44,25 +40,25 @@ class TranslationEX {
     if (!key.value.empty()) {
       return key.value.c_str();
     }
-    if (translationMap_.empty()) {
+    if (!isLoaded_) {
+      _TRACE("Reading translations");
       ReadTranslations();
     }
-    if (auto it = translationMap_.find(key.name); it != translationMap_.end()) {
-      std::string val = it->second;
+    if (translationMap_.try_get(key.name, key.value)) {
       // do replace on all keys prefixed with $
       size_t pos = 0;
-      while ((pos = val.find('$', pos)) != std::string::npos) {
-        auto endPos = val.find(' ', pos);
+      while ((pos = key.value.find('$', pos)) != std::string::npos) {
+        auto endPos = key.value.find(' ', pos);
         if (endPos == std::string::npos) {
-          endPos = val.length();
+          endPos = key.value.length();
         }
-        const auto keyName = val.substr(pos + 1, endPos - pos - 1);
+        const auto keyName = key.value.substr(pos + 1, endPos - pos - 1);
         TranslationKey subKey{.name = keyName};
         TryTranslate(subKey);
-        val.replace(pos, endPos - pos, subKey.value);
+        key.value.replace(pos, endPos - pos, subKey.value);
         pos += subKey.value.length();
       }
-      key.value = std::string(val);
+      _TRACE("Key: {}, Value: {}", key.name, key.value);
       return key.value.c_str();
     }
     return key.name.c_str();
@@ -73,6 +69,7 @@ class TranslationEX {
   static inline std::string currentLanguage_;
   static inline hash_map translationMap_;
   static inline auto pluginName_ = std::string(SKSE::GetPluginName());
+  static inline bool isLoaded_ = false;
 
   static void ReadSettings() {
     static bool hasRead = false;
@@ -91,6 +88,7 @@ class TranslationEX {
   }
 
   static void ReadTranslations() {
+    isLoaded_ = true;
     const auto dir = std::filesystem::path("Data") / directory_;
     auto translationFile =
         (dir / fmt::format("{}_{}.json", pluginName_,
@@ -100,14 +98,15 @@ class TranslationEX {
       _WARN("Translation file does not exist: {}", translationFile);
       return;
     }
-    hash_map map;
-    if (auto err = glz::read_file_json(map, translationFile, std::string{})) {
+    string buffer;
+    std::unordered_map<std::string, std::string> translations;
+    if (auto err = glz::read_file_json(translations, translationFile, buffer)) {
       auto cleanedError = glz::format_error(err);
       _ERROR("Failed to read translation file {}: {}", translationFile,
              cleanedError);
       return;
     }
-    translationMap_ = std::move(map);
+    translationMap_ = hash_map(translations.begin(), translations.end());
     _INFO("Loaded translations for language: {}", currentLanguage_);
     _TRACE("Translations: {}", translationMap_.size());
     for (const auto& [key, value] : translationMap_) {
