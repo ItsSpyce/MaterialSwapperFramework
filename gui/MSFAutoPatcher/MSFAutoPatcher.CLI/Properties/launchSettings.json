@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "MSFAutoPatcher.CLI": {
+      "commandName": "Project",
+      "commandLineArgs": "\"[ELLE] Dremurai.esp\""
+    }
+  }
+}
