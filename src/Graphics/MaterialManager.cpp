@@ -150,6 +150,14 @@ static void ApplyPBRTextures(const ShaderProperty* lightingShader,
     newMaterial->featuresTexture1 =
         RE::NiPointer(textureLoader->LoadTexture(parallaxMap));
   }
+  if (const auto fuzzMap = GetStringPtr(record->fuzzMap)) {
+    newMaterial->featuresTexture1 =
+        RE::NiPointer(textureLoader->LoadTexture(fuzzMap));
+  }
+  if (const auto coatNormalMap = GetStringPtr(record->coatNormalMap)) {
+    newMaterial->featuresTexture1 =
+        RE::NiPointer(textureLoader->LoadTexture(coatNormalMap));
+  }
 }
 
 // I have a crazy fuckin idea. What if I hooked into

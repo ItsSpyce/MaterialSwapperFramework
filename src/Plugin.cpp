@@ -90,10 +90,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
   g_armorAttachSource.AddListener(taskManager);
   g_frameEventSource.AddListener(taskManager);
   g_cellChangeSource.AddListener(taskManager);
-  g_armorAttachSource.AddListener(evaluationContext);
-  g_cellChangeSource.AddListener(evaluationContext);
-  g_weatherChangeSource.AddListener(evaluationContext);
-  RE::ScriptEventSourceHolder::GetSingleton()->AddEventSink(evaluationContext);
+  evaluationContext->RegisterEventSinks();
   _INFO("Registering Papyrus functions...");
   SKSE::GetPapyrusInterface()->Register(MaterialPapyrus::RegisterFunctions);
   _INFO("Registering save hooks...");
