@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(MaterialSwapperFramework VERSION 0.3.0.0)
+project(MaterialSwapperFramework VERSION 0.3.3.0)
 
 set(CMAKE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party)
@@ -17,16 +17,17 @@ endif()
 
 add_compile_definitions(SKYRIM)
 add_compile_definitions(SKYRIM_AE)
+add_compile_definitions(UI_USE_IMGUI) # for ImGui
+#add_compile_definitions(UI_USE_PRISMA) # for Prisma
 set(CommonLibPath "${CMAKE_LIB_DIR}/commonlibsse-ng")
 set(CommonLibName "CommonLibSSE")
 set(GameVersion "Skyrim")
 
 include(CommonLibSSE)
 include(CPM)
-include(nuklear)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
-
+SET(GLZ_USE_AVX2 ON)
 set(BUILD_TESTS OFF)
 
 if(MSVC)
@@ -41,8 +42,6 @@ if(MSVC)
     endif()
 endif()
 
-set(LcuiPath ${CMAKE_LIB_DIR}/lcui)
-
 find_package(spdlog CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_path(SRELL_INCLUDE_DIRS "srell.hpp")
@@ -50,16 +49,23 @@ find_package(directxtex CONFIG REQUIRED)
 find_package(directxtk CONFIG REQUIRED)
 find_package(binary_io CONFIG REQUIRED)
 find_package(detours)
+find_package(sigc++-3 CONFIG REQUIRED)
 
 add_subdirectory(${CommonLibPath} EXCLUDE_FROM_ALL)
 
-CPMAddPackage("gh:stephenberry/glaze@7.0.0")
+CPMAddPackage("gh:stephenberry/glaze@7.5.0")
 CPMAddPackage(
   NAME task-thread-pool
   URL https://github.com/alugowski/task-thread-pool/archive/refs/heads/main.tar.gz
 )
 
+file(GLOB SHADER_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.hlsl")
+set(GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(GENERATED_SHADER_NAMES_HEADER "${GENERATED_INCLUDE_DIR}/GeneratedShaderNames.h")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateShaderNames.cmake")
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(${GENERATED_INCLUDE_DIR})
 include_directories(${SRELL_INCLUDE_DIRS})
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "src/*.h")
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
@@ -77,6 +83,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   Microsoft::DirectXTex
   Microsoft::DirectXTK
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed/x64-windows-static-md/lib/detours.lib>
+  sigc-3.0
 )
 
 if(DEFINED OUTPUT_FOLDER)
@@ -84,6 +91,8 @@ if(DEFINED OUTPUT_FOLDER)
 
     message(STATUS "SKSE plugin output folder: ${DLL_FOLDER}")
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Material Swapper Framework")
+    set(SHADER_OUTPUT_DIRECTORY "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/SKSE/Plugins/${PROJECT_NAME}/shaders")
+    set(COMPILED_SHADER_OUTPUT_DIRECTORY "${SHADER_OUTPUT_DIRECTORY}/compiled")
     file(MAKE_DIRECTORY "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
 
     # TODO: make this actually work with the res folder
@@ -100,6 +109,10 @@ if(DEFINED OUTPUT_FOLDER)
         # Copy DLL and PDB into SKSE/Plugins in archive output
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${PROJECT_NAME}>" "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/SKSE/Plugins/$<TARGET_FILE_NAME:${PROJECT_NAME}>"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_PDB_FILE:${PROJECT_NAME}>" "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/SKSE/Plugins/$<TARGET_PDB_FILE_NAME:${PROJECT_NAME}>"
+        # Copy raw HLSL shaders into the plugin's packaged shaders directory
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${SHADER_OUTPUT_DIRECTORY}"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${COMPILED_SHADER_OUTPUT_DIRECTORY}"
+        COMMAND "${CMAKE_COMMAND}" -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/shaders" "${SHADER_OUTPUT_DIRECTORY}"
         # Copy the entire archive output directory into OUTPUT_FOLDER
         COMMAND "${CMAKE_COMMAND}" -E copy_directory "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}" "${OUTPUT_FOLDER}"
         # Zip the archive output directory

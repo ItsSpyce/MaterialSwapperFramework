@@ -1,4 +1,5 @@
 #pragma once
+#include "Models/MaterialConfig.h"
 #include "Save/Save.h"
 
 namespace Factories {

@@ -45,11 +45,12 @@ try
   if (gamePath is not null || (gamePath is null && mo2Path is null && outDir is null))
   {
     var actualOutDir = gamePath is null ? Environment.CurrentDirectory : Path.Join(gamePath.FullName, "Data");
-    var loadOrderTxt = File.ReadAllLines(
-     Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Skyrim Special Edition", "loadorder.txt"));
+    Directory.CreateDirectory(actualOutDir);
+    var loadOrderTxtPath = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Skyrim Special Edition", "loadorder.txt");
+    var loadOrderTxt = File.Exists(loadOrderTxtPath) ? File.ReadAllLines(loadOrderTxtPath) : null;
     var modFiles = Directory.EnumerateFiles(actualOutDir, "*.es*")
-      .Where(x => loadOrderTxt.Contains(Path.GetFileName(x)))
-      .OrderBy(x => loadOrderTxt.IndexOf(Path.GetFileName(x)))
+      .Where(x => loadOrderTxt is null || loadOrderTxt.Contains(Path.GetFileName(x)))
+      .OrderBy(x => loadOrderTxt is null ? x.GetHashCode() : loadOrderTxt.IndexOf(Path.GetFileName(x)))
       .Select(x => SkyrimMod.CreateFromBinary(ModPath.FromPath(x), SkyrimRelease.SkyrimSE));
     using var linkCache = new ImmutableLoadOrderLinkCache<ISkyrimMod, ISkyrimModGetter>(modFiles, LinkCachePreferences.Default);
     foreach (var mod in linkCache.ListedOrder.Cast<ISkyrimModGetter>())
@@ -57,16 +58,24 @@ try
       var armorNifCollector = ArmorNifCollector.Hydrate(linkCache, mod.Armors);
       var materialCollector = MaterialConfigCollector.ProcessFromNifCollector(linkCache, armorNifCollector);
       materialCollector.WriteConfigurationsToDisk(actualOutDir);
-      materialCollector.WriteMaterialsToDisk(actualOutDir);
+      materialCollector.WriteMaterialsToDisk(actualOutDir, mod.ModKey.Name);
     }
   }
   else if (mo2Path is not null)
   {
     var overwriteDir = Path.Join(mo2Path.FullName, "overwrite");
     var modsDir = Path.Join(mo2Path.FullName, "mods");
-    foreach (var modDir in Directory.EnumerateDirectories(modsDir))
+    var dirEnumerator = Directory.EnumerateDirectories(modsDir).GetEnumerator();
+    while (true)
     {
-      var modFiles = Directory.EnumerateFiles(modDir, "*.es*")
+      try
+      {
+        if (!dirEnumerator.MoveNext())
+        {
+          break;
+        }
+        var modDir = dirEnumerator.Current;
+        var modFiles = Directory.EnumerateFiles(modDir, "*.es*")
         .Select(x =>
         {
           try
@@ -86,7 +95,12 @@ try
         var armorNifCollector = ArmorNifCollector.Hydrate(linkCache, mod.Armors);
         var materialCollector = MaterialConfigCollector.ProcessFromNifCollector(linkCache, armorNifCollector);
         materialCollector.WriteConfigurationsToDisk(outDir?.FullName ?? overwriteDir);
-        materialCollector.WriteMaterialsToDisk(outDir?.FullName ?? overwriteDir);
+        materialCollector.WriteMaterialsToDisk(outDir?.FullName ?? overwriteDir, mod.ModKey.Name);
+      }
+      }
+      catch (Exception ex)
+      {
+        Console.WriteLine(ex);
       }
     }
   }

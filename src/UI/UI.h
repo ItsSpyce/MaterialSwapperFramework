@@ -3,12 +3,8 @@
 #include "UIManager.h"
 #ifdef UI_USE_IMGUI
 #include "ImGui/UIManagerImpl.h"
-#endif
-#ifdef UI_USE_LCUI
-#include "LCUI/UIManagerImpl.h"
-#endif
-#ifdef UI_USE_NUKLEAR
-#include "Nuklear/UIManagerImpl.h"
+#elif UI_USE_PRISMA
+#include "Prisma/UIManagerImpl.h"
 #endif
 #include "UI/Hooks.h"
 #include "MainWindow.h"
@@ -22,7 +18,11 @@ inline UIManager* GetCurrentUI() {
   return ui;
 }
 
-inline void Install() { Hooks::Install(); }
+inline void Install() {
+#ifdef UI_USE_IMGUI
+  Hooks::Install();
+#endif
+}
 
 inline void Initialize() {
   if (auto* ui = GetCurrentUI()) {

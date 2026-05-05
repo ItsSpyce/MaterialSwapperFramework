@@ -2,8 +2,8 @@
 
 #include <unordered_set>
 
-#include "Helpers.h"
 #include "Save/Save.h"
+#include "Helpers/SkyrimHelpers.h"
 
 inline bool TryResolveFormID(const SKSE::SerializationInterface* iface,
                              RE::FormID& formID) {
@@ -100,8 +100,8 @@ UniqueID UniqueIDTable::GetUID(RE::TESObjectREFR* refr, const RE::FormID formID,
 
   auto inventory = refr->GetInventory(
       [&](const RE::TESBoundObject& obj) { return obj.GetFormID() == formID; });
-  for (auto& data : inventory | views::values) {
-    auto* front = Helpers::GetOrCreateExtraList(data.second.get());
+  for (auto& [count, invItem] : inventory | views::values) {
+    auto* front = Helpers::GetOrCreateExtraList(invItem.get());
     if (!front) {
       _ERROR("Failed to get or create ExtraDataList for item in inventory");
       return 0;

@@ -21,7 +21,8 @@
     "libiconv",
     "libxml2",
     "libyaml",
-    "detours"
+    "detours",
+    "libsigcpp"
   ],
-  "builtin-baseline": "cc288af760054fa489574bd8e22d05aa8fa01e5c"
+  "builtin-baseline": "cf9b6f1a47898a888f9e86e346a9adfa68357380"
 }

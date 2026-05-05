@@ -3,11 +3,9 @@
 #include "EditorIDCache.h"
 #include "Events/EventListener.h"
 #include "RE/Offset.h"
+#include "Helpers/RaceMenuHelpers.h"
 
-extern EventSource<FrameEvent> g_frameEventSource;
-extern EventSource<ArmorAttachEvent> g_armorAttachSource;
-extern EventSource<PlayerCellChangeEvent> g_cellChangeSource;
-extern EventSource<WeatherChangeEvent> g_weatherChangeSource;
+extern EventSource<PlayerViewChangeEvent> g_playerViewChangeSource;
 
 namespace Hooks {
 struct TESForm_SetFormEditorID {
@@ -59,21 +57,22 @@ struct Actor_AttachArmor {
 };
 
 struct Actor_CreateWeaponNodes {
-  static void __fastcall thunk(RE::TESObjectREFR* actor, RE::TESForm* weap, bool left) {
+  static void __fastcall thunk(RE::TESObjectREFR* actor, RE::TESForm* weap,
+                               bool left) {
     func(actor, weap, left);
-    // Factories::WeaponFactory::GetSingleton()->ApplySavedMaterial(actor->As<RE::Actor>(), left);
+    // Factories::WeaponFactory::GetSingleton()->ApplySavedMaterial(actor->As<RE::Actor>(),
+    // left);
   }
 
   static inline REL::Relocation<decltype(&thunk)> func{
-    RE::Offset::Actor::CreateWeaponNodes
-  };
+      RE::Offset::Actor::CreateWeaponNodes};
 };
 
 struct Main_Update {
   static void thunk() {
     func();
     auto* main = RE::Main::GetSingleton();
-    if (!main->gameActive) {
+    if (!main->GetRuntimeData().gameActive) {
       // do something later maybe
       _TRACE("Quit game called");
       return;
@@ -102,15 +101,15 @@ struct Main_Update {
     }
     if (auto* sky = RE::Sky::GetSingleton()) {
       auto* weather = sky->overrideWeather  ? sky->overrideWeather
-                     : sky->currentWeather ? sky->currentWeather
-                                           : sky->defaultWeather;
+                      : sky->currentWeather ? sky->currentWeather
+                                            : sky->defaultWeather;
       if (weather && weather->data.flags.underlying() != currentWeather) {
         g_weatherChangeSource.Dispatch(WeatherChangeEvent{});
         currentWeather = weather->data.flags.underlying();
       }
     }
     const FrameEvent frameEvent{
-        .gamePaused = main ? main->freezeTime : false,
+        .gamePaused = main ? main->GetRuntimeData().freezeTime : false,
     };
     g_frameEventSource.Dispatch(frameEvent);
   }
@@ -123,15 +122,65 @@ struct Main_Update {
   static inline bool isExteriorCell;
 };
 
+struct PlayerCamera_SwitchPOV {
+  static void thunk(RE::PlayerCamera* _this, void* a1) {
+    func(_this, a1);
+    const auto thirdPerson =
+        RE::PlayerCamera::GetSingleton()->IsInThirdPerson();
+    if (thirdPerson != wasLastChangeThirdPerson) {
+      wasLastChangeThirdPerson = thirdPerson;
+      const PlayerViewChangeEvent event{
+          .thirdPerson = thirdPerson,
+      };
+      g_playerViewChangeSource.Dispatch(event);
+    }
+  }
+
+  static inline REL::Relocation<decltype(&thunk)> func;
+  static inline REL::Relocation rel{RE::Offset::PlayerCamera::UpdatePOV};
+  static inline REL::Relocation offset{
+      RE::Offset::PlayerCamera::UpdatePOVOffset};
+  static inline bool wasLastChangeThirdPerson{false};
+};
+
+struct InventoryUtils_WornHasKeyword {
+  static bool __fastcall thunk(RE::InventoryEntryData* entryData,
+                    RE::BGSKeyword* keyword) {
+    if (auto* owner = entryData->GetOwner(); owner && owner->IsActor()) {
+      auto* actor = owner->As<RE::Actor>();
+      if (auto uid = Helpers::GetUniqueID(actor, entryData, false)) {
+        bool didFind = false;
+        Factories::ArmorFactory::GetSingleton()->VisitAppliedMaterials(
+            actor, [&](const RE::TESObjectARMO* armo, const char*,
+                       const MaterialConfig& config) {
+              if (ranges::contains(config.keywords,
+                                   EditorIDCache::GetEditorID(keyword))) {
+                didFind = true;
+                return RE::BSVisit::BSVisitControl::kStop;
+              }
+              return RE::BSVisit::BSVisitControl::kContinue;
+            });
+        return didFind || func(entryData, keyword);
+      }
+    }
+    return func(entryData, keyword);
+  }
+
+  static inline REL::Relocation<decltype(&thunk)> func{
+      RE::RTTI_InventoryUtils____WornHasKeywordVisitor};
+};
+
 inline void Install() noexcept {
   DetourRestoreAfterWith();
   DetourTransactionBegin();
   DetourUpdateThread(GetCurrentThread());
   stl::write_detour<Actor_AttachArmor>();
   stl::write_detour<Actor_CreateWeaponNodes>();
+  stl::write_detour<InventoryUtils_WornHasKeyword>();
   DetourTransactionCommit();
 
   stl::write_vfunc<RE::TESForm, TESForm_SetFormEditorID>();
   stl::write_thunk_call<Main_Update>();
+  stl::write_thunk_call<PlayerCamera_SwitchPOV>();
 }
 }  // namespace Hooks

@@ -1,10 +1,8 @@
 #include "WeaponFactory.h"
 
-#include "Helpers.h"
-#include "RE/Misc.h"
 #include "IO/MaterialLoader.h"
-#include "MaterialHelpers.h"
 #include "Graphics/MaterialManager.h"
+#include "Helpers/SkyrimHelpers.h"
 
 namespace Factories {
 bool WeaponFactory::ApplyMaterial(RE::Actor* actor, bool leftHand,
@@ -96,7 +94,7 @@ void WeaponFactory::WriteToSave(SKSE::SerializationInterface* iface,
       _WARN("FormID came back as 0, skipping");
       continue;
     }
-    WeaponRecordEntryV2 record{
+    Save::Types::WeaponRecordEntryV2 record{
         .uniqueID = uid,
         .appliedMaterials = weaponData.materials,
     };

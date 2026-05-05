@@ -1,7 +1,7 @@
 #pragma once
 
 namespace Save::Types {
-using UniqueID = u64;
+using UniqueID = u32;
 
 enum class UniqueItemLocation : u8 {
   kInventory = 0,

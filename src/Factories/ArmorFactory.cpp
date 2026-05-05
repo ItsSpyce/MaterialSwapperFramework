@@ -1,14 +1,15 @@
 #include "ArmorFactory.h"
 
-#include <DirectXTex.h>
-
 #include <srell.hpp>
 
-#include "Helpers.h"
-#include "IO/MaterialLoader.h"
+#include "Core/MaterialScope.h"
 #include "Graphics/MaterialManager.h"
+#include "Helpers/RaceMenuHelpers.h"
+#include "Helpers/SkyrimHelpers.h"
+#include "IO/MaterialLoader.h"
 #include "Models/MaterialConfig.h"
 #include "Models/MaterialRecord.h"
+#include "RE/Offset.h"
 #include "Save/Types.h"
 
 using ArmorFactory = Factories::ArmorFactory;
@@ -16,62 +17,13 @@ using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
 using Texture = RE::BSShaderTextureSet::Texture;
 using VisitControl = RE::BSVisit::BSVisitControl;
 
-static void ClearItemDisplayName(const RE::InventoryEntryData* data) {
-  if (!data) {
-    return;
-  }
-  if (data->extraLists) {
-    for (auto& extraList : *data->extraLists) {
-      if (extraList->HasType(RE::ExtraDataType::kTextDisplayData)) {
-        extraList->RemoveByType(RE::ExtraDataType::kTextDisplayData);
-        return;
-      }
-    }
-  }
-}
-
-static void SetItemDisplayName(const ArmorFactory* factory,
-                               RE::TESObjectREFR* refr,
-                               RE::InventoryEntryData* data) {
-  if (!data) {
-    return;
-  }
-  auto uid = Helpers::GetUniqueID(refr, data, false);
-  vector<const char*> filteredMaterials;
-  factory->VisitAppliedMaterials(
-      data->object->GetFormID(), uid,
-      [&](const char* name, const MaterialConfig& config) {
-        if (!config.isHidden && config.modifyName) {
-          filteredMaterials.emplace_back(name);
-        }
-        return VisitControl::kContinue;
-      });
-
-  if (filteredMaterials.empty()) {
-    ClearItemDisplayName(data);
-    return;
-  }
-  const auto name = fmt::format("{} [{}]", data->object->GetName(),
-                                fmt::join(filteredMaterials, ", "));
-  auto* front = Helpers::GetOrCreateExtraList(data);
-  if (!front) {
-    return;
-  }
-  if (auto* textDisplayData = front->GetByType<RE::ExtraTextDisplayData>()) {
-    textDisplayData->SetName(name.c_str());
-  } else {
-    textDisplayData = new RE::ExtraTextDisplayData(name.c_str());
-    front->Add(textDisplayData);
-  }
-}
-
 bool ArmorFactory::ApplyMaterial(RE::Actor* actor, RE::InventoryEntryData* data,
                                  const MaterialConfig* material,
                                  bool overwriteName) {
   RETURN_IF_FALSE(data)
   auto* form = data->object->As<RE::TESObjectARMO>();
   RETURN_IF_FALSE(form)
-  auto uid = Helpers::GetUniqueID(actor, form->GetSlotMask(), true);
+  auto uid = Helpers::GetUniqueID(actor, *form->GetSlotMask(), true);
   if (uid == NULL) {
     _WARN("Failed to get unique ID for form: {}", form->GetFormID());
     return false;
@@ -81,13 +33,14 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* actor, RE::InventoryEntryData* data,
            actor->GetFormID(), form->GetFormID(), uid);
     return false;
   }
-  armorData_.try_emplace(uid, ArmorData{});
-  auto& appliedMaterials = armorData_[uid];
-  if (std::ranges::contains(appliedMaterials.materials, material->name)) {
+  auto [it, _] = armorData_.try_emplace(uid, ArmorData{});
+  it->second.actorRefID =
+      actor->GetFormID();  // keep the ref ID updated no matter what
+  if (std::ranges::contains(it->second.materials, material->name)) {
     return true;  // Material already applied
   }
   vector<string> newAppliedMaterials;
-  for (const auto& mat : appliedMaterials.materials) {
+  for (const auto& mat : it->second.materials) {
     const auto* matConfig =
         MaterialLoader::GetMaterialConfig(form->GetFormID(), mat);
     if (matConfig && matConfig->layer != material->layer) {
@@ -96,9 +49,26 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* actor, RE::InventoryEntryData* data,
   }
 
   newAppliedMaterials.push_back(material->name);
-  appliedMaterials.materials = newAppliedMaterials;
+  it->second.materials = newAppliedMaterials;
   if (overwriteName) {
-    SetItemDisplayName(this, actor, data);
+    vector<const char*> filteredMaterials;
+    VisitAppliedMaterials(data->object->GetFormID(), uid,
+                          [&](const char* name, const MaterialConfig& config) {
+                            if (!config.isHidden && config.modifyName) {
+                              filteredMaterials.emplace_back(name);
+                            }
+                            return VisitControl::kContinue;
+                          });
+
+    if (filteredMaterials.empty()) {
+      Helpers::ResetDisplayName(data);
+    } else {
+      string name = data->object->GetName();
+      for (auto& filteredMaterial : filteredMaterials) {
+        name += fmt::format("{}, ", filteredMaterial);
+      }
+      Helpers::SetItemDisplayName(data, name.c_str());
+    }
   }
 
   return true;
@@ -110,9 +80,9 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
   auto* armorInSlot = actor->GetWornArmor(
       static_cast<RE::BGSBipedObjectForm::BipedObjectSlot>(1 << bipedSlot));
   auto uid = armorInSlot ? Helpers::GetUniqueID(
-                               actor, armorInSlot->GetSlotMask(), false)
+                               actor, *armorInSlot->GetSlotMask(), false)
                          : 0;
-  auto armorData = uid != 0 ? armorData_.try_get(uid) : nullptr;
+  const auto armorData = uid != 0 ? armorData_.try_get(uid) : nullptr;
   RE::BSVisit::TraverseScenegraphObjects(
       actor->Get3D(), [&](RE::NiAVObject* geometry) {
         auto* triShape = geometry->AsTriShape();
@@ -120,7 +90,7 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
           return VisitControl::kContinue;
         }
         const auto& material =
-            triShape->GetGeometryRuntimeData().properties[RE::BSGeometry::States::kEffect];
+            triShape->GetGeometryRuntimeData().shaderProperty;
 
         if (armorData && armorInSlot) {
           for (const auto& materialName : armorData->materials) {
@@ -137,21 +107,24 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
             if (appliesEntry.empty()) {
               continue;
             }
-            auto* materialFile = MaterialLoader::LoadMaterial(appliesEntry);
+            const auto* materialFile =
+                MaterialLoader::LoadMaterial(appliesEntry);
             if (!materialFile) {
               _ERROR("Failed to load material file: {}", appliesEntry);
               continue;
             }
+            MaterialScope scope(materialConfig, materialFile);
             _TRACE("Applying saved material: {}", materialName);
             MaterialManager::ApplyMaterialToNode(triShape, materialFile);
           }
         } else if (material && std::string(material->name).ends_with(".json")) {
-          auto materialFile =
+          const auto* materialFile =
               MaterialLoader::LoadMaterial(material->name.c_str());
           if (!materialFile) {
             _ERROR("Failed to load material file: {}", material->name.c_str());
             return VisitControl::kContinue;
           }
+          MaterialScope scope(materialFile);
           MaterialManager::ApplyMaterialToNode(triShape, materialFile);
         }
         return VisitControl::kContinue;
@@ -195,8 +168,8 @@ void ArmorFactory::WriteToSave(SKSE::SerializationInterface* iface,
       _WARN("Invalid form ID for unique ID: {}", uniqueID);
       continue;
     }
-    ArmorRecordEntryV2 record{.uniqueID = uniqueID,
-                              .appliedMaterials = records.materials};
+    Save::Types::ArmorRecordEntryV2 record{
+        .uniqueID = uniqueID, .appliedMaterials = records.materials};
     if (saveData.armorRecords.contains(formID)) {
       saveData.armorRecords[formID].push_back(record);
     } else {
@@ -211,14 +184,9 @@ void ArmorFactory::ResetMaterials(RE::Actor* actor) {
   }
   // TODO: fix this
   Helpers::VisitInventoryItems(actor, [&](const Helpers::InventoryItem* item) {
-    if (item->uid == NULL) {
-      return VisitControl::kContinue;
-    }
-    armorData_.erase(item->uid);
-    ClearItemDisplayName(item->data.get());
+    ResetMaterial(actor, item->data.get());
     return VisitControl::kContinue;
   });
-  actor->DoReset3D(true);
 }
 
 void ArmorFactory::ResetMaterial(RE::Actor* actor,
@@ -230,13 +198,13 @@ void ArmorFactory::ResetMaterial(RE::Actor* actor,
   if (!uid) {
     return;
   }
-  armorData_.erase(uid);
-  actor->DoReset3D(true);
-  ClearItemDisplayName(data);
+  auto toErase = armorData_.find(uid);
+  armorData_.erase(toErase);
+  Helpers::ResetDisplayName(data);
 }
 
 void ArmorFactory::VisitAppliedMaterials(
-    const RE::FormID formID, const UniqueID uid,
+    const RE::FormID formID, const Save::Types::UniqueID uid,
     const Visitor<const char*, const MaterialConfig&>& visitor) const {
   if (uid == NULL) {
     return;
@@ -246,6 +214,7 @@ void ArmorFactory::VisitAppliedMaterials(
     _ERROR("Form ID {} is not a valid armor", formID);
     return;
   }
+
   const auto appliedMaterials = armorData_.try_get(uid);
   if (!appliedMaterials) {
     return;
@@ -256,6 +225,29 @@ void ArmorFactory::VisitAppliedMaterials(
       if (visitor(materialName.c_str(), *materialConfig) ==
           VisitControl::kStop) {
         return;
+      }
+    }
+  }
+}
+
+void ArmorFactory::VisitAppliedMaterials(
+    RE::Actor* actor,
+    const Visitor<RE::TESObjectARMO*, const char*, MaterialConfig&>& visitor)
+    const {
+  for (const auto& [uid, data] : armorData_) {
+    if (data.actorRefID == actor->GetFormID()) {
+      auto* form = Helpers::GetFormForUniqueID(uid);
+      if (auto* armo = form ? form->As<RE::TESObjectARMO>() : nullptr) {
+        for (const auto& material : data.materials) {
+          auto* config =
+              MaterialLoader::GetMaterialConfig(armo->GetFormID(), material);
+          if (config) {
+            if (visitor(armo, material.c_str(), *config) ==
+                RE::BSVisit::BSVisitControl::kStop) {
+              return;
+            }
+          }
+        }
       }
     }
   }

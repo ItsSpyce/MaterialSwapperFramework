@@ -54,3 +54,7 @@ struct GameHourChangeEvent {
 };
 
 struct WeatherChangeEvent {};
+
+struct PlayerViewChangeEvent {
+  bool thirdPerson;
+};

@@ -14,14 +14,27 @@ class EditorID : public Singleton<EditorID> {
     CacheEditorID(form->GetFormID(), editorID);
   }
 
-  const std::string& GetEditorID(RE::FormID formID) const {
+  std::string GetEditorID(RE::FormID formID) const {
     return formIDToEditorIDMap_.get_or_return_default(formID);
   }
-  const std::string& GetEditorID(const RE::TESForm* form) const {
+  std::string GetEditorID(const RE::TESForm* form) const {
     return GetEditorID(form->GetFormID());
   }
   RE::FormID GetFormID(const std::string& editorID) const {
     return editorIDToFormIDMap_.get_or_return_default(editorID);
+  }
+
+  RE::TESForm* GetForm(const std::string& editorID) const {
+    RE::FormID formID = GetFormID(editorID);
+    if (formID == 0) return nullptr;
+    return RE::TESForm::LookupByID(formID);
+  }
+
+  template <typename T>
+  T* GetForm(const std::string& editorID) const {
+    RE::FormID formID = GetFormID(editorID);
+    if (formID == 0) return nullptr;
+    return RE::TESForm::LookupByID<T>(formID);
   }
 
  private:
@@ -33,14 +46,21 @@ class EditorID : public Singleton<EditorID> {
   emhash8::HashMap<std::string, RE::FormID> editorIDToFormIDMap_;
 };
 
-inline const std::string& GetEditorID(RE::FormID formID) {
+inline std::string GetEditorID(RE::FormID formID) {
   return EditorID::GetSingleton()->GetEditorID(formID);
 }
-inline const std::string& GetEditorID(const RE::TESForm* form) {
+inline std::string GetEditorID(const RE::TESForm* form) {
   return EditorID::GetSingleton()->GetEditorID(form);
 }
 inline RE::FormID GetFormID(const std::string& editorID) {
   return EditorID::GetSingleton()->GetFormID(editorID);
+}
+inline RE::TESForm* GetForm(const std::string& editorID) {
+  return EditorID::GetSingleton()->GetForm(editorID);
+}
+template <typename T>
+T* GetForm(const std::string& editorID) {
+  return EditorID::GetSingleton()->GetForm<T>(editorID);
 }
 inline void HydrateEditorIDCache() {
   const auto& [map, lock] = RE::TESForm::GetAllFormsByEditorID();

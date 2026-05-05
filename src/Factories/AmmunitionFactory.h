@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Models/MaterialConfig.h"
+
 namespace Factories {
 class AmmunitionFactory : public Singleton<AmmunitionFactory> {
  public:

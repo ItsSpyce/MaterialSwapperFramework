@@ -9,6 +9,8 @@ static constinit inline auto MATERIAL_PLUGIN_DIR =
     R"(Data\SKSE\Plugins\MaterialSwapperFramework)";
 static constinit inline auto MATERIAL_SHADER_DIR =
     R"(Data\SKSE\Plugins\MaterialSwapperFramework\shaders)";
+static constinit inline auto MATERIAL_CACHE_DIR =
+    R"(Data\SKSE\Plugins\MaterialSwapperFramework\cache)";
 static constinit inline auto MATERIAL_CONFIG_DIR =
     R"(Data\SKSE\Plugins\MaterialSwapperFramework\config)";
 static constinit inline auto MATERIAL_CONDITIONS_DIR =

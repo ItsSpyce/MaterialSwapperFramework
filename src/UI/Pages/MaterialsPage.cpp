@@ -1,15 +1,17 @@
 #include "UI/Pages/MaterialsPage.h"
 
 #include "Factories/ArmorFactory.h"
-#include "Helpers.h"
 #include "IO/MaterialLoader.h"
 #include "Models/MaterialConfig.h"
 #include "Translations.h"
 #include "UI/ImGui_Stylus.h"
+#include "Helpers/RaceMenuHelpers.h"
+#include "Helpers/SkyrimHelpers.h"
 
 namespace UI::Pages {
 void MaterialsPage(const MaterialsPageProps&) {
   static RE::InventoryEntryData* selectedItem;
+  static emhash8::HashMap<int32_t, vector<MaterialConfig>> availableMaterials;
   auto ref = RE::Console::GetSelectedRef();
   auto* actor = ref && ref->As<RE::Actor>()
                     ? ref->As<RE::Actor>()
@@ -44,6 +46,12 @@ void MaterialsPage(const MaterialsPageProps&) {
                             armo->GetName(),
                             ImVec2{ImGui::GetContentRegionAvail().x, 0.0f}) {
                           selectedItem = invItem->data.get();
+                          availableMaterials.clear();
+                          MaterialLoader::VisitMaterialFilesForFormID(selectedItem->object->GetFormID(), [&](const MaterialConfig& material) {
+                            auto [it, added] = availableMaterials.try_emplace(material.layer, vector<MaterialConfig>());
+                            it->second.push_back(material);
+                            return RE::BSVisit::BSVisitControl::kContinue;
+                          });
                         }
                       }
                     }

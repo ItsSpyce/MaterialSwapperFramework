@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Models/MaterialRecord.h"
+
 namespace RE {
 class BSLightingShaderMaterialDynamic : public BSLightingShaderMaterialBase {
  public:
@@ -48,7 +50,7 @@ class BSLightingShaderMaterialDynamic : public BSLightingShaderMaterialBase {
   NiSourceTexturePtr glowTexture = NiSourceTexturePtr{};
   NiSourceTexturePtr colorTexture = NiSourceTexturePtr{};
   NiColorA color = NiColorA();
-  ColorBlendMode colorBlendMode{ColorBlendMode::kNone};
+  ColorBlendMode colorBlendMode{ColorBlendMode::kNormal};
   const MaterialRecord* material;
 
  private:

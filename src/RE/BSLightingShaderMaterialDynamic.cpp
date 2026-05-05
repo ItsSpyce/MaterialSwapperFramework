@@ -1,7 +1,7 @@
 #include "BSLightingShaderMaterialDynamic.h"
 
 #include "Graphics/TextureLoader.h"
-#include "MaterialHelpers.h"
+#include "Helpers/MaterialHelpers.h"
 
 using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
 using ShaderFlag8 = RE::BSShaderProperty::EShaderPropertyFlag8;

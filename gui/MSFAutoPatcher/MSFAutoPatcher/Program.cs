@@ -35,6 +35,6 @@ public class Program
       state.LoadOrder.PriorityOrder.Armor().WinningOverrides());
     var materialCollector = MaterialConfigCollector.ProcessFromNifCollector(state.LinkCache, armorNifCollector);
     materialCollector.WriteConfigurationsToDisk(state.DataFolderPath.Path);
-    materialCollector.WriteMaterialsToDisk(state.DataFolderPath.Path);
+    materialCollector.WriteMaterialsToDisk(state.DataFolderPath.Path, "auto-generated");
   }
 }

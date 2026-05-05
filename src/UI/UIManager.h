@@ -64,7 +64,7 @@ class UIManager {
     return false;
   }
 
-  void Initialize() {
+  virtual void Initialize() {
     if (isReady_) {
       return;
     }

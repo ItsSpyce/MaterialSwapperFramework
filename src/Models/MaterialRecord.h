@@ -3,8 +3,10 @@
 #include <optional>
 #include <string>
 
+#include "MaterialRecordV2.h"
+
 enum class ColorBlendMode : uint8_t {
-  kNone = 0,
+  kNormal = 0,
   kAdd = 1,
   kMultiply = 2,
   kScreen = 3,
@@ -15,6 +17,37 @@ enum class ColorBlendMode : uint8_t {
   kColorBurn = 8,
   kHardLight = 9,
   kSoftLight = 10,
+};
+
+struct MaterialRGB {
+  uint8_t r = 0, g = 0, b = 0;
+};
+
+struct MaterialRGBA {
+  uint8_t r = 0, g = 0, b = 0, a = 0;
+};
+
+struct MaterialTexture {
+  string path = "";
+};
+
+struct MaterialMaskedTexture {
+  string path = "", mask = "";
+};
+
+struct MaterialUV {
+  array<float, 2> offset{}, scale{};
+};
+
+struct MaterialAlpha {
+  float transparency = 1.f;
+  bool blend = false;
+  bool test = false;
+  uint8_t threshold = 128;
+};
+
+struct MaterialRendering {
+  bool twoSided = false, receiveShadows = true, castShadows = true, decal = false;
 };
 
 struct MaterialRecord {
@@ -71,6 +104,7 @@ struct MaterialRecord {
   optional<string> coatMap;
   optional<string> coatNormalMap;
   optional<string> fuzzMap;
+  optional<string> emissionMap;
   optional<bool> enableEditorAlphaThreshold;
   optional<bool> translucency;
   optional<bool> translucencyThickObject;
@@ -146,7 +180,10 @@ struct MaterialRecord {
   optional<bool> effectPbrSpecular;
 
   // custom fields
-  optional<array<float, 4>> color;
+  optional<array<uint8_t, 4>> color;
   optional<ColorBlendMode> colorBlendMode;
   optional<string> colorBlendMap;
+  optional<array<uint8_t, 4>> colorChannelR;
+  optional<array<uint8_t, 4>> colorChannelG;
+  optional<array<uint8_t, 4>> colorChannelB;
 };

@@ -51,14 +51,16 @@ public class MaterialConfigCollector(ArmorNifCollector armorNifCollector)
   }
 
 
-  public void WriteMaterialsToDisk(string directory)
+  public void WriteMaterialsToDisk(string directory, string modName)
   {
-    var materialOutputDirectory = Path.Combine(directory, "materials", "auto-generated");
+    if (_materials.Count == 0) return;
+    var materialOutputDirectory = Path.Combine(directory, "materials", modName);
     Directory.CreateDirectory(materialOutputDirectory);
     foreach (var (name, material) in _materials)
     {
       // write to auto-generated directory
       var materialFilename = Path.Join(materialOutputDirectory, $"{name}.json");
+      Directory.GetParent(materialFilename)!.Create();
       File.WriteAllText(materialFilename,
         JsonConvert.SerializeObject(material, Formatting.Indented,
           new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }));
@@ -146,7 +148,7 @@ public class MaterialConfigCollector(ArmorNifCollector armorNifCollector)
           }
 
           var materialFilename = $"{textureSet.EditorID!}.json";
-          shapeMaterials[shape] = Path.Join("auto-generated", materialFilename);
+          shapeMaterials[shape] = Path.Join(armorAddon.FormKey.ModKey.Name, materialFilename);
         }
 
         var materialRecord = new MaterialRecord

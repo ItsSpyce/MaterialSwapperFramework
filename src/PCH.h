@@ -4,8 +4,6 @@
 #define NOMINMAX
 #define BS_THREAD_POOL_NATIVE_EXTENSIONS
 
-#define UI_USE_IMGUI
-
 #include <RE/Skyrim.h>
 #include <REL/Relocation.h>
 #include <REX/REX/Singleton.h>
@@ -54,9 +52,9 @@ using f64 = double;
 namespace stl {
 using namespace SKSE::stl;
 
-template <class T, size_t size = 14>
+template <class T, size_t Size = 14>
 void write_thunk_call() {
-  SKSE::AllocTrampoline(size);
+  SKSE::AllocTrampoline(Size);
 
   auto& trampoline = SKSE::GetTrampoline();
   T::func =
@@ -137,6 +135,6 @@ using Visitor = function<RE::BSVisit::BSVisitControl(Args...)>;
     _ERROR("Function not implemented: {}", __FUNCTION__); \
     throw std::exception("Function not implemented");     \
   }
-
-#include "Models/MaterialConfig.h"
-#include "Models/MaterialRecord.h"
+#define NOCOPY(_T) _T(const _T&) = delete; _T& operator=(const _T&) = delete
+#define NOMOVE(_T) _T(_T&&) = delete; _T& operator=(_T&&) = delete
+#define RELEASE(_V) if (_V != nullptr) _V->Release()

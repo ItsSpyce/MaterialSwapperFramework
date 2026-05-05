@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Condition.h"
+#include "Models/MaterialConfig.h"
 #include "Events/EventListener.h"
 #include "Graphics/MaterialManager.h"
 #include "IO/MaterialLoader.h"
@@ -156,7 +157,6 @@ class EvaluationContext : public Singleton<EvaluationContext>,
     if (!refr) {
       return;
     }
-    optional<Condition> match;
     // first do ref materials
     MaterialLoader::VisitMaterialFilesForFormID(
         refr->GetBaseObject()->GetFormID(),
@@ -172,7 +172,7 @@ class EvaluationContext : public Singleton<EvaluationContext>,
             if (!didPass) {
               break;
             }
-            if (condition.Evaluate(refr)) {
+            if (condition.Evaluate(refr) == !condition.negate) {
               _TRACE("Condition passed: {} {}", condition.type,
                      condition.value.dump().value());
               didPass = true;

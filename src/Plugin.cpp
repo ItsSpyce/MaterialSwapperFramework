@@ -1,3 +1,7 @@
+#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "d3dcompiler.lib");
+
 #include "CommunityShaders/CS.h"
 #include "Conditions.h"
 #include "Factories.h"
@@ -6,6 +10,7 @@
 #include "MaterialPapyrus.h"
 #include "ModState.h"
 #include "Options.h"
+#include "SKEE64.h"
 #include "Save/Save.h"
 #include "TaskManager.h"
 #include "ThreadPool.h"
@@ -17,6 +22,8 @@ EventSource<ArmorAttachEvent> g_armorAttachSource;
 EventSource<PlayerCellChangeEvent> g_cellChangeSource;
 EventSource<GameHourChangeEvent> g_gameHourChangeSource;
 EventSource<WeatherChangeEvent> g_weatherChangeSource;
+EventSource<PlayerViewChangeEvent> g_playerViewChangeSource;
+SKEE64::IInterfaceMap* g_skee64InterfaceMap;
 
 static void InitializeLogging() {
   static bool initialized = false;
@@ -57,6 +64,10 @@ static void HandleMessage(SKSE::MessagingInterface::Message* msg) {
   }
   if (msg->type == SKSE::MessagingInterface::kDataLoaded) {
     // CoroutineManager::GetSingleton()->Initialize();
+    _INFO("Querying RaceMenu...");
+    if (!SKEE64Instance::GetSingleton()->Initialize()) {
+      stl::report_and_fail("Failed to query RaceMenu. Ensure it's installed before continuing.");
+    }
     _INFO("Reading form editor IDs from plugins...");
     EditorIDCache::HydrateEditorIDCache();
     _INFO("Reading materials from disk...");

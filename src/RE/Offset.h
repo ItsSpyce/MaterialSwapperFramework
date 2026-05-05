@@ -19,6 +19,10 @@ constexpr auto AttachArmor = REL::VariantID(15535, 15712, 0x001DB9E0);
 constexpr auto CreateWeaponNodes = RELOCATION_ID(19342, 19769);
 constexpr auto CreateArmorNodes = RELOCATION_ID(15535, 15712);
 }  // namespace Actor
+namespace PlayerCamera {
+constexpr auto UpdatePOV = RELOCATION_ID(39401, 40476);
+constexpr auto UpdatePOVOffset = REL::VariantOffset(0x2AF, 0x294, 0);
+}
 namespace Main {
 constexpr auto Update = REL::VariantID(35565, 36564, 0x005BAB10);
 constexpr auto UpdateOffset = REL::VariantOffset(0x748, 0xC26, 0X7EE);

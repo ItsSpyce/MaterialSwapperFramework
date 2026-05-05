@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Models/MaterialConfig.h"
+
 namespace Factories {
 class AddonNodeFactory : public Singleton<AddonNodeFactory> {
  public:

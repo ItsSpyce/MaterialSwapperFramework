@@ -3,10 +3,10 @@
 #include <glaze/glaze.hpp>
 
 #include "Filesystem.h"
-#include "Helpers.h"
+#include "Helpers/SkyrimHelpers.h"
+#include "Helpers/StringHelpers.h"
 #include "Models/MaterialConfig.h"
 #include "Models/MaterialRecord.h"
-#include "StringHelpers.h"
 
 // Merge parent into child, preferring child's values
 #define MERGE_FIELD(_FIELD) \
@@ -22,7 +22,8 @@ static bool LoadMaterialFromDisk(const std::string& filename,
     _ERROR("JSON file expected, but got: {}", filename);
     return false;
   }
-  if (auto err = glz::read_file_json<glz::opts{.error_on_unknown_keys = false}>(
+  if (glz::error_ctx err = glz::read_file_json<glz::opts{
+          .error_on_unknown_keys = false, .error_on_missing_keys = false}>(
           record, filename, std::string{})) {
     auto cleanedError = glz::format_error(err);
     _ERROR("Failed to read material file {}: {}", filename, cleanedError);
@@ -31,7 +32,9 @@ static bool LoadMaterialFromDisk(const std::string& filename,
   // load templated materials
   if (record.inherits.has_value()) {
     MaterialRecord parent;
-    if (!LoadMaterialFromDisk(record.inherits.value(), parent)) {
+    const auto fullPath =
+        Filesystem::Join("Data", "materials", record.inherits.value());
+    if (!LoadMaterialFromDisk(fullPath.string(), parent)) {
       _ERROR("Failed to load parent material: {}", record.inherits.value());
       return false;
     }
@@ -167,14 +170,15 @@ void MaterialLoader::ReadMaterialsFromDisk(bool clearExisting) {
   for (auto& jsonFile : Filesystem::EnumerateMaterialConfigDir()) {
     _DEBUG("Reading material config file: {}", jsonFile.path().string());
     auto loweredPath = StringHelpers::ToLower(jsonFile.path().string());
-    auto filename = StringHelpers::ToLower(jsonFile.path().filename().string());
-    if (!filename.ends_with(".json") || filename[0] == '_') {
+    if (auto filename =
+            StringHelpers::ToLower(jsonFile.path().filename().string());
+        !filename.ends_with(".json") || filename[0] == '_') {
       continue;
     }
     MaterialConfigMap config;
     if (auto err =
             glz::read_file_json<glz::opts{.error_on_missing_keys = false}>(
-                config, loweredPath, std::string{})) {
+                config, loweredPath, string{})) {
       auto cleanedError = glz::format_error(err);
       _ERROR("Failed to read material config file {}: {}", loweredPath,
              cleanedError);
@@ -220,7 +224,9 @@ void MaterialLoader::ReadMaterialsFromDisk(bool clearExisting) {
       }
       auto loweredPath = StringHelpers::ToLower(jsonFile.path().string());
       _DEBUG("Reading material config file: {}", loweredPath);
-      if (auto err = glz::read_file_json<glz::opts{.error_on_missing_keys = false}>(config, loweredPath, std::string{})) {
+      if (auto err =
+              glz::read_file_json<glz::opts{.error_on_missing_keys = false}>(
+                  config, loweredPath, std::string{})) {
         auto cleanedError = glz::format_error(err);
         _ERROR("Failed to read material config file {}: {}", loweredPath,
                cleanedError);

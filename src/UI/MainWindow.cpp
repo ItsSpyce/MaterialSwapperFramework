@@ -206,21 +206,6 @@ int igThemeV3(int hue07, int alt07, int nav07, int lit01 = 0, int compact01 = 0,
     return 0;
 }
 
-#if 0
-// demo
-int theme = 0;
-static int hue = 0, alt = 0, nav = 0, shape = 1;
-static bool light = 0, compact = 0, borders = 0;
-theme |= ImGui::SliderInt("Hue", &hue, 0, 7);
-theme |= ImGui::SliderInt("Alt", &alt, 0, 7);
-theme |= ImGui::SliderInt("Nav", &nav, 0, 7);
-theme |= ImGui::SliderInt("Shape", &shape, 0, 3);
-theme |= ImGui::Checkbox("Light", &light);
-theme |= ImGui::Checkbox("Compact", &compact);
-theme |= ImGui::Checkbox("Borders", &borders);
-if(theme) igThemeV3(hue["CRYOLAMP"], alt["CRYOLAMP"], nav["CRYOLAMP"], light, compact, borders, shape);
-#endif
-
 static void ConfigureStyles() {
   // Configure ImGui styles
   igThemeV3(0, 0, 0, 0, 0, 1, 1);
