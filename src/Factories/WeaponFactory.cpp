@@ -1,8 +1,9 @@
 #include "WeaponFactory.h"
 
-#include "IO/MaterialLoader.h"
 #include "Graphics/MaterialManager.h"
+#include "Helpers/MaterialHelpers.h"
 #include "Helpers/SkyrimHelpers.h"
+#include "IO/MaterialLoader.h"
 
 namespace Factories {
 bool WeaponFactory::ApplyMaterial(RE::Actor* actor, bool leftHand,
@@ -28,8 +29,8 @@ bool WeaponFactory::ApplySavedMaterial(RE::Actor* actor, bool leftHand) {
   auto* weaponData = actor->GetEquippedEntryData(leftHand);
   auto uid = Helpers::GetUniqueID(actor, slot, true);
   auto& weaponModel = actor->IsPlayerRef()
-                         ? weapon->firstPersonModelObject->model
-                         : weapon->model;
+                          ? weapon->firstPersonModelObject->model
+                          : weapon->model;
   RE::NiPointer<RE::NiNode> weaponNode;
   if (RE::BSModelDB::Demand(weaponModel.c_str(), weaponNode,
                             RE::BSModelDB::DBTraits::ArgsType{}) !=
@@ -37,13 +38,15 @@ bool WeaponFactory::ApplySavedMaterial(RE::Actor* actor, bool leftHand) {
     _ERROR("Failed to load weapon model: {}", weaponModel.c_str());
     return false;
   }
-  auto* rootNode = actor->Get3D()->GetObjectByName(fmt::format("Weapon  ({:08X})", weapon->GetFormID()));
+  auto* rootNode = actor->Get3D()->GetObjectByName(
+      fmt::format("Weapon  ({:08X})", weapon->GetFormID()));
   auto* materialInfo = weaponData_.try_get(uid);
   if (!materialInfo) {
     return false;
   }
   for (const auto& materialName : materialInfo->materials) {
-    const auto* materialConfig = MaterialLoader::GetMaterialConfig(weapon->GetFormID(), materialName);
+    const auto* materialConfig =
+        MaterialLoader::GetMaterialConfig(weapon->GetFormID(), materialName);
     if (!materialInfo) {
       _WARN("Material config not found: {}", materialName);
       continue;
@@ -59,7 +62,11 @@ bool WeaponFactory::ApplySavedMaterial(RE::Actor* actor, bool leftHand) {
         _WARN("Material file not found: {}", materialFile);
         continue;
       }
-      if (!MaterialManager::ApplyMaterialToNode(childShape, material)) {
+      if (!MaterialManager::ApplyMaterialToNode(
+              childShape, material,
+              MaterialHelpers::GetMaterialShapeKey(actor->GetFormID(),
+                                                   childShape->name.c_str(),
+                                                   materialName))) {
         _WARN("Failed to apply material: {} to shape: {}", materialFile, shape);
       }
     }

@@ -30,7 +30,7 @@ public:
   }
 
 private:
-  static MaterialScope* scope_;
+  static inline MaterialScope* scope_{};
 
   const MaterialConfig* config_;
   const MaterialRecord* record_;

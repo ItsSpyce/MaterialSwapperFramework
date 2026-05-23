@@ -23,10 +23,16 @@ var outDirOption = new Option<DirectoryInfo?>("--out")
   Description = "Output directory path. Only taken into account with --mo2-path.",
   DefaultValueFactory = (_) => null,
 };
+var espFileArgument = new Argument<FileInfo?>("esp")
+{
+  Description = "Input ESP/ESM/ESL file",
+  DefaultValueFactory = (_) => null,
+};
 var rootCommand = new RootCommand("Automatically convert armor variants into material swaps");
 rootCommand.Options.Add(mo2PathOption);
 rootCommand.Options.Add(gamePathOption);
 rootCommand.Options.Add(outDirOption);
+rootCommand.Arguments.Add(espFileArgument);
 var cliResult = rootCommand.Parse(args);
 if (cliResult.Errors.Count > 0)
 {
@@ -40,9 +46,20 @@ try
   var mo2Path = cliResult.GetValue(mo2PathOption);
   var gamePath = cliResult.GetValue(gamePathOption);
   var outDir = cliResult.GetValue(outDirOption);
+  var espFile = cliResult.GetValue(espFileArgument);
 
-
-  if (gamePath is not null || (gamePath is null && mo2Path is null && outDir is null))
+  if (espFile is not null)
+  {
+    var actualOutDir = espFile.Directory!.FullName;
+    var modFile = SkyrimMod.CreateFromBinary(ModPath.FromPath(espFile), SkyrimRelease.SkyrimSE);
+    using var linkCache =
+      new ImmutableLoadOrderLinkCache<ISkyrimMod, ISkyrimModGetter>([modFile], LinkCachePreferences.Default);
+    var armorNifCollector = ArmorNifCollector.Hydrate(linkCache, modFile.Armors);
+    var materialCollector = MaterialConfigCollector.ProcessFromNifCollector(linkCache, armorNifCollector);
+    materialCollector.WriteConfigurationsToDisk(actualOutDir);
+    materialCollector.WriteMaterialsToDisk(actualOutDir, modFile.ModKey.Name);
+  }
+  else if (gamePath is not null || (gamePath is null && mo2Path is null && outDir is null))
   {
     var actualOutDir = gamePath is null ? Environment.CurrentDirectory : Path.Join(gamePath.FullName, "Data");
     Directory.CreateDirectory(actualOutDir);

@@ -118,4 +118,11 @@ constexpr u32 Hash(const char* data, const size_t size) noexcept {
 constexpr u32 operator"" _h(const char* str, size_t size) noexcept {
   return Hash(str, size);
 }
+
+inline const char* GetNonNull(const initializer_list<const char*> strings) {
+  for (auto& str : strings) {
+    if (str != nullptr && strlen(str) > 0 && str[0] != '\0') return str;
+  }
+  return nullptr;
+}
 }  // namespace StringHelpers

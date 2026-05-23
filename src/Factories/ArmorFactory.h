@@ -11,7 +11,7 @@ class ArmorFactory : public ISaveable, public Singleton<ArmorFactory> {
   void ResetMaterial(RE::Actor* actor, const RE::InventoryEntryData* data);
   bool ApplyMaterial(RE::Actor* actor, RE::InventoryEntryData* data,
                      const MaterialConfig* material, bool overwriteName);
-  bool ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
+  RE::NiAVObject* ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
                            RE::NiAVObject* attachedAt, i32 bipedSlot);
   void VisitAppliedMaterials(
       RE::FormID formID, Save::Types::UniqueID uid,
@@ -20,10 +20,8 @@ class ArmorFactory : public ISaveable, public Singleton<ArmorFactory> {
       RE::Actor* actor,
       const Visitor<RE::TESObjectARMO*, const char*, MaterialConfig&>&
           visitor) const;
-  void ReadFromSave(SKSE::SerializationInterface* iface,
-                    Save::SaveData& saveData) override;
-  void WriteToSave(SKSE::SerializationInterface* iface,
-                   Save::SaveData& saveData) override;
+  void ReadFromSave(Save::SaveData& saveData) override;
+  void WriteToSave(Save::SaveData& saveData) override;
   void ClearAllData() { armorData_.clear(); }
 
  private:

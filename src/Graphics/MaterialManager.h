@@ -4,6 +4,6 @@ struct MaterialRecord;
 struct MaterialConfig;
 
 namespace MaterialManager {
-bool ApplyMaterialToNode(RE::BSGeometry* geometry, const MaterialRecord* record);
-bool ApplyMaterialToRefr(RE::TESObjectREFR* refr, const MaterialConfig* config);
+RE::BSGeometry* ApplyMaterialToNode(RE::BSGeometry* geometry, const MaterialRecord* record, const char* key);
+std::vector<RE::BSGeometry*> ApplyMaterialToRefr(RE::TESObjectREFR* refr, const MaterialConfig* config);
 }

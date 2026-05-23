@@ -2,12 +2,12 @@
 
 #include "CommunityShaders/BSLightingShaderMaterialPBR.h"
 #include "Graphics/ShaderManager.h"
-#include "IO/MaterialLoader.h"
 #include "Helpers/MaterialHelpers.h"
+#include "IO/MaterialLoader.h"
 #include "ModState.h"
+#include "Models/MaterialConfig.h"
 #include "Models/MaterialRecord.h"
 #include "TextureLoader.h"
-#include "Models/MaterialConfig.h"
 
 using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
 using ShaderFlag8 = RE::BSShaderProperty::EShaderPropertyFlag8;
@@ -59,42 +59,55 @@ static const char* GetStringPtr(const std::optional<std::string>& str) {
   return nullptr;
 }
 
-static DirectX::XMFLOAT4 FromBytes(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-  return {(float)r / 255.f, (float)g / 255.f, (float)b / 255.f,
-          (float)a / 255.f};
-}
-
-static void ApplyNonPBRTextures(const ShaderProperty* lightingShader,
+static void ApplyNonPBRTextures(const char* key,
+                                const ShaderProperty* lightingShader,
                                 MaterialBase* newMaterial,
                                 const MaterialRecord* record) {
   auto* textureLoader = Graphics::TextureLoader::GetSingleton();
   if (const auto diffuseMap = GetStringPtr(record->diffuseMap)) {
     auto diffuseTexture = textureLoader->LoadTexture(diffuseMap);
-    if (record->color.has_value()) {
-      auto color = record->color.value();
+    if (auto blendMask = GetStringPtr(record->colorBlendMap)) {
+      _TRACE("Coloring texture");
+      auto r = record->colorChannelR.value_or({0, 0, 0, 0});
+      auto g = record->colorChannelG.value_or({0, 0, 0, 0});
+      auto b = record->colorChannelB.value_or({0, 0, 0, 0});
       auto blendMode = record->colorBlendMode.value_or(ColorBlendMode::kNormal);
-      auto blendMask = record->colorBlendMap.value_or("").c_str();
-      auto* inSrv = diffuseTexture->rendererTexture->resourceView;
-      ComPtr<ID3D11Resource> texResource;
-      inSrv->GetResource(&texResource);
-      ComPtr<ID3D11Texture2D> inTexture;
-      texResource.As(&inTexture);
-      auto* oldTexture = diffuseTexture->rendererTexture->texture;
-      auto* oldResourceView = diffuseTexture->rendererTexture->resourceView;
-      if (Graphics::ShaderManager::GetSingleton()->ApplyPaintBlendShader(
-              inTexture.Get(), inSrv, blendMask,
-              FromBytes(color[0], color[1], color[2], color[3]),
-              (UINT)blendMode, "",
-              &diffuseTexture->rendererTexture->resourceView)) {
+
+      ComPtr<ID3D11Texture2D> oldTexture = static_cast<ID3D11Texture2D*>(
+          diffuseTexture->rendererTexture->texture);
+      ComPtr<ID3D11ShaderResourceView> oldResourceView =
+          diffuseTexture->rendererTexture->resourceView;
+
+      if (!oldTexture) {
+        if (oldResourceView) {
+          ComPtr<ID3D11Resource> texResource;
+          oldResourceView->GetResource(&texResource);
+          texResource.As(&oldTexture);
+        } else {
+          _ERROR("Cannot fetch textures from non-existent resources");
+          return;
+        }
+      }
+
+      if (Graphics::ShaderManager::GetSingleton()
+              ->ApplyTextureChannelPaintBlendShader(
+                  oldTexture.Get(), oldResourceView.Get(), blendMask,
+                  DirectX::XMFLOAT4(r[0], r[1], r[2], r[3]) / 255,
+                  DirectX::XMFLOAT4(g[0], g[1], g[2], g[3]) / 255,
+                  DirectX::XMFLOAT4(b[0], b[1], b[2], b[3]) / 255,
+                  (UINT)blendMode, key,
+                  &diffuseTexture->rendererTexture->resourceView)) {
         ComPtr<ID3D11Resource> paintedResource;
         diffuseTexture->rendererTexture->resourceView->GetResource(
             &paintedResource);
         ComPtr<ID3D11Texture2D> paintedTexture;
         paintedResource.As(&paintedTexture);
         diffuseTexture->rendererTexture->texture = paintedTexture.Detach();
-        if (oldTexture) oldTexture->Release();
-        if (oldResourceView) oldResourceView->Release();
+      } else {
+        _ERROR("Failed to apply blended texture");
       }
+      RELEASE(oldTexture);
+      RELEASE(oldResourceView);
     }
     newMaterial->diffuseTexture = RE::NiPointer(diffuseTexture);
   }
@@ -145,7 +158,8 @@ static void ApplyNonPBRTextures(const ShaderProperty* lightingShader,
   }
 }
 
-static void ApplyPBRTextures(const ShaderProperty* lightingShader,
+static void ApplyPBRTextures(const char* key,
+                             const ShaderProperty* lightingShader,
                              BSLightingShaderMaterialPBR* newMaterial,
                              const MaterialRecord* record) {
   auto* textureLoader = Graphics::TextureLoader::GetSingleton();
@@ -250,7 +264,7 @@ static void ApplyGlobalFields(RE::BSLightingShaderMaterialBase* mat,
                               const MaterialRecord* record) {
   if (record->specularEnabled == true) {
     mat->specularColor = record->specularColor
-                             .transform([](const array<float, 3> col) {
+                             .transform([](const array<double, 3>& col) {
                                return RE::NiColor(col[0], col[1], col[2]);
                              })
                              .value_or(RE::NiColor());
@@ -261,18 +275,18 @@ static void ApplyGlobalFields(RE::BSLightingShaderMaterialBase* mat,
   mat->rimLightPower = record->rimPower.value_or(mat->rimLightPower);
   mat->materialAlpha = record->transparency.value_or(mat->materialAlpha);
   mat->texCoordScale[0] = record->uvScale
-                              .transform([](const array<float, 2> scale) {
+                              .transform([](const array<double, 2>& scale) {
                                 return RE::NiPoint2(scale[0], scale[1]);
                               })
                               .value_or(mat->texCoordScale[0]);
   mat->texCoordOffset[0] = record->uvOffset
-                               .transform([](const array<float, 2> offset) {
+                               .transform([](const array<double, 2>& offset) {
                                  return RE::NiPoint2(offset[0], offset[1]);
                                })
                                .value_or(mat->texCoordOffset[0]);
   mat->refractionPower = record->refractionPower.value_or(mat->refractionPower);
   mat->textureClampMode = record->clamp
-                              .transform([](const uint32_t val) {
+                              .transform([](const unsigned int val) {
                                 return static_cast<int32_t>(val);
                               })
                               .value_or(mat->textureClampMode);
@@ -283,22 +297,26 @@ struct DefaultMaterial {
   RE::NiAlphaProperty* alphaProperty;
 };
 
-bool MaterialManager::ApplyMaterialToNode(RE::BSGeometry* geometry,
-                                          const MaterialRecord* record) {
+RE::BSGeometry* MaterialManager::ApplyMaterialToNode(RE::BSGeometry* geometry,
+                                          const MaterialRecord* record,
+                                          const char* key) {
   static int32_t IDs = INT32_MIN;
   static emhash8::HashMap<UINT64, DefaultMaterial> defaultMaterials;
 
-  RETURN_IF_FALSE(geometry)
-  auto& shapeProperty = geometry->GetGeometryRuntimeData().shaderProperty;
-  auto* lightingShader = geometry->lightingShaderProp_cast();
-  RETURN_IF_FALSE(lightingShader)
-  auto* alphaProperty = shapeProperty ? geometry->GetGeometryRuntimeData().alphaProperty.get() : nullptr;
+  if (!geometry) return nullptr;
+  auto* clone = (RE::BSGeometry*)geometry->Clone();
+  auto& shapeProperty = clone->GetGeometryRuntimeData().shaderProperty;
+  auto* lightingShader = clone->lightingShaderProp_cast();
+  if (!lightingShader) return nullptr;
+  auto* alphaProperty =
+      shapeProperty ? clone->GetGeometryRuntimeData().alphaProperty.get()
+                    : nullptr;
   if (auto* extraData = static_cast<RE::NiIntegerExtraData*>(
-          geometry->GetExtraData("MSF_Default"));
+          clone->GetExtraData("MSF_Default"));
       extraData) {
     const auto id = ++IDs;
     extraData = RE::NiIntegerExtraData::Create("MSF_Default", id);
-    geometry->AddExtraData("MSF_Default", extraData);
+    clone->AddExtraData("MSF_Default", extraData);
     defaultMaterials[id] = DefaultMaterial{
         .lightingProperty = lightingShader,
         .alphaProperty = alphaProperty,
@@ -307,12 +325,12 @@ bool MaterialManager::ApplyMaterialToNode(RE::BSGeometry* geometry,
     // reset to what's in the map
     auto& [lightingProperty, alphaProperty] =
         defaultMaterials[extraData->value];
-    geometry->GetGeometryRuntimeData().alphaProperty.reset(alphaProperty);
-    geometry->GetGeometryRuntimeData().shaderProperty.reset(lightingProperty);
-    lightingProperty->SetupGeometry(geometry);
-    lightingProperty->FinishSetupGeometry(geometry);
-    geometry->SetMaterialNeedsUpdate(true);
-    return true;
+    clone->GetGeometryRuntimeData().alphaProperty.reset(alphaProperty);
+    clone->GetGeometryRuntimeData().shaderProperty.reset(lightingProperty);
+    lightingProperty->SetupGeometry(clone);
+    lightingProperty->FinishSetupGeometry(clone);
+    clone->SetMaterialNeedsUpdate(true);
+    return clone;
   }
   ApplyFlags(lightingShader, record);
 
@@ -337,40 +355,41 @@ bool MaterialManager::ApplyMaterialToNode(RE::BSGeometry* geometry,
       ModState::GetSingleton()->IsCSInstalled()) {
     auto* pbrMaterial =
         (BSLightingShaderMaterialPBR*)lightingShader->material->Create();
-    RETURN_IF_FALSE(pbrMaterial)
-    _TRACE("Applying PBR material to shape {}", geometry->name.c_str());
+    if (!pbrMaterial) return nullptr;
+    _TRACE("Applying PBR material to shape {}", clone->name.c_str());
     // lightingShader->flags &= ShaderFlag::kMenuScreen;
     pbrMaterial->CopyMembers(lightingShader->material);
-    ApplyPBRTextures(lightingShader, pbrMaterial, record);
+    ApplyPBRTextures(key, lightingShader, pbrMaterial, record);
     ApplyGlobalFields(pbrMaterial, record);
     lightingShader->SetMaterial(pbrMaterial, true);
   } else {
-    _TRACE("Applying Complex material to shape {}", geometry->name.c_str());
+    _TRACE("Applying Complex material to shape {}", clone->name.c_str());
     // lightingShader->flags |= ShaderFlag::kMenuScreen;
     auto* newMaterial =
         skyrim_cast<MaterialBase*>(lightingShader->GetBaseMaterial());
     newMaterial->CopyMembers(lightingShader->material);
-    ApplyNonPBRTextures(lightingShader, newMaterial, record);
+    ApplyNonPBRTextures(key, lightingShader, newMaterial, record);
     ApplyGlobalFields(newMaterial, record);
     lightingShader->SetMaterial(newMaterial, true);
   }
-  lightingShader->SetupGeometry(geometry);
-  lightingShader->FinishSetupGeometry(geometry);
-  geometry->SetMaterialNeedsUpdate(true);
+  lightingShader->SetupGeometry(clone);
+  lightingShader->FinishSetupGeometry(clone);
+  clone->SetMaterialNeedsUpdate(true);
 
   // newMaterial->OnLoadTextureSet(0, nullptr);
 
-  return true;
+  return clone;
 }
 
-bool MaterialManager::ApplyMaterialToRefr(RE::TESObjectREFR* refr,
+std::vector<RE::BSGeometry*> MaterialManager::ApplyMaterialToRefr(RE::TESObjectREFR* refr,
                                           const MaterialConfig* config) {
-  RETURN_IF_FALSE(refr)
-  RETURN_IF_FALSE(config)
+  if (!refr || !config) return {};
   auto* refrModel = refr->Get3D();
-  RETURN_IF_FALSE(refrModel);
+  auto* parent = skyrim_cast<RE::NiNode*>(refrModel);
+  if (!parent) return {};
+  std::vector<RE::BSGeometry*> result{config->applies.size()};
   for (const auto& [shapeName, materialName] : config->applies) {
-    auto* niAv = refrModel->GetObjectByName(RE::BSString(shapeName));
+    auto* niAv = parent->GetObjectByName(RE::BSString(shapeName));
     if (!niAv) {
       _WARN("No object found for shape name: {}", shapeName);
       continue;
@@ -385,7 +404,11 @@ bool MaterialManager::ApplyMaterialToRefr(RE::TESObjectREFR* refr,
       _ERROR("Failed to load material file: {}", materialName);
       continue;
     }
-    ApplyMaterialToNode(geometry, record);
+    if (auto* clone = ApplyMaterialToNode(clone, record,
+                        MaterialHelpers::GetMaterialShapeKey(
+                            refr->GetFormID(), shapeName, materialName))) {
+      result.push_back(clone);
+    }
   }
-  return true;
+  return result;
 }

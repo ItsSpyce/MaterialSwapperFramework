@@ -4,12 +4,12 @@
 
 #include "Core/MaterialScope.h"
 #include "Graphics/MaterialManager.h"
+#include "Helpers/MaterialHelpers.h"
 #include "Helpers/RaceMenuHelpers.h"
 #include "Helpers/SkyrimHelpers.h"
 #include "IO/MaterialLoader.h"
 #include "Models/MaterialConfig.h"
 #include "Models/MaterialRecord.h"
-#include "RE/Offset.h"
 #include "Save/Types.h"
 
 using ArmorFactory = Factories::ArmorFactory;
@@ -28,7 +28,7 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* actor, RE::InventoryEntryData* data,
     _WARN("Failed to get unique ID for form: {}", form->GetFormID());
     return false;
   }
-  if (!MaterialManager::ApplyMaterialToRefr(actor, material)) {
+  if (MaterialManager::ApplyMaterialToRefr(actor, material).empty()) {
     _ERROR("Failed to apply material to reference: {}, form: {}, unique ID: {}",
            actor->GetFormID(), form->GetFormID(), uid);
     return false;
@@ -74,17 +74,18 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* actor, RE::InventoryEntryData* data,
   return true;
 }
 
-bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
+RE::NiAVObject* ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
                                        RE::NiAVObject*, i32 bipedSlot) {
-  RETURN_IF_FALSE(actor)
+  if (!actor) return nullptr;
   auto* armorInSlot = actor->GetWornArmor(
       static_cast<RE::BGSBipedObjectForm::BipedObjectSlot>(1 << bipedSlot));
   auto uid = armorInSlot ? Helpers::GetUniqueID(
                                actor, *armorInSlot->GetSlotMask(), false)
                          : 0;
   const auto armorData = uid != 0 ? armorData_.try_get(uid) : nullptr;
+  auto* clone = (RE::NiNode*)armor->Clone();
   RE::BSVisit::TraverseScenegraphObjects(
-      actor->Get3D(), [&](RE::NiAVObject* geometry) {
+      clone, [&](RE::NiAVObject* geometry) {
         auto* triShape = geometry->AsTriShape();
         if (!triShape) {
           return VisitControl::kContinue;
@@ -115,7 +116,10 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
             }
             MaterialScope scope(materialConfig, materialFile);
             _TRACE("Applying saved material: {}", materialName);
-            MaterialManager::ApplyMaterialToNode(triShape, materialFile);
+            MaterialManager::ApplyMaterialToNode(
+                triShape, materialFile,
+                MaterialHelpers::GetMaterialShapeKey(
+                    actor->GetFormID(), appliesEntry, materialName));
           }
         } else if (material && std::string(material->name).ends_with(".json")) {
           const auto* materialFile =
@@ -125,16 +129,19 @@ bool ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
             return VisitControl::kContinue;
           }
           MaterialScope scope(materialFile);
-          MaterialManager::ApplyMaterialToNode(triShape, materialFile);
+          MaterialManager::ApplyMaterialToNode(
+              triShape, materialFile,
+              MaterialHelpers::GetMaterialShapeKey(actor->GetFormID(),
+                                                   triShape->name.c_str(),
+                                                   material->name.c_str()));
         }
         return VisitControl::kContinue;
       });
 
-  return true;
+  return clone;
 }
 
-void ArmorFactory::ReadFromSave(SKSE::SerializationInterface* iface,
-                                Save::SaveData& saveData) {
+void ArmorFactory::ReadFromSave(Save::SaveData& saveData) {
   for (const auto& saveRecords : saveData.armorRecords | views::values) {
     for (auto& [uid, appliedMaterials] : saveRecords) {
       if (appliedMaterials.empty()) {
@@ -156,8 +163,7 @@ void ArmorFactory::ReadFromSave(SKSE::SerializationInterface* iface,
   }
 }
 
-void ArmorFactory::WriteToSave(SKSE::SerializationInterface* iface,
-                               Save::SaveData& saveData) {
+void ArmorFactory::WriteToSave(Save::SaveData& saveData) {
   saveData.armorRecords.clear();
   for (auto& [uniqueID, records] : armorData_) {
     if (records.materials.empty()) {

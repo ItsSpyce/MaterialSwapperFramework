@@ -14,7 +14,7 @@ struct MaterialConfig {
 };
 
 struct FormIDConfigEntry {
-  vector<MaterialConfig> materials{};
+  vector<MaterialConfig> materials;
 };
 
 using MaterialConfigMap = unordered_map<string, vector<MaterialConfig>>;

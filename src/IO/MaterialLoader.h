@@ -5,7 +5,7 @@ struct MaterialConfig;
 
 class MaterialLoader {
  public:
-  void static ReadMaterialsFromDisk(bool clearExisting);
+  static void ReadMaterialsFromDisk(bool clearExisting);
 
   _NODISCARD static MaterialRecord* LoadMaterial(const string& filename);
 

@@ -3,8 +3,6 @@
 #include <optional>
 #include <string>
 
-#include "MaterialRecordV2.h"
-
 enum class ColorBlendMode : uint8_t {
   kNormal = 0,
   kAdd = 1,
@@ -36,11 +34,11 @@ struct MaterialMaskedTexture {
 };
 
 struct MaterialUV {
-  array<float, 2> offset{}, scale{};
+  array<double, 2> offset{}, scale{};
 };
 
 struct MaterialAlpha {
-  float transparency = 1.f;
+  double transparency = 1.f;
   bool blend = false;
   bool test = false;
   uint8_t threshold = 128;
@@ -53,34 +51,44 @@ struct MaterialRendering {
 struct MaterialRecord {
   string schemaVersion = "1.0";
   optional<uint8_t> shaderType;
-  optional<string> inherits;
-  optional<uint32_t> clamp;
-  optional<array<float, 2>> uvOffset;
-  optional<array<float, 2>> uvScale;
-  optional<float> transparency;
-  optional<bool> alphaBlend;
-  optional<uint32_t> sourceBlendMode;
-  optional<uint32_t> destinationBlendMode;
-  optional<uint8_t> alphaTestThreshold;
-  optional<bool> alphaTest;
-  optional<bool> depthWrite;
-  optional<bool> depthTest;
-  optional<bool> ssr;
-  optional<bool> wetnessControlSsr;
+
+  // flags
   optional<bool> decal;
   optional<bool> twoSided;
+  optional<bool> envMapEnabled;
+  optional<bool> specularEnabled;
+  optional<bool> receiveShadows;
+  optional<bool> castShadows;
+  optional<bool> facegen;
+  optional<bool> hair;
   optional<bool> decalNoFade;
   optional<bool> nonOccluder;
   optional<bool> refraction;
   optional<bool> refractionalFalloff;
-  optional<float> refractionPower;
-  optional<bool> envMapEnabled;
-  optional<float> envMapMaskScale;
-  optional<bool> depthBias;
   optional<bool> grayscaleToPaletteColor;
-  optional<uint8_t> maskWrites;
+  optional<bool> depthWrite;
+  optional<bool> depthTest;
+  optional<bool> subsurfaceLighting;
+  optional<bool> envMapEye;
+  optional<bool> emitEnabled;
+  optional<bool> pbr;
 
-  // BGSM specific fields
+  optional<string> inherits;
+  optional<int> clamp;
+  optional<array<double, 2>> uvOffset;
+  optional<array<double, 2>> uvScale;
+  optional<double> transparency;
+  optional<bool> alphaBlend;
+  optional<int> sourceBlendMode;
+  optional<int> destinationBlendMode;
+  optional<unsigned char> alphaTestThreshold;
+  optional<bool> alphaTest;
+  optional<double> refractionPower;
+  optional<double> envMapMaskScale;
+  optional<bool> depthBias;
+  optional<unsigned char> maskWrites;
+
+  // textures
   optional<string> diffuseMap;
   optional<string> normalMap;
   optional<string> smoothSpecMap;
@@ -105,85 +113,52 @@ struct MaterialRecord {
   optional<string> coatNormalMap;
   optional<string> fuzzMap;
   optional<string> emissionMap;
+  optional<string> colorBlendMap;
+
   optional<bool> enableEditorAlphaThreshold;
   optional<bool> translucency;
   optional<bool> translucencyThickObject;
   optional<bool> translucencyMixAlbedoWithSubsurfaceColor;
-  optional<array<uint8_t, 4>> translucencySubsurfaceColor;
-  optional<float> translucencyTransmissiveScale;
-  optional<float> translucencyTurbulence;
+  optional<array<double, 4>> translucencySubsurfaceColor;
+  optional<double> translucencyTransmissiveScale;
+  optional<double> translucencyTurbulence;
   optional<bool> rimLighting;
-  optional<float> rimPower;
-  optional<float> backLightPower;
-  optional<float> specularPower;
-  optional<bool> subsurfaceLighting;
-  optional<float> subsurfaceLightingRolloff;
-  optional<bool> specularEnabled;
-  optional<array<float, 3>> specularColor;
-  optional<float> specularMult;
-  optional<float> smoothness;
-  optional<float> fresnelPower;
-  optional<float> wetnessControlSpecScale;
-  optional<float> wetnessControlSpecPowerScale;
-  optional<float> wetnessControlSpecMinvar;
-  optional<float> wetnessControlEnvMapScale;
-  optional<float> wetnessControlFresnelPower;
-  optional<float> wetnessControlMetalness;
-  optional<bool> pbr;
+  optional<double> rimPower;
+  optional<double> backLightPower;
+  optional<double> specularPower;
+  optional<double> subsurfaceLightingRolloff;
+  optional<array<double, 3>> specularColor;
+  optional<double> specularMult;
+  optional<double> smoothness;
+  optional<double> fresnelPower;
+  optional<double> wetnessControlSpecScale;
+  optional<double> wetnessControlSpecPowerScale;
+  optional<double> wetnessControlSpecMinvar;
+  optional<double> wetnessControlEnvMapScale;
+  optional<double> wetnessControlFresnelPower;
+  optional<double> wetnessControlMetalness;
   optional<bool> customPorosity;
-  optional<float> porosityValue;
+  optional<double> porosityValue;
   optional<string> rootMaterialPath;
   optional<bool> anisoLighting;
-  optional<bool> emitEnabled;
-  optional<array<float, 3>> emitColor;
-  optional<float> emitMult;
+  optional<array<double, 3>> emitColor;
+  optional<double> emitMult;
   optional<bool> modelSpaceNormals;
   optional<bool> externalEmit;
-  optional<float> lumEmit;
+  optional<double> lumEmit;
   optional<bool> useAdaptiveEmissive;
-  optional<array<float, 3>> adaptiveEmissiveExposureParams;
+  optional<array<double, 3>> adaptiveEmissiveExposureParams;
   optional<bool> backLighting;
-  optional<bool> receiveShadows;
   optional<bool> hideSecret;
-  optional<bool> castShadows;
   optional<bool> dissolveFade;
   optional<bool> assumeShadowmask;
   optional<bool> glowMapEnabled;
-  optional<bool> envMapWindow;
-  optional<bool> envMapEye;
-  optional<bool> hair;
-  optional<array<float, 3>> hairTintColor;
-  optional<bool> tree;
-  optional<bool> facegen;
-  optional<bool> skinTint;
-  optional<bool> tessellate;
-  optional<array<float, 2>> displacementMapParams;
-  optional<array<float, 3>> tessellationParams;
-  optional<float> grayscaleToPaletteScale;
-  optional<bool> skewSpecularAlpha;
-  optional<bool> terrain;
-  optional<array<float, 3>> terrainParams;
 
-  // BGEM specific fields
-  optional<bool> blood;
-  optional<bool> effectLighting;
-  optional<bool> falloff;
-  optional<bool> falloffColor;
-  optional<bool> grayscaleToPaletteAlpha;
-  optional<bool> soft;
-  optional<array<float, 3>> baseColor;
-  optional<float> baseColorScale;
-  optional<array<float, 4>> falloffParams;
-  optional<float> lightingInfluence;
-  optional<uint8_t> envMapMinLod;
-  optional<float> softDepth;
-  optional<bool> effectPbrSpecular;
 
   // custom fields
-  optional<array<uint8_t, 4>> color;
+  optional<array<double, 4>> color;
   optional<ColorBlendMode> colorBlendMode;
-  optional<string> colorBlendMap;
-  optional<array<uint8_t, 4>> colorChannelR;
-  optional<array<uint8_t, 4>> colorChannelG;
-  optional<array<uint8_t, 4>> colorChannelB;
+  optional<array<double, 4>> colorChannelR;
+  optional<array<double, 4>> colorChannelG;
+  optional<array<double, 4>> colorChannelB;
 };

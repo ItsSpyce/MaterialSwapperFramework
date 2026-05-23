@@ -28,7 +28,7 @@ class ShaderManager : public Singleton<ShaderManager> {
     float padding[2];
   };
 
-  struct alignas(16) TextureChanelPaintBlendConstants {
+  struct alignas(16) TextureChannelPaintBlendConstants {
     DirectX::XMFLOAT4 redChannelColor;
     DirectX::XMFLOAT4 greenChannelColor;
     DirectX::XMFLOAT4 blueChannelColor;
@@ -151,7 +151,7 @@ class ShaderManager : public Singleton<ShaderManager> {
     return CreateOutputResourceView(prepared.outputTexture.Get(), out);
   }
 
-  bool ApplyTextureChanelPaintBlendShader(
+  bool ApplyTextureChannelPaintBlendShader(
       ID3D11Texture2D* in, ID3D11ShaderResourceView* inResourceView,
       const char* maskPath, DirectX::XMFLOAT4 redChannelColor,
       DirectX::XMFLOAT4 greenChannelColor,
@@ -165,27 +165,33 @@ class ShaderManager : public Singleton<ShaderManager> {
     *out = nullptr;
 
     if ((!device_ || !context_) && !Initialize()) {
+      _ERROR("Device not initialized");
       return false;
     }
     ComputeShader shader;
-    if (!GetComputeShader(ShaderNames::TextureChanelPaintBlendCS, shader)) {
+    if (!GetComputeShader(ShaderNames::TextureChannelPaintBlendCS, shader)) {
+      _ERROR("failed to get shader");
       return false;
     }
     Buffer constantBuffer;
-    if (!GetConstantBuffer(ShaderNames::TextureChanelPaintBlendCS,
-                           sizeof(TextureChanelPaintBlendConstants),
+    if (!GetConstantBuffer(ShaderNames::TextureChannelPaintBlendCS,
+                           sizeof(TextureChannelPaintBlendConstants),
                            constantBuffer)) {
+      _ERROR("Failed to get constant buffer for shader");
       return false;
     }
     if (!EnsureSampler()) {
+      _ERROR("Sampler setup failed");
       return false;
     }
     if (TryLoadTextureFromCache(cacheKey, out)) {
+      _DEBUG("Texture found in cache");
       return true;
     }
 
     PreparedPaintResources prepared;
     if (!PreparePaintResources(in, inResourceView, prepared)) {
+      _ERROR("Failed to prepare paint resource");
       return false;
     }
 
@@ -195,7 +201,7 @@ class ShaderManager : public Singleton<ShaderManager> {
     RETURN_IF_FALSE(maskTexture->rendererTexture->resourceView)
     auto* maskSrv = maskTexture->rendererTexture->resourceView;
 
-    const TextureChanelPaintBlendConstants constants{
+    const TextureChannelPaintBlendConstants constants{
         .redChannelColor = redChannelColor,
         .greenChannelColor = greenChannelColor,
         .blueChannelColor = blueChannelColor,
@@ -391,7 +397,7 @@ class ShaderManager : public Singleton<ShaderManager> {
       return true;
     }
 
-    D3D11_BUFFER_DESC constantBufferDesc;
+    D3D11_BUFFER_DESC constantBufferDesc{};
     constantBufferDesc.ByteWidth = byteWidth;
     constantBufferDesc.Usage = D3D11_USAGE_DEFAULT;
     constantBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
@@ -415,7 +421,7 @@ class ShaderManager : public Singleton<ShaderManager> {
       return true;
     }
 
-    D3D11_SAMPLER_DESC samplerDesc;
+    D3D11_SAMPLER_DESC samplerDesc{};
     samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
     samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
     samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -643,10 +649,10 @@ class ShaderManager : public Singleton<ShaderManager> {
       }
     }
 
-    D3D11_TEXTURE2D_DESC sourceDesc;
+    D3D11_TEXTURE2D_DESC sourceDesc{};
     sourceTexture->GetDesc(&sourceDesc);
 
-    D3D11_TEXTURE2D_DESC outputDesc;
+    D3D11_TEXTURE2D_DESC outputDesc{};
     outputDesc.Width = sourceDesc.Width;
     outputDesc.Height = sourceDesc.Height;
     outputDesc.MipLevels = 1;

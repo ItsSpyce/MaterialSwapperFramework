@@ -1,67 +1,49 @@
 #pragma once
 
-template <typename Type = bool>
+template <typename T>
 class Result {
-  Result() = default;
- public:
+  Result(const optional<T>& value, const optional<string>& error) : value_(value), error_(error) {}
 
-  static Result<Type> Ok(Type value) {
-    Result result;
-    result.value_ = std::make_shared<Type>(std::move(value));
-    return result;
-  }
+public:
 
-  template <class ...Args>
-  static Result<Type> Err(fmt::format_string<Args...> fmt, Args&&... args) {
-    Result result;
-    result.error_ = fmt::format(fmt, std::forward<Args>(args)...);
-    return result;
-  }
-
-  explicit operator bool() const { return error_.empty(); }
-
-  Type* operator->() { return value_.get(); }
-  const Type* operator->() const { return value_.get(); }
-  Type& operator*() { return *value_; }
-  const Type& operator*() const { return *value_; }
-
-  bool HasError() const { return !error_.empty(); }
-
-  Type& Unwrap() {
-    if (HasError()) {
-      throw std::runtime_error("Called Unwrap on an Err result: " + error_);
+  T& expect(const string& error) const {
+    if (error_.has_value()) {
+      throw runtime_error(error);
     }
-    return *value_;
+    return value_.value();
   }
 
-  std::string& UnwrapError() { return error_; }
-
-  template <typename NewType = void>
-  Result<NewType> Forward() {
-    if (HasError()) {
-      return Result<NewType>::Err(error_);
+  T* unwrap() const {
+    if (value_.has_value()) {
+      return &value_->value();
     }
-    return Result<NewType>::Ok(NewType(*value_));
+    return nullptr;
   }
 
- private:
-  std::shared_ptr<Type> value_;
-  std::string error_;
+  string unwrap_error() const {
+    if (error_.has_value()) {
+      return *error_;
+    }
+    return string{};
+  }
+
+private:
+  optional<T> value_;
+  optional<string> error_;
 };
 
-inline Result<> Ok() { return Result<>::Ok(true); }
+template <typename T>
+struct Ok {
+  friend class Result<T>;
+  Result<T> operator()(const T& value) {
+    return Result(value, nullopt);
+  }
+}; 
 
-template <typename Type = bool>
-Result<Type> Ok(Type value) {
-  return Result<Type>::Ok(value);
-}
-
-template <typename... Args>
-Result<> Err(fmt::format_string<Args...> fmt, Args&&... args) {
-  return Result<>::Err(fmt, std::forward<Args>(args)...);
-}
-
-template <typename Type, typename... Args>
-Result<Type> Err(fmt::format_string<Args...> fmt, Args&&... args) {
-  return Result<Type>::Err(fmt, std::forward<Args>(args)...);
-}
+template <typename T>
+struct Err {
+  friend class Result<T>;
+  Result<T> operator()(const string& err) {
+    return Result<T>(nullopt, err);
+  }
+};

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EditorIDCache.h"
+#include "MaterialSwapper.h"
 #include "Events/EventListener.h"
 #include "RE/Offset.h"
 #include "Helpers/RaceMenuHelpers.h"
@@ -30,12 +31,22 @@ struct Actor_AttachArmor {
                                           RE::NiNode* skeleton, i32 bipedSlot,
                                           void* a3, void* a4, void* a5,
                                           void* a6, char a7, i32 a8, void* a9) {
-    ArmorAttachEvent event{
+    if (auto* clone = MaterialSwapper::LoadMaterials(skeleton->GetUserData(), MaterialSwapper::LoadArmorRequest{
+      .armorNode = armor,
+      .attachedAt = skeleton,
+      .slot = bipedSlot,
+    })) {
+      return func(_this, clone, skeleton, bipedSlot, a3, a4, a5, a6, a7, a8, a9);
+    } else {
+      return func(_this, armor, skeleton, bipedSlot, a3, a4, a5, a6, a7, a8, a9);
+    }
+    /*ArmorAttachEvent event{
         .actor = skeleton ? skyrim_cast<RE::Actor*>(skeleton->GetUserData())
                           : nullptr,
         .armor = armor,
         .bipedSlot = bipedSlot,
     };
+    
     auto* ref =
         func(_this, armor, skeleton, bipedSlot, a3, a4, a5, a6, a7, a8, a9);
     if (ref) {
@@ -49,7 +60,7 @@ struct Actor_AttachArmor {
         armor ? armor->name.c_str() : "null", event.bipedSlot,
         event.hasAttached);
     g_armorAttachSource.Dispatch(event);
-    return ref;
+    return ref;*/
   }
 
   static inline REL::Relocation<decltype(&thunk)> func{
