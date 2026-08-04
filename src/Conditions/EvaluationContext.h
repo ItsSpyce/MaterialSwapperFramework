@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Condition.h"
-#include "Models/MaterialConfig.h"
 #include "Events/EventListener.h"
 #include "Graphics/MaterialManager.h"
 #include "IO/MaterialLoader.h"
@@ -160,7 +159,7 @@ class EvaluationContext : public Singleton<EvaluationContext>,
     // first do ref materials
     MaterialLoader::VisitMaterialFilesForFormID(
         refr->GetBaseObject()->GetFormID(),
-        [&refr, delay](const MaterialConfig& config) {
+        [&refr, delay](const MATC& config) {
           if (config.conditions.empty()) {
             _TRACE("No conditions found for material {}", config.name);
             return RE::BSVisit::BSVisitControl::kContinue;

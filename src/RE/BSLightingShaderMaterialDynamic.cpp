@@ -1,22 +1,20 @@
 #include "BSLightingShaderMaterialDynamic.h"
 
+#include "Cache/FilenameIDCache.h"
 #include "Graphics/TextureLoader.h"
 #include "Helpers/MaterialHelpers.h"
+#include "MaterialSwapper.h"
+#include "Types.h"
 
-using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
-using ShaderFlag8 = RE::BSShaderProperty::EShaderPropertyFlag8;
-using Texture = RE::BSTextureSet::Texture;
-using ShaderProperty = RE::BSLightingShaderProperty;
 using MaterialBase = RE::BSLightingShaderMaterialBase;
 
-bool GetTextureMap(const optional<string>& str, string& out) {
-  if (str.has_value()) {
-    out = str.value();
-    return true;
-  }
-  out = string{};
-  return false;
+namespace {
+bool GetTextureMap(const optional<FileID>& fileID, string& out) {
+  if (!fileID || fileID == 0) return false;
+  out = FilenameIDCache::GetPathForID(fileID.value()).or_else("");
+  return "" != out;
 }
+}  // namespace
 
 namespace RE {
 BSShaderMaterial* BSLightingShaderMaterialDynamic::Create() {
@@ -157,20 +155,21 @@ void BSLightingShaderMaterialDynamic::ReceiveValuesFromRootMaterial(
 }
 
 BSLightingShaderMaterialDynamic*
-BSLightingShaderMaterialDynamic::CreateMaterial(MaterialRecord* material) {
+BSLightingShaderMaterialDynamic::CreateMaterial(const FileID materialID) {
   auto* base = MaterialBase::CreateMaterial(Feature::kDefault);
   auto* dyn = new BSLightingShaderMaterialDynamic(base);
-  dyn->material = material;
+  dyn->materialID = materialID;
   return dyn;
 }
 
 MaterialBase* BSLightingShaderMaterialDynamic::CastToUnderlying() const {
   MaterialBase* base;
-  if (material->facegen.value_or(false)) {
+  const auto matr = MaterialSwapper::GetMaterialRecord(materialID);
+  if (matr->facegen.value_or(false)) {
     base = MaterialBase::CreateMaterial(Feature::kFaceGen);
-  } else if (material->envMapEnabled.value_or(false)) {
+  } else if (matr->envMapEnabled.value_or(false)) {
     base = MaterialBase::CreateMaterial(Feature::kEnvironmentMap);
-  } else if (material->glowMapEnabled.value_or(false)) {
+  } else if (matr->glowMapEnabled.value_or(false)) {
     base = MaterialBase::CreateMaterial(Feature::kGlowMap);
   } else {
     base = MaterialBase::CreateMaterial(Feature::kHairTint);
@@ -179,57 +178,57 @@ MaterialBase* BSLightingShaderMaterialDynamic::CastToUnderlying() const {
   return base;
 }
 
-void BSLightingShaderMaterialDynamic::SetMaterial(const MaterialRecord* material) {
-  this->material = material;
-  if (!material) {
+void BSLightingShaderMaterialDynamic::SetMaterial(const FileID materialID) {
+  this->materialID = materialID;
+  if (!materialID) {
     return;
   }
+  const auto material = MaterialSwapper::GetMaterialRecord(materialID);
+  if (!material) return;
   auto* texLoader = Graphics::TextureLoader::GetSingleton();
   string tex;
-  if (GetTextureMap(this->material->diffuseMap, tex)) {
+  if (GetTextureMap(material.value().diffuseMap, tex)) {
     diffuseTexture = NiPointer(texLoader->LoadTexture(tex));
   }
-  if (GetTextureMap(this->material->normalMap, tex)) {
+  if (GetTextureMap(material.value().normalMap, tex)) {
     normalTexture = NiPointer(texLoader->LoadTexture(tex));
   }
-  if (GetTextureMap(this->material->specularMap, tex)) {
+  if (GetTextureMap(material.value().specularMap, tex)) {
     specularTexture = NiPointer(texLoader->LoadTexture(tex));
   }
-  if (GetTextureMap(this->material->envMap, tex)) {
+  if (GetTextureMap(material.value().envMap, tex)) {
     environmentTexture = NiPointer(texLoader->LoadTexture(tex));
   }
-  if (GetTextureMap(this->material->envMapMask, tex)) {
+  if (GetTextureMap(material.value().envMapMask, tex)) {
     environmentMaskTexture = NiPointer(texLoader->LoadTexture(tex));
   }
-  if (GetTextureMap(this->material->glowMap, tex)) {
+  if (GetTextureMap(material.value().glowMap, tex)) {
     glowTexture = NiPointer(texLoader->LoadTexture(tex));
   }
 
-  if (this->material->transparency.has_value()) {
-    materialAlpha = this->material->transparency.value();
+  if (material.value().transparency.has_value()) {
+    materialAlpha = half::ToFloat32Fast(material.value().transparency.value());
   }
-  if (material->uvOffset.has_value()) {
-    texCoordOffset[0] = MaterialHelpers::GetPoint2(material->uvOffset.value());
+  if (material.value().uv.has_value()) {
+    texCoordOffset[0] = material.value().uv->offset();
+    texCoordScale[0] = material.value().uv->scale();
   }
-  if (material->uvScale.has_value()) {
-    texCoordScale[0] = MaterialHelpers::GetPoint2(material->uvScale.value());
-  }
-  if (material->specularEnabled.value_or(false)) {
-    if (material->specularPower.has_value()) {
-      specularPower = material->specularPower.value();
+  if (material.value().flags.has_value(MaterialFlags::SpecularEnabled)) {
+    if (material.value().specularPower.has_value()) {
+      specularPower = half::ToFloat32Fast(material.value().specularPower.value());
     }
-    if (material->refractionPower.has_value()) {
-      refractionPower = material->refractionPower.value();
+    if (material.value().refractionPower.has_value()) {
+      refractionPower = half::ToFloat32Fast(material.value().refractionPower.value());
     }
-    if (material->specularMult.has_value()) {
-      specularColorScale = material->specularMult.value();
+    if (material.value().specularMult.has_value()) {
+      specularColorScale = half::ToFloat32Fast(material.value().specularMult.value());
     }
-    if (material->specularColor.has_value()) {
-      specularColor = MaterialHelpers::GetColor(material->specularColor.value());
+    if (material.value().specularColor.has_value()) {
+      specularColor = MaterialHelpers::GetColor(material.value().specularColor.value());
     }
   }
-  if (material->rimLighting.value_or(false)) {
-    rimLightPower = material->rimPower.value_or(rimLightPower);
+  if (material.value().flags.has_value(MaterialFlags::RimLighting)) {
+    rimLightPower = material.value().rimPower.value_or(rimLightPower);
   }
 }
 }  // namespace RE

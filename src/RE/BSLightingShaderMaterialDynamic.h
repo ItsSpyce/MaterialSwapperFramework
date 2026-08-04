@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Models/MaterialRecord.h"
+#include "Types.h"
 
 namespace RE {
 class BSLightingShaderMaterialDynamic : public BSLightingShaderMaterialBase {
@@ -24,7 +24,10 @@ class BSLightingShaderMaterialDynamic : public BSLightingShaderMaterialBase {
 
   explicit BSLightingShaderMaterialDynamic(BSShaderMaterial* base)
       : original_(base) {}
-  ~BSLightingShaderMaterialDynamic() = default;
+  ~BSLightingShaderMaterialDynamic() override = default;
+
+  static BSLightingShaderMaterialDynamic* CreateMaterial(
+      const FileID fileID);
 
   BSShaderMaterial* Create() override;
   void CopyMembers(BSShaderMaterial* that) override;
@@ -38,11 +41,8 @@ class BSLightingShaderMaterialDynamic : public BSLightingShaderMaterialBase {
   u32 GetTextures(NiSourceTexture** textures) override;
   void LoadBinary(NiStream& stream) override;
 
-  static BSLightingShaderMaterialDynamic* CreateMaterial(
-      MaterialRecord* material);
-
-  RE::BSLightingShaderMaterialBase* CastToUnderlying() const;
-  void SetMaterial(const MaterialRecord* material);
+  BSLightingShaderMaterialBase* CastToUnderlying() const;
+  void SetMaterial(FileID materialID);
 
   NiSourceTexturePtr environmentTexture = NiSourceTexturePtr{};
   NiSourceTexturePtr environmentMaskTexture = NiSourceTexturePtr{};
@@ -50,8 +50,8 @@ class BSLightingShaderMaterialDynamic : public BSLightingShaderMaterialBase {
   NiSourceTexturePtr glowTexture = NiSourceTexturePtr{};
   NiSourceTexturePtr colorTexture = NiSourceTexturePtr{};
   NiColorA color = NiColorA();
-  ColorBlendMode colorBlendMode{ColorBlendMode::kNormal};
-  const MaterialRecord* material;
+  ColorBlendMode colorBlendMode{ColorBlendMode::Normal};
+  FileID materialID = NULL;
 
  private:
   BSShaderMaterial* original_;

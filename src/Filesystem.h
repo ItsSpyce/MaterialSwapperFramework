@@ -3,18 +3,20 @@
 namespace fs = std::filesystem;
 
 namespace Filesystem {
-static constinit inline auto MATERIAL_FILES_DIR = R"(Data\Materials)";
-static constinit inline auto SKSE_PLUGINS_DIR = R"(Data\SKSE\Plugins)";
-static constinit inline auto MATERIAL_PLUGIN_DIR =
-    R"(Data\SKSE\Plugins\MaterialSwapperFramework)";
-static constinit inline auto MATERIAL_SHADER_DIR =
-    R"(Data\SKSE\Plugins\MaterialSwapperFramework\shaders)";
-static constinit inline auto MATERIAL_CACHE_DIR =
-    R"(Data\SKSE\Plugins\MaterialSwapperFramework\cache)";
-static constinit inline auto MATERIAL_CONFIG_DIR =
-    R"(Data\SKSE\Plugins\MaterialSwapperFramework\config)";
-static constinit inline auto MATERIAL_CONDITIONS_DIR =
-    R"(Data\SKSE\Plugins\MaterialSwapperFramework\_conditions)";
+static constexpr std::string MATERIAL_FILES_DIR = "Data/Materials";
+static constexpr std::string SKSE_PLUGINS_DIR = "Data/SKSE/Plugins";
+static constexpr std::string MATERIAL_PLUGIN_DIR =
+    SKSE_PLUGINS_DIR + "/MaterialSwapperFramework";
+static constexpr std::string MATERIAL_SHADER_DIR =
+    MATERIAL_PLUGIN_DIR + "/shaders";
+static constexpr std::string MATERIAL_CACHE_DIR =
+    MATERIAL_PLUGIN_DIR + "/cache";
+static constexpr std::string MATERIAL_CONFIG_DIR =
+    MATERIAL_PLUGIN_DIR + "/config";
+static constexpr std::string MATERIAL_CONDITIONS_DIR =
+    MATERIAL_PLUGIN_DIR + "/_conditions";
+static constexpr std::string TEXTURES_DIR = "Data/Textures";
+static constexpr std::string FILE_ID_BIN = MATERIAL_CACHE_DIR + "/file_ids.bin";
 
 inline fs::recursive_directory_iterator EnumerateMaterialFilesDir() {
   if (!fs::exists(MATERIAL_FILES_DIR) ||

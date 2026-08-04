@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glaze/glaze.hpp>
+#include <emhash/hash_table8.hpp>
 
 template <typename T>
 concept translation = requires(T t) {

@@ -1,7 +1,8 @@
 #pragma once
 
 namespace MaterialHelpers {
-inline RE::NiColor* GetColorPtr(const array<double, 3>& colorArr) {
+template <typename T> requires (std::is_arithmetic_v<T>)
+RE::NiColor* GetColorPtr(const array<T, 3>& colorArr) {
   if (colorArr[0] > 1.0f || colorArr[1] > 1.0f || colorArr[2] > 1.0f) {
     return new RE::NiColor(colorArr[0] / 255.0f, colorArr[1] / 255.0f,
                            colorArr[2] / 255.0f);
@@ -9,7 +10,8 @@ inline RE::NiColor* GetColorPtr(const array<double, 3>& colorArr) {
   return new RE::NiColor(colorArr[0], colorArr[1], colorArr[2]);
 }
 
-inline RE::NiColorA* GetColorAPtr(const array<double, 4>& colorArr) {
+template <typename T> requires (std::is_arithmetic_v<T>)
+RE::NiColorA* GetColorAPtr(const array<T, 4>& colorArr) {
   if (colorArr[0] > 1.0f || colorArr[1] > 1.0f || colorArr[2] > 1.0f ||
       colorArr[3] > 1.0f) {
     return new RE::NiColorA(colorArr[0] / 255.0f, colorArr[1] / 255.0f,
@@ -18,7 +20,8 @@ inline RE::NiColorA* GetColorAPtr(const array<double, 4>& colorArr) {
   return new RE::NiColorA(colorArr[0], colorArr[1], colorArr[2], colorArr[3]);
 }
 
-inline RE::NiColor GetColor(const array<double, 3>& colorArr) {
+template <typename T> requires (std::is_arithmetic_v<T>)
+RE::NiColor GetColor(const array<T, 3>& colorArr) {
   if (colorArr[0] > 1.0f || colorArr[1] > 1.0f || colorArr[2] > 1.0f) {
     return RE::NiColor(colorArr[0] / 255.0f, colorArr[1] / 255.0f,
                        colorArr[2] / 255.0f);
@@ -26,7 +29,8 @@ inline RE::NiColor GetColor(const array<double, 3>& colorArr) {
   return RE::NiColor(colorArr[0], colorArr[1], colorArr[2]);
 }
 
-inline RE::NiColorA GetColorA(const array<double, 4>& colorArr) {
+template <typename T> requires (std::is_arithmetic_v<T>)
+RE::NiColorA GetColorA(const array<T, 4>& colorArr) {
   if (colorArr[0] > 1.0f || colorArr[1] > 1.0f || colorArr[2] > 1.0f ||
       colorArr[3] > 1.0f) {
     return RE::NiColorA(colorArr[0] / 255.0f, colorArr[1] / 255.0f,
@@ -35,11 +39,13 @@ inline RE::NiColorA GetColorA(const array<double, 4>& colorArr) {
   return RE::NiColorA(colorArr[0], colorArr[1], colorArr[2], colorArr[3]);
 }
 
-inline RE::NiPoint2 GetPoint2(const array<double, 2>& pointArr) {
+template <typename T> requires (std::is_arithmetic_v<T>)
+RE::NiPoint2 GetPoint2(const array<T, 2>& pointArr) {
   return RE::NiPoint2(pointArr[0], pointArr[1]);
 }
 
-inline RE::NiPoint3 GetPoint3(const array<double, 3>& pointArr) {
+template <typename T> requires (std::is_arithmetic_v<T>)
+RE::NiPoint3 GetPoint3(const array<T, 3>& pointArr) {
   return RE::NiPoint3(pointArr[0], pointArr[1], pointArr[2]);
 }
 

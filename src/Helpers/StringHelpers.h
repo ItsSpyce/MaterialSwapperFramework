@@ -1,6 +1,9 @@
 #pragma once
 
+#include "Core/StringReader.h"
+
 namespace StringHelpers {
+using namespace Core;
 inline const char* GetSlotName(const RE::BIPED_OBJECTS::BIPED_OBJECT slot) {
   switch (slot) {
     case RE::BIPED_OBJECTS::BIPED_OBJECT::kHead:
@@ -72,31 +75,6 @@ inline const char* GetSlotName(const RE::BIPED_OBJECTS::BIPED_OBJECT slot) {
   }
 }
 
-inline std::string ToLower(std::string_view str) {
-  std::string lowerStr(str);
-  std::ranges::transform(lowerStr, lowerStr.begin(), ::tolower);
-  return lowerStr;
-}
-
-inline std::string PrefixTexturesPath(const std::string_view& path) {
-  return fmt::format("textures\\{}", path);
-}
-
-inline void Join(const std::vector<const char*>& strings,
-                        const char* delimiter, std::string& out) {
-  if (strings.empty()) {
-    return;
-  }
-  std::string result;
-  for (const auto& str : strings) {
-    if (!result.empty()) {
-      result += delimiter;
-    }
-    result += str;
-  }
-  out = std::move(result);
-}
-
 inline size_t GetPosForOneOf(const string& str, const char* chars) {
   for (size_t i = 0; i < strlen(chars); ++i) {
     const auto c = chars[i];
@@ -107,16 +85,26 @@ inline size_t GetPosForOneOf(const string& str, const char* chars) {
   return string::npos;
 }
 
-constexpr u32 Hash(const char* data, const size_t size) noexcept {
+constexpr u32 GetStringHash(const char* str, size_t size) noexcept {
   u32 hash = 5381;
-  for (const char* c = data; c < data + size; ++c) {
+  for (const char* c = str; c < data + size; ++c) {
     hash = (hash << 5) + hash + (unsigned char)*c;
   }
   return hash;
 }
 
 constexpr u32 operator"" _h(const char* str, size_t size) noexcept {
-  return Hash(str, size);
+  return GetStringHash(str, size);
+}
+
+inline std::string ToLower(const std::string_view str) noexcept {
+  std::string lowerStr(str);
+  std::ranges::transform(lowerStr, lowerStr.begin(), ::tolower);
+  return lowerStr;
+}
+
+inline std::string operator"" _l(const std::string_view str) noexcept {
+  return ToLower(str);
 }
 
 inline const char* GetNonNull(const initializer_list<const char*> strings) {
@@ -124,5 +112,31 @@ inline const char* GetNonNull(const initializer_list<const char*> strings) {
     if (str != nullptr && strlen(str) > 0 && str[0] != '\0') return str;
   }
   return nullptr;
+}
+
+inline std::vector<std::string> Split(const std::string& str,
+                                      const char delim) {
+  std::vector<std::string> out;
+  StringReader reader(str);
+  while (!reader.AtEnd()) {
+    out.emplace_back(reader.ReadUntil(delim));
+    reader.Skip();
+  }
+  return std::move(out);
+}
+
+inline std::string Join(const std::vector<std::string>& strings, const std::string& separator) {
+  std::string result{};
+  for (const auto& str : strings) {
+    result += str + separator;
+  }
+  return result.substr(0, result.size() - separator.size());
+}
+
+inline std::string AssertPrefix(const std::string& str, const char* prefix) {
+  if (strnicmp(str.c_str(), prefix, std::strlen(prefix)) == 0) {
+    return str;
+  }
+  return std::string(prefix) + str;
 }
 }  // namespace StringHelpers

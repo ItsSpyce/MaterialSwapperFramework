@@ -5,7 +5,8 @@
 #include "Helpers.h"
 
 namespace Save::V1 {
-struct SaveData {
+class SaveData {
+public:
   static constexpr u8 VERSION = 1;
   std::vector<Types::ArmorRecordEntryV1> armorRecords{};
   Types::UniqueIDHistoryV1 uniqueIDHistory{};

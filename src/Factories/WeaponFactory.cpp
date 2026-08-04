@@ -7,7 +7,7 @@
 
 namespace Factories {
 bool WeaponFactory::ApplyMaterial(RE::Actor* actor, bool leftHand,
-                                  const MaterialConfig& material) {
+                                  const MATC& material) {
   RETURN_IF_FALSE(actor)
   auto* weapon = actor->GetEquippedObject(leftHand)->As<RE::TESObjectWEAP>();
   RETURN_IF_FALSE(weapon)
@@ -74,8 +74,7 @@ bool WeaponFactory::ApplySavedMaterial(RE::Actor* actor, bool leftHand) {
   return true;
 }
 
-void WeaponFactory::ReadFromSave(SKSE::SerializationInterface* iface,
-                                 Save::SaveData& saveData) {
+void WeaponFactory::ReadFromSave(Save::SaveData& saveData) {
   for (const auto& formRecords : saveData.weaponRecords | views::values) {
     for (const auto& [uid, materials] : formRecords) {
       if (!uid) {
@@ -89,8 +88,7 @@ void WeaponFactory::ReadFromSave(SKSE::SerializationInterface* iface,
   }
 }
 
-void WeaponFactory::WriteToSave(SKSE::SerializationInterface* iface,
-                                Save::SaveData& saveData) {
+void WeaponFactory::WriteToSave(Save::SaveData& saveData) {
   saveData.weaponRecords.clear();
   for (const auto& [uid, weaponData] : weaponData_) {
     if (weaponData.materials.empty()) {

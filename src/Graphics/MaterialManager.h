@@ -1,9 +1,11 @@
 #pragma once
 
-struct MaterialRecord;
-struct MaterialConfig;
+struct MATR;
+struct MATC;
 
 namespace MaterialManager {
-RE::BSGeometry* ApplyMaterialToNode(RE::BSGeometry* geometry, const MaterialRecord* record, const char* key);
-std::vector<RE::BSGeometry*> ApplyMaterialToRefr(RE::TESObjectREFR* refr, const MaterialConfig* config);
+bool ResetMaterial(RE::BSGeometry* geometry);
+bool ResetMaterials(RE::TESObjectREFR* refr);
+bool ApplyMaterialToNode(RE::BSGeometry* geometry, const MATR& record);
+bool ApplyMaterialToRefr(RE::TESObjectREFR* refr, const MATC& config);
 }

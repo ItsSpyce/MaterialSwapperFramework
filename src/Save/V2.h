@@ -5,7 +5,8 @@
 
 namespace Save::V2 {
 
-struct SaveData {
+class SaveData : public Types::IMigrate<V1::SaveData> {
+ public:
   static constexpr u8 VERSION = 2;
   unordered_map<RE::FormID, vector<Types::ArmorRecordEntryV2>> armorRecords{};
   unordered_map<RE::FormID, vector<Types::WeaponRecordEntryV2>> weaponRecords{};
@@ -75,6 +76,10 @@ struct SaveData {
       _ERROR("Failed to write weapon records to serialization interface");
       return;
     }
+  }
+
+  bool Migrate(const V1::SaveData& from) override {
+    return false;
   }
 };
 }  // namespace Save::V2

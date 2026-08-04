@@ -1,7 +1,13 @@
 #pragma once
 
+#include <Types.h>
+
 namespace Save::Types {
-using UniqueID = u32;
+template <typename From>
+class IMigrate {
+public:
+  virtual bool Migrate(const From& from) = 0;
+};
 
 enum class UniqueItemLocation : u8 {
   kInventory = 0,

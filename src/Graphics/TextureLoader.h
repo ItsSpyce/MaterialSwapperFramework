@@ -8,7 +8,7 @@ class TextureLoader : public Singleton<TextureLoader> {
  public:
   TextureLoader() {}
 
-  static RE::NiSourceTexture* LoadTexture(const string& path) {
+  static RE::NiPointer<RE::NiSourceTexture> LoadTexture(const string& path) {
     RE::NiTexturePtr texturePtr;
     RE::GetTexture(path.c_str(), true, texturePtr, false);
     if (!texturePtr) {
@@ -20,7 +20,7 @@ class TextureLoader : public Singleton<TextureLoader> {
       _ERROR("Failed to cast texture to NiSourceTexture for map: {}", path);
       return nullptr;
     }
-    return newTexture;
+    return RE::NiPointer(newTexture);
   }
 
   HRESULT ConvertTexture(ID3D11Device* device, ID3D11DeviceContext* context,

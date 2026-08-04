@@ -10,10 +10,8 @@ class NPCFactory : public Singleton<NPCFactory>, public ISaveable {
   bool ApplySavedMaterial(RE::Actor* npc);
 
   // ISaveable interface
-  void ReadFromSave(SKSE::SerializationInterface* iface,
-                    Save::SaveData& saveData) override;
-  void WriteToSave(SKSE::SerializationInterface* iface,
-                   Save::SaveData& saveData) override;
+  void ReadFromSave(Save::SaveData& saveData) override;
+  void WriteToSave(Save::SaveData& saveData) override;
 };
 
 }  // namespace Factories

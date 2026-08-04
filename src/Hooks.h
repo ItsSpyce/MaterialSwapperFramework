@@ -1,10 +1,11 @@
 #pragma once
 
-#include "EditorIDCache.h"
-#include "MaterialSwapper.h"
 #include "Events/EventListener.h"
-#include "RE/Offset.h"
 #include "Helpers/RaceMenuHelpers.h"
+#include "MaterialSwapper.h"
+#include "MeshBuilder.h"
+#include "RE/Offset.h"
+#include "RE/BipedSkinContext.h"
 
 extern EventSource<PlayerViewChangeEvent> g_playerViewChangeSource;
 
@@ -26,45 +27,28 @@ struct TESForm_SetFormEditorID {
   static constexpr size_t idx{0x33};
 };
 
-struct Actor_AttachArmor {
-  static RE::NiAVObject* __fastcall thunk(void* _this, RE::NiNode* armor,
+struct BipedAnim_AttachSkinnedObject {
+  static RE::NiAVObject* __fastcall thunk(RE::BipedAnim* _this,
+                                          RE::NiNode* loaded,
                                           RE::NiNode* skeleton, i32 bipedSlot,
-                                          void* a3, void* a4, void* a5,
-                                          void* a6, char a7, i32 a8, void* a9) {
-    if (auto* clone = MaterialSwapper::LoadMaterials(skeleton->GetUserData(), MaterialSwapper::LoadArmorRequest{
-      .armorNode = armor,
-      .attachedAt = skeleton,
-      .slot = bipedSlot,
-    })) {
-      return func(_this, clone, skeleton, bipedSlot, a3, a4, a5, a6, a7, a8, a9);
-    } else {
-      return func(_this, armor, skeleton, bipedSlot, a3, a4, a5, a6, a7, a8, a9);
+                                          bool flag, bool a6,
+                                          RE::BSFaceGenModel* textureOverride) {
+    auto* result =
+        func(_this, loaded, skeleton, bipedSlot, flag, a6, textureOverride);
+    auto* actor =
+        skeleton ? skyrim_cast<RE::Actor*>(skeleton->GetUserData()) : nullptr;
+    if (actor) {
+      MaterialSwapper::VisitAppliedArmorMaterials(
+          actor, (RE::BipedObjectSlot)bipedSlot, [&result](const MATC& matc) {
+            MeshBuilder::ApplyMaterialToMesh(result->AsNode(), matc);
+            return RE::BSVisit::BSVisitControl::kContinue;
+          });
     }
-    /*ArmorAttachEvent event{
-        .actor = skeleton ? skyrim_cast<RE::Actor*>(skeleton->GetUserData())
-                          : nullptr,
-        .armor = armor,
-        .bipedSlot = bipedSlot,
-    };
-    
-    auto* ref =
-        func(_this, armor, skeleton, bipedSlot, a3, a4, a5, a6, a7, a8, a9);
-    if (ref) {
-      event.attachedAt = ref;
-      event.hasAttached = true;
-    }
-    _TRACE(
-        "Dispatching ArmorAttachEvent for actor: {0:X}, armor: {1}, bipedSlot: "
-        "{2}, hasAttached: {3}",
-        event.actor ? event.actor->GetFormID() : 0,
-        armor ? armor->name.c_str() : "null", event.bipedSlot,
-        event.hasAttached);
-    g_armorAttachSource.Dispatch(event);
-    return ref;*/
+    return result;
   }
 
   static inline REL::Relocation<decltype(&thunk)> func{
-      RE::Offset::Actor::AttachArmor};
+      RE::Offset::BipedAnim::AttachSkinnedObject};
 };
 
 struct Actor_CreateWeaponNodes {
@@ -156,14 +140,13 @@ struct PlayerCamera_SwitchPOV {
 
 struct InventoryUtils_WornHasKeyword {
   static bool __fastcall thunk(RE::InventoryEntryData* entryData,
-                    RE::BGSKeyword* keyword) {
+                               RE::BGSKeyword* keyword) {
     if (auto* owner = entryData->GetOwner(); owner && owner->IsActor()) {
       auto* actor = owner->As<RE::Actor>();
       if (auto uid = Helpers::GetUniqueID(actor, entryData, false)) {
         bool didFind = false;
-        Factories::ArmorFactory::GetSingleton()->VisitAppliedMaterials(
-            actor, [&](const RE::TESObjectARMO* armo, const char*,
-                       const MaterialConfig& config) {
+        MaterialSwapper::VisitAppliedArmorMaterials(
+            actor, entryData, [&](const MATC& config) {
               if (ranges::contains(config.keywords,
                                    EditorIDCache::GetEditorID(keyword))) {
                 didFind = true;
@@ -181,11 +164,21 @@ struct InventoryUtils_WornHasKeyword {
       RE::RTTI_InventoryUtils____WornHasKeywordVisitor};
 };
 
+struct TESObjectREFR_WornHasKey {
+  static bool thunk(RE::TESObjectREFR* _this, RE::BGSKeyword* keyword,
+                    void* unused, double& result) {
+    return func(_this, keyword, unused, result);
+  }
+
+  static inline REL::Relocation<decltype(&thunk)> func;
+  static inline REL::Relocation rel{RE::Offset::TESObjectREFR::WornHasKeyword};
+};
+
 inline void Install() noexcept {
   DetourRestoreAfterWith();
   DetourTransactionBegin();
   DetourUpdateThread(GetCurrentThread());
-  stl::write_detour<Actor_AttachArmor>();
+  stl::write_detour<BipedAnim_AttachSkinnedObject>();
   stl::write_detour<Actor_CreateWeaponNodes>();
   stl::write_detour<InventoryUtils_WornHasKeyword>();
   DetourTransactionCommit();

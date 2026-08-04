@@ -1,17 +1,16 @@
 #include "UI/Pages/MaterialsPage.h"
 
 #include "Factories/ArmorFactory.h"
-#include "IO/MaterialLoader.h"
-#include "Models/MaterialConfig.h"
-#include "Translations.h"
-#include "UI/ImGui_Stylus.h"
 #include "Helpers/RaceMenuHelpers.h"
 #include "Helpers/SkyrimHelpers.h"
+#include "MaterialSwapper.h"
+#include "Translations.h"
+#include "UI/ImGui_Stylus.h"
 
 namespace UI::Pages {
 void MaterialsPage(const MaterialsPageProps&) {
-  static RE::InventoryEntryData* selectedItem;
-  static emhash8::HashMap<int32_t, vector<MaterialConfig>> availableMaterials;
+  static RE::BipedObjectSlot selectedSlot = RE::BipedObjectSlot::kNone;
+  static emhash8::HashMap<int32_t, vector<MATC>> availableMaterials;
   auto ref = RE::Console::GetSelectedRef();
   auto* actor = ref && ref->As<RE::Actor>()
                     ? ref->As<RE::Actor>()
@@ -24,49 +23,44 @@ void MaterialsPage(const MaterialsPageProps&) {
 
     ImGui_TabBar("MaterialsTabBar") {
       ImGui_TabItem(Translations::materialsPageArmorsTabHeader()) {
+        
         ImGui_Table("ArmorTable", 2, ImGuiTableFlags_BordersInnerH,
                     {ImGui::GetContentRegionAvail().x * .55f, 0.f}) {
           Helpers::VisitEquippedInventoryItems(
-              actor, [&](const Helpers::InventoryItem* invItem) {
-                if (auto armo =
-                        invItem->data->object->As<RE::TESObjectARMO>()) {
-                  ImGui_Row {
-                    ImGui_Column {
-                      ImGui_Stylus(ImGui::Stylus::Styles{
-                          .framePadding = ImVec2{4.0f, 8.0f},
-                          .buttonTextAlign = ImVec2{0.0f, 0.5f},
-                          .borderColor = ImVec4{0.5f, 0.5f, 0.5, 1.0f},
-                          .buttonColor =
-                              selectedItem &&
-                                      selectedItem->object->GetFormID() ==
-                                          armo->GetFormID()
-                                  ? ImVec4{0.2f, 0.4f, 0.8f, 1.0f}
-                                  : ImVec4{0.f, 0.f, 0.f, 0.f}}) {
-                        ImGui_Button(
-                            armo->GetName(),
-                            ImVec2{ImGui::GetContentRegionAvail().x, 0.0f}) {
-                          selectedItem = invItem->data.get();
-                          availableMaterials.clear();
-                          MaterialLoader::VisitMaterialFilesForFormID(selectedItem->object->GetFormID(), [&](const MaterialConfig& material) {
-                            auto [it, added] = availableMaterials.try_emplace(material.layer, vector<MaterialConfig>());
+              actor, [&](const RE::BipedObjectSlot slot,
+                         RE::InventoryEntryData* data) {
+                ImGui_Row {
+                  ImGui_Column {
+                    ImGui_Stylus(ImGui::Stylus::Styles{
+                        .framePadding = ImVec2{4.0f, 8.0f},
+                        .buttonTextAlign = ImVec2{0.0f, 0.5f},
+                        .borderColor = ImVec4{0.5f, 0.5f, 0.5, 1.0f},
+                        .buttonColor = selectedSlot == slot
+                                           ? ImVec4{0.2f, 0.4f, 0.8f, 1.0f}
+                                           : ImVec4{0.f, 0.f, 0.f, 0.f}}) {
+                      ImGui_Button(
+                          data->GetDisplayName(),
+                          ImVec2{ImGui::GetContentRegionAvail().x, 0.0f}) {
+                        selectedSlot = slot;
+                        availableMaterials.clear();
+                        MaterialSwapper::VisitApplicableMaterials(
+                          data->object, [](const MATC& material) {
+                            auto [it, added] = availableMaterials.try_emplace(material.layer, vector<MATC>());
                             it->second.push_back(material);
                             return RE::BSVisit::BSVisitControl::kContinue;
-                          });
-                        }
+                          }
+                        );
                       }
                     }
-                    ImGui_Column {
-                      Factories::ArmorFactory::GetSingleton()
-                          ->VisitAppliedMaterials(
-                              invItem->object->GetFormID(), invItem->uid,
-                              [&](const char* materialName,
-                                  const MaterialConfig&) {
-                                ImGui::Text("%s", materialName);
-                                ImGui::SameLine();
-                                ImGui::Text(";");
-                                return RE::BSVisit::BSVisitControl::kContinue;
-                              });
-                    }
+                  }
+                  ImGui_Column {
+                    MaterialSwapper::VisitAppliedArmorMaterials(
+                        actor, slot, [](const MATC& config) {
+                          ImGui::Text("%s", config.name);
+                          ImGui::SameLine();
+                          ImGui::Text(";");
+                          return RE::BSVisit::BSVisitControl::kContinue;
+                        });
                   }
                 }
                 return RE::BSVisit::BSVisitControl::kContinue;
@@ -74,7 +68,7 @@ void MaterialsPage(const MaterialsPageProps&) {
         }
         ImGui::SameLine();
 
-        if (selectedItem) {
+        if (selectedSlot != RE::BipedObjectSlot::kNone) {
           ImGui_Table("MaterialsTable", 1, ImGuiTableFlags_BordersInnerH,
                       {ImGui::GetContentRegionAvail().x * 0.45f, 0.f}) {
             ImGui_Row {
@@ -86,15 +80,13 @@ void MaterialsPage(const MaterialsPageProps&) {
                     .buttonColor = ImVec4{0.f, 0.f, 0.f, 0.f}}) {
                   ImGui_Button("Default",
                                ImVec2{ImGui::GetContentRegionAvail().x, 0.0f}) {
-                    Factories::ArmorFactory::GetSingleton()->ResetMaterial(
-                        actor, selectedItem);
+                    MaterialSwapper::ResetEquippedArmor(actor, selectedSlot);
                   }
                 }
               }
             }
-            MaterialLoader::VisitMaterialFilesForFormID(
-                selectedItem->object->GetFormID(),
-                [&](const MaterialConfig& material) {
+            MaterialSwapper::VisitApplicableMaterials(
+                selectedItem->object, [&](const MATC& material) {
                   if (!material.isHidden) {
                     ImGui_Row {
                       ImGui_Column {
@@ -112,9 +104,11 @@ void MaterialsPage(const MaterialsPageProps&) {
                                   "selected "
                                   "item.");
                             }
-                            Factories::ArmorFactory::GetSingleton()
-                                ->ApplyMaterial(actor, selectedItem, &material,
-                                                true);
+                            MaterialSwapper::ApplyArmorMaterial(
+                                actor, selectedItem->Sl)
+                                Factories::ArmorFactory::GetSingleton()
+                                    ->ApplyMaterial(actor, selectedItem,
+                                                    &material, true);
                           }
                         }
                       }

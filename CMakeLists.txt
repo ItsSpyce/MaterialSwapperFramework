@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(MaterialSwapperFramework VERSION 0.4.0.0)
+project(MaterialSwapperFramework VERSION 0.4.0)
 
 set(CMAKE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third-party)
@@ -50,6 +50,7 @@ find_package(directxtk CONFIG REQUIRED)
 find_package(binary_io CONFIG REQUIRED)
 find_package(detours)
 find_package(sigc++-3 CONFIG REQUIRED)
+find_package(Boost REQUIRED COMPONENTS algorithm)
 
 add_subdirectory(${CommonLibPath} EXCLUDE_FROM_ALL)
 
@@ -58,17 +59,20 @@ CPMAddPackage(
   NAME task-thread-pool
   URL https://github.com/alugowski/task-thread-pool/archive/refs/heads/main.tar.gz
 )
+CPMAddPackage("gh:neargye/magic_enum@0.9.8")
 
 file(GLOB SHADER_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.hlsl")
 set(GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(GENERATED_SHADER_NAMES_HEADER "${GENERATED_INCLUDE_DIR}/GeneratedShaderNames.h")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateShaderNames.cmake")
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
-include_directories(${GENERATED_INCLUDE_DIR})
-include_directories(${SRELL_INCLUDE_DIRS})
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/src")
+include_directories("${GENERATED_INCLUDE_DIR}")
+include_directories("${SRELL_INCLUDE_DIRS}")
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "src/*.h")
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
+# third-party
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third-party")
 
 add_commonlibsse_plugin(${PROJECT_NAME}
   SOURCES ${HEADERS} ${SOURCES}
@@ -84,6 +88,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   Microsoft::DirectXTK
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed/x64-windows-static-md/lib/detours.lib>
   sigc-3.0
+  Boost::algorithm
+  magic_enum
 )
 
 if(DEFINED OUTPUT_FOLDER)

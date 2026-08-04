@@ -1,10 +1,8 @@
 #pragma once
 #include "SKEE64.h"
 #include "SKEE64PluginInterface.h"
-#include "Save/Types.h"
 
 namespace Helpers {
-using Save::Types::UniqueID;
 inline UniqueID GetUniqueID(RE::TESObjectREFR* refr,
                             const RE::InventoryEntryData* data, bool init) {
   if (!refr || !data) {

@@ -14,10 +14,11 @@ inline int Demand(const char* a_modelPath, NiPointer<NiNode>& a_modelOut,
 }
 
 static void GetTexture(const char* a_path, bool a_demand,
-                       NiPointer<NiTexture>& a_out, bool a_4) {
+                       NiPointer<NiTexture>& a_out, bool a_4 = false,
+                       bool a_5 = false, bool a_6 = false) {
   using func_t = decltype(&GetTexture);
   static REL::Relocation<func_t> func{Offset::NiTexture::GetTexture};
-  return func(a_path, a_demand, a_out, a_4);
+  return func(a_path, a_demand, a_out, a_4, a_5, a_6);
 }
 
 static bool LoadTexture(const string& name, NiPointer<NiSourceTexture>& out) {
@@ -51,5 +52,11 @@ static void SetShaderTexturePath(BSTextureSet* a_set,
   static REL::Relocation<func_t> func{
       Offset::BSShaderTextureSet::SetTexturePath};
   return func(a_set, a_texture, a_path);
+}
+
+static void AttachModsForBipedObject(NiNode* root, NiAVObject* attached, NiAVObject* source, BipedAnim** biped, i32 bipedSlot) {
+  using func_t = decltype(&AttachModsForBipedObject);
+  static REL::Relocation<func_t> func{REL::ID(15746)};
+  return func(root, attached, source, biped, bipedSlot);
 }
 }  // namespace RE

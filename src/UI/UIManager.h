@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Hooks.h"
+#include "Types.h"
 
 namespace UI {
 class Window {

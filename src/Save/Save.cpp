@@ -1,15 +1,13 @@
 #include "Save.h"
 
-#include "Factories.h"
+#include "ModState.h"
 #include "Translations.h"
-#include "UniqueIDTable.h"
 
 constexpr uint32_t IDENTIFIER = 'MSF_';
 void Save::SaveCallback(SKSE::SerializationInterface* iface) {
   _INFO("Saving data...");
   SaveData data;
-  UniqueIDTable::GetSingleton()->WriteToSave(iface, data);
-  Factories::ArmorFactory::GetSingleton()->WriteToSave(iface, data);
+  ModState::GetSingleton()->WriteToSave(data);
   data.Write(iface);
 }
 
@@ -23,12 +21,22 @@ void Save::LoadCallback(SKSE::SerializationInterface* iface) {
     _INFO("Loading save data: type={}, version={}, length={}", type, version,
           length);
     if (version == V1::SaveData::VERSION) {
-      RE::DebugMessageBox(Translations::msfSaveDataIncompatibleWarning());
+      V1::SaveData oldData;
+      oldData.Read(iface, type, length);
+      if (!data.Migrate(oldData)) {
+        RE::DebugMessageBox(Translations::msfSaveDataIncompatibleWarning());
+      }
     } else if (version == V2::SaveData::VERSION) {
+      V2::SaveData oldData;
+      oldData.Read(iface, type, length);
+      if (!data.Migrate(oldData)) {
+        RE::DebugMessageBox(Translations::msfSaveDataIncompatibleWarning());
+      }
+    } else if (version == V3::SaveData::VERSION) {
       data.Read(iface, type, length);
-      UniqueIDTable::GetSingleton()->ReadFromSave(iface, data);
-      Factories::ArmorFactory::GetSingleton()->ReadFromSave(iface, data);
-    } else {
+      ModState::GetSingleton()->ReadFromSave(data);
+    } 
+    else {
       _ERROR("Unknown version: {}", version);
     }
   }

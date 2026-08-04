@@ -2,6 +2,9 @@
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dcompiler.lib");
 
+#include "Types.h"
+#include "Cache/Cache.h"
+
 #include "CommunityShaders/CS.h"
 #include "Conditions.h"
 #include "Factories.h"

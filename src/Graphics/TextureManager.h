@@ -10,10 +10,8 @@ class TextureManager : public Singleton<TextureManager> {
   TextureManager() = default;
   ~TextureManager() = default;
 
-  Result<RE::NiSourceTexturePtr> GetNiSourceTexture(const string& filename,
+  result<RE::NiSourceTexturePtr> GetNiSourceTexture(const string& filename,
                                                     const string& name) {
-#define Ok(...) Result<RE::NiSourceTexturePtr>::Ok(__VA_ARGS__)
-#define Err(...) Result<RE::NiSourceTexturePtr>::Err(__VA_ARGS__)
 
     D3D11_TEXTURE2D_DESC texDesc;
     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -21,7 +19,7 @@ class TextureManager : public Singleton<TextureManager> {
     GetTexture2D(filename, texDesc, srvDesc, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 0,
                  texture2d);
     if (!texture2d) {
-      return Err("Failed to get texture 2d for NiTexture ({})", filename);
+      return Err<RE::NiSourceTexturePtr>("Failed to get texture 2d for NiTexture ({})", filename);
     }
     texture2d->GetDesc(&texDesc);
     srvDesc.Format = texDesc.Format;
@@ -31,12 +29,12 @@ class TextureManager : public Singleton<TextureManager> {
         ShaderManager::GetSingleton()->GetDevice()->CreateShaderResourceView(
             texture2d.Get(), &srvDesc, &textureSRV);
     if (FAILED(hr)) {
-      return Err("Failed to create ShaderResourceView for NiTexture ({})", hr);
+      return Err<RE::NiSourceTexturePtr>("Failed to create ShaderResourceView for NiTexture ({})", hr);
     }
     RE::NiPointer<RE::NiSourceTexture> output;
     auto result = CreateSourceTexture(name, output);
     if (!result) {
-      return Err("Failed to create NiTexture");
+      return Err<RE::NiSourceTexturePtr>("Failed to create NiTexture");
     }
     if (*result == CreateSourceTextureResult::kExistingTexture) {
       auto* oldTexture = output->rendererTexture->texture;
@@ -55,37 +53,37 @@ class TextureManager : public Singleton<TextureManager> {
 #undef Ok
 #undef Err
   }
-  Result<> GetTexture2D(const string& filename,
+  result<> GetTexture2D(const string& filename,
                         D3D11_TEXTURE2D_DESC& textureDesc,
                         D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
                         DXGI_FORMAT newFormat, UINT newWidth, UINT newHeight,
                         ComPtr<ID3D11Texture2D>& output) {
     return Ok();
   }
-  Result<> GetTexture2D(const string& filename,
+  result<> GetTexture2D(const string& filename,
                         D3D11_TEXTURE2D_DESC& textureDesc,
                         D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
                         DXGI_FORMAT newFormat,
                         ComPtr<ID3D11Texture2D>& output) {
     return Ok();
   }
-  Result<> GetTexture2D(const string& filename,
+  result<> GetTexture2D(const string& filename,
                         D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
                         DXGI_FORMAT newFormat,
                         ComPtr<ID3D11Texture2D>& output) {
     return Ok();
   }
-  Result<> GetTexture2D(const string& filename,
+  result<> GetTexture2D(const string& filename,
                         D3D11_TEXTURE2D_DESC& textureDesc,
                         DXGI_FORMAT newFormat,
                         ComPtr<ID3D11Texture2D>& output) {
     return Ok();
   }
-  Result<> GetTexture2D(const string& filename, DXGI_FORMAT newFormat,
+  result<> GetTexture2D(const string& filename, DXGI_FORMAT newFormat,
                         ComPtr<ID3D11Texture2D>& output) {
     return Ok();
   }
-  Result<> UpdateTexture(const string& filename) { return Ok(); }
+  result<> UpdateTexture(const string& filename) { return Ok(); }
 
   static RE::NiTexture* CreateTexture(const RE::BSFixedString& name) {
     using func_t = decltype(&CreateTexture);
@@ -99,7 +97,7 @@ class TextureManager : public Singleton<TextureManager> {
     kNewTexture = 1
   };
 
-  static Result<CreateSourceTextureResult> CreateSourceTexture(
+  static result<CreateSourceTextureResult> CreateSourceTexture(
       const string& name, RE::NiSourceTexturePtr& out) {
     if (const auto found = GetSingleton()->sourceTextureCache_.find(name);
         found != GetSingleton()->sourceTextureCache_.end()) {
@@ -142,22 +140,22 @@ class TextureManager : public Singleton<TextureManager> {
     return func(shaderProp, unk1);
   }
 
-  Result<> ConvertTexture(ComPtr<ID3D11Texture2D> texture,
+  result<> ConvertTexture(ComPtr<ID3D11Texture2D> texture,
                           DXGI_FORMAT newFormat, UINT newWidth, UINT newHeight,
                           DirectX::TEX_FILTER_FLAGS resizeFilter,
                           ComPtr<ID3D11Texture2D>& output) {
     return Ok();
   }
-  Result<> CopyTexture(ComPtr<ID3D11Texture2D>& srcTexture,
+  result<> CopyTexture(ComPtr<ID3D11Texture2D>& srcTexture,
                        ComPtr<ID3D11Texture2D>& dstTexture) {
     return Ok();
   }
-  Result<> CompressTexture(ComPtr<ID3D11Texture2D> srcTexture,
+  result<> CompressTexture(ComPtr<ID3D11Texture2D> srcTexture,
                            DXGI_FORMAT newFormat,
                            ComPtr<ID3D11Texture2D> dstTexture) {
     return Ok();
   }
-  Result<> GetTextureFromFile(std::string filePath,
+  result<> GetTextureFromFile(std::string filePath,
                               ComPtr<ID3D11Texture2D>& texture,
                               ComPtr<ID3D11ShaderResourceView>& srv) {
     return Ok();
@@ -168,7 +166,7 @@ class TextureManager : public Singleton<TextureManager> {
     return CompressionTarget::kNone;
   }
 
-  Result<> CreateNiTexture(const string&& name, ComPtr<ID3D11Texture2D> dstTex,
+  result<> CreateNiTexture(const string&& name, ComPtr<ID3D11Texture2D> dstTex,
                            ComPtr<ID3D11ShaderResourceView> dstSRV,
                            RE::NiSourceTexturePtr& output) {
     return Ok();

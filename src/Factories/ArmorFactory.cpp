@@ -20,17 +20,17 @@ using VisitControl = RE::BSVisit::BSVisitControl;
 bool ArmorFactory::ApplyMaterial(RE::Actor* actor, RE::InventoryEntryData* data,
                                  const MaterialConfig* material,
                                  bool overwriteName) {
-  RETURN_IF_FALSE(data)
-  auto* form = data->object->As<RE::TESObjectARMO>();
-  RETURN_IF_FALSE(form)
-  auto uid = Helpers::GetUniqueID(actor, *form->GetSlotMask(), true);
+  if UNLIKELY(!data) return false;
+  auto* armo = data->object->As<RE::TESObjectARMO>();
+  if UNLIKELY(!armo) return false;
+  auto uid = Helpers::GetUniqueID(actor, *armo->GetSlotMask(), true);
   if (uid == NULL) {
-    _WARN("Failed to get unique ID for form: {}", form->GetFormID());
+    _WARN("Failed to get unique ID for form: {}", armo->GetFormID());
     return false;
   }
-  if (MaterialManager::ApplyMaterialToRefr(actor, material).empty()) {
+  if UNLIKELY(!MaterialManager::ApplyMaterialToRefr(actor, material)) {
     _ERROR("Failed to apply material to reference: {}, form: {}, unique ID: {}",
-           actor->GetFormID(), form->GetFormID(), uid);
+           actor->GetFormID(), armo->GetFormID(), uid);
     return false;
   }
   auto [it, _] = armorData_.try_emplace(uid, ArmorData{});
@@ -42,7 +42,7 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* actor, RE::InventoryEntryData* data,
   vector<string> newAppliedMaterials;
   for (const auto& mat : it->second.materials) {
     const auto* matConfig =
-        MaterialLoader::GetMaterialConfig(form->GetFormID(), mat);
+        MaterialLoader::GetMaterialConfig(armo->GetFormID(), mat);
     if (matConfig && matConfig->layer != material->layer) {
       newAppliedMaterials.push_back(mat);
     }
@@ -76,16 +76,15 @@ bool ArmorFactory::ApplyMaterial(RE::Actor* actor, RE::InventoryEntryData* data,
 
 RE::NiAVObject* ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* armor,
                                        RE::NiAVObject*, i32 bipedSlot) {
-  if (!actor) return nullptr;
+  if UNLIKELY(!actor) return nullptr;
   auto* armorInSlot = actor->GetWornArmor(
       static_cast<RE::BGSBipedObjectForm::BipedObjectSlot>(1 << bipedSlot));
   auto uid = armorInSlot ? Helpers::GetUniqueID(
                                actor, *armorInSlot->GetSlotMask(), false)
                          : 0;
   const auto armorData = uid != 0 ? armorData_.try_get(uid) : nullptr;
-  auto* clone = (RE::NiNode*)armor->Clone();
   RE::BSVisit::TraverseScenegraphObjects(
-      clone, [&](RE::NiAVObject* geometry) {
+      armor, [&](RE::NiAVObject* geometry) {
         auto* triShape = geometry->AsTriShape();
         if (!triShape) {
           return VisitControl::kContinue;
@@ -105,7 +104,7 @@ RE::NiAVObject* ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* 
                 materialConfig->applies.contains(triShape->name.c_str())
                     ? materialConfig->applies.at(triShape->name.c_str())
                     : "";
-            if (appliesEntry.empty()) {
+            if UNLIKELY(appliesEntry.empty()) {
               continue;
             }
             const auto* materialFile =
@@ -138,7 +137,7 @@ RE::NiAVObject* ArmorFactory::ApplySavedMaterials(RE::Actor* actor, RE::NiNode* 
         return VisitControl::kContinue;
       });
 
-  return clone;
+  return armor;
 }
 
 void ArmorFactory::ReadFromSave(Save::SaveData& saveData) {
@@ -185,7 +184,7 @@ void ArmorFactory::WriteToSave(Save::SaveData& saveData) {
 }
 
 void ArmorFactory::ResetMaterials(RE::Actor* actor) {
-  if (!actor) {
+  if UNLIKELY(!actor) {
     return;
   }
   // TODO: fix this
@@ -197,7 +196,7 @@ void ArmorFactory::ResetMaterials(RE::Actor* actor) {
 
 void ArmorFactory::ResetMaterial(RE::Actor* actor,
                                  const RE::InventoryEntryData* data) {
-  if (!actor) {
+  if UNLIKELY(!actor) {
     return;
   }
   auto uid = Helpers::GetUniqueID(actor, data, false);

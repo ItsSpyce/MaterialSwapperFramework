@@ -1,4 +1,4 @@
-#include "MaterialManager.h"
+#include "MeshBuilder.h"
 
 #include "Cache/FilenameIDCache.h"
 #include "CommunityShaders/BSLightingShaderMaterialPBR.h"
@@ -6,16 +6,16 @@
 #include "Helpers/MaterialHelpers.h"
 #include "MaterialSwapper.h"
 #include "ModState.h"
-#include "TextureLoader.h"
+#include "Types.h"
+
+namespace {
 
 using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
 using ShaderFlag8 = RE::BSShaderProperty::EShaderPropertyFlag8;
-using Texture = RE::BSTextureSet::Texture;
 using ShaderProperty = RE::BSLightingShaderProperty;
-using EffectProperty = RE::BSEffectShaderProperty;
 using MaterialBase = RE::BSLightingShaderMaterialBase;
 
-static void ApplyFlags(ShaderProperty* lightingShader, const MATR& record) {
+void ApplyFlags(ShaderProperty* lightingShader, const MATR& record) {
 #define MAP_FLAG(_MATERIAL_FLAG, _SHADER_FLAG)                                 \
   if (record.flags.has_value(MaterialFlags::_MATERIAL_FLAG)) {                 \
     lightingShader->SetFlags(ShaderFlag8::_SHADER_FLAG,                        \
@@ -43,7 +43,7 @@ static void ApplyFlags(ShaderProperty* lightingShader, const MATR& record) {
   MAP_FLAG(Pbr, kMenuScreen)
 }
 
-static const char* GetStringPtr(const FileID texture) {
+const char* TryGetPath(const FileID texture) {
   auto path = FilenameIDCache::GetPathForID(texture);
   if (path.has_value() && !path->empty()) {
     return path->c_str();
@@ -52,7 +52,7 @@ static const char* GetStringPtr(const FileID texture) {
   return nullptr;
 }
 
-static RE::NiPointer<RE::NiSourceTexture> LoadTexture(const std::string& path) {
+RE::NiPointer<RE::NiSourceTexture> LoadTexture(const std::string& path) {
   RE::NiTexturePtr texturePtr;
   RE::GetTexture(path.c_str(), true, texturePtr, false);
   if (!texturePtr) {
@@ -67,11 +67,11 @@ static RE::NiPointer<RE::NiSourceTexture> LoadTexture(const std::string& path) {
   return RE::NiPointer(newTexture);
 }
 
-static void ApplyNonPBRTextures(const ShaderProperty* lightingShader,
-                                MaterialBase* newMaterial, const MATR& record) {
-  if (const auto diffuseMap = GetStringPtr(record.diffuseMap)) {
+void ApplyNonPBRTextures(const ShaderProperty* lightingShader,
+                         MaterialBase* newMaterial, const MATR& record) {
+  if (const auto diffuseMap = TryGetPath(record.diffuseMap)) {
     const auto diffuseTexture = LoadTexture(diffuseMap);
-    if (const auto blendMask = GetStringPtr(record.colorBlendMap)) {
+    if (const auto blendMask = TryGetPath(record.colorBlendMap)) {
       _TRACE("Coloring texture");
       auto r = record.colorChannelR.value_or({0, 0, 0, 0});
       auto g = record.colorChannelG.value_or({0, 0, 0, 0});
@@ -117,20 +117,20 @@ static void ApplyNonPBRTextures(const ShaderProperty* lightingShader,
     newMaterial->diffuseTexture = diffuseTexture;
   }
 
-  if (const auto normalMap = GetStringPtr(record.normalMap)) {
+  if (const auto normalMap = TryGetPath(record.normalMap)) {
     newMaterial->normalTexture = LoadTexture(normalMap);
   }
-  if (const auto specularMap = GetStringPtr(record.specularMap);
+  if (const auto specularMap = TryGetPath(record.specularMap);
       specularMap && record.flags.get(MaterialFlags::SpecularEnabled)) {
     newMaterial->specularBackLightingTexture = LoadTexture(specularMap);
   }
   if (record.flags.value_or(MaterialFlags::EnvMapEnabled,
                             lightingShader->flags.any(ShaderFlag::kEnvMap))) {
     auto* envMapMaterial = (RE::BSLightingShaderMaterialEnvmap*)newMaterial;
-    if (const auto envMap = GetStringPtr(record.envMap)) {
+    if (const auto envMap = TryGetPath(record.envMap)) {
       envMapMaterial->envTexture = LoadTexture(envMap);
     }
-    if (const auto envMapMask = GetStringPtr(record.envMapMask)) {
+    if (const auto envMapMask = TryGetPath(record.envMapMask)) {
       envMapMaterial->envMaskTexture = LoadTexture(envMapMask);
     }
   }
@@ -139,31 +139,31 @@ static void ApplyNonPBRTextures(const ShaderProperty* lightingShader,
           lightingShader->flags.any(
               RE::BSShaderProperty::EShaderPropertyFlag::kGlowMap))) {
     auto* glowMapMaterial = (RE::BSLightingShaderMaterialGlowmap*)newMaterial;
-    if (const auto glowMap = GetStringPtr(record.glowMap)) {
+    if (const auto glowMap = TryGetPath(record.glowMap)) {
       glowMapMaterial->glowTexture = LoadTexture(glowMap);
     }
   }
   if (record.flags.get(MaterialFlags::Facegen)) {
     auto* faceGenMaterial = (RE::BSLightingShaderMaterialFacegen*)newMaterial;
-    if (const auto faceTintMap = GetStringPtr(record.faceTintMap)) {
+    if (const auto faceTintMap = TryGetPath(record.faceTintMap)) {
       faceGenMaterial->tintTexture = LoadTexture(faceTintMap);
     }
-    if (const auto detailMap = GetStringPtr(record.detailMap)) {
+    if (const auto detailMap = TryGetPath(record.detailMap)) {
       faceGenMaterial->detailTexture = LoadTexture(detailMap);
     }
-    if (const auto subsurfaceMap = GetStringPtr(record.subsurfaceMap)) {
+    if (const auto subsurfaceMap = TryGetPath(record.subsurfaceMap)) {
       faceGenMaterial->subsurfaceTexture = LoadTexture(subsurfaceMap);
     }
   }
 }
 
-static void ApplyPBRTextures(const ShaderProperty* lightingShader,
-                             BSLightingShaderMaterialPBR* newMaterial,
-                             const MATR& record) {
+void ApplyPBRTextures(const ShaderProperty* lightingShader,
+                      BSLightingShaderMaterialPBR* newMaterial,
+                      const MATR& record) {
   bool hasOneLayer = false;
-  if (const auto diffuseMap = GetStringPtr(record.diffuseMap)) {
+  if (const auto diffuseMap = TryGetPath(record.diffuseMap)) {
     const auto diffuseTexture = LoadTexture(diffuseMap);
-    if (const auto blendMask = GetStringPtr(record.colorBlendMap)) {
+    if (const auto blendMask = TryGetPath(record.colorBlendMap)) {
       _TRACE("Coloring texture");
       auto r = record.colorChannelR.value_or({0, 0, 0, 0});
       auto g = record.colorChannelG.value_or({0, 0, 0, 0});
@@ -208,26 +208,26 @@ static void ApplyPBRTextures(const ShaderProperty* lightingShader,
     }
     newMaterial->diffuseTexture = diffuseTexture;
   }
-  if (const auto normalMap = GetStringPtr(record.normalMap)) {
+  if (const auto normalMap = TryGetPath(record.normalMap)) {
     newMaterial->normalTexture = LoadTexture(normalMap);
   }
-  if (const auto specularMap = GetStringPtr(record.specularMap)) {
+  if (const auto specularMap = TryGetPath(record.specularMap)) {
     newMaterial->specularBackLightingTexture = LoadTexture(specularMap);
   }
-  if (const auto smoothSpecMap = GetStringPtr(record.smoothSpecMap)) {
+  if (const auto smoothSpecMap = TryGetPath(record.smoothSpecMap)) {
     newMaterial->specularBackLightingTexture = LoadTexture(smoothSpecMap);
   }
-  if (const auto rmaosMap = GetStringPtr(record.rmaosMap)) {
+  if (const auto rmaosMap = TryGetPath(record.rmaosMap)) {
     newMaterial->rmaosTexture = LoadTexture(rmaosMap);
   }
-  if (const auto displacementMap = GetStringPtr(record.displacementMap)) {
+  if (const auto displacementMap = TryGetPath(record.displacementMap)) {
     newMaterial->displacementTexture = LoadTexture(displacementMap);
   }
-  if (const auto subsurfaceMap = GetStringPtr(record.subsurfaceMap)) {
+  if (const auto subsurfaceMap = TryGetPath(record.subsurfaceMap)) {
     newMaterial->featuresTexture0 = LoadTexture(subsurfaceMap);
     newMaterial->pbrFlags &= PBRFlags::Subsurface;
   }
-  if (const auto coatMap = GetStringPtr(record.coatMap)) {
+  if (const auto coatMap = TryGetPath(record.coatMap)) {
     if (hasOneLayer) {
       newMaterial->pbrFlags &= PBRFlags::TwoLayer;
     } else {
@@ -236,7 +236,7 @@ static void ApplyPBRTextures(const ShaderProperty* lightingShader,
     newMaterial->featuresTexture0 = LoadTexture(coatMap);
     newMaterial->pbrFlags &= PBRFlags::ColoredCoat;
   }
-  if (const auto parallaxMap = GetStringPtr(record.parallaxMap)) {
+  if (const auto parallaxMap = TryGetPath(record.parallaxMap)) {
     if (hasOneLayer) {
       newMaterial->pbrFlags &= PBRFlags::TwoLayer;
     } else {
@@ -245,7 +245,7 @@ static void ApplyPBRTextures(const ShaderProperty* lightingShader,
     newMaterial->featuresTexture1 = LoadTexture(parallaxMap);
     newMaterial->pbrFlags &= PBRFlags::InterlayerParallax;
   }
-  if (const auto coatNormalMap = GetStringPtr(record.coatNormalMap)) {
+  if (const auto coatNormalMap = TryGetPath(record.coatNormalMap)) {
     if (hasOneLayer) {
       newMaterial->pbrFlags &= PBRFlags::TwoLayer;
     } else {
@@ -254,17 +254,17 @@ static void ApplyPBRTextures(const ShaderProperty* lightingShader,
     newMaterial->featuresTexture1 = LoadTexture(coatNormalMap);
     newMaterial->pbrFlags &= PBRFlags::CoatNormal;
   }
-  if (const auto fuzzMap = GetStringPtr(record.fuzzMap)) {
+  if (const auto fuzzMap = TryGetPath(record.fuzzMap)) {
     newMaterial->featuresTexture1 = LoadTexture(fuzzMap);
     newMaterial->pbrFlags &= PBRFlags::Fuzz;
   }
-  if (const auto emissionMap = GetStringPtr(record.emissionMap)) {
+  if (const auto emissionMap = TryGetPath(record.emissionMap)) {
     newMaterial->emissiveTexture = LoadTexture(emissionMap);
   }
 }
 
-static void ApplyGlobalFields(RE::BSLightingShaderMaterialBase* mat,
-                              const MATR& record) {
+void ApplyGlobalFields(RE::BSLightingShaderMaterialBase* mat,
+                       const MATR& record) {
   if (record.flags.get(MaterialFlags::SpecularEnabled)) {
     mat->specularColor = record.specularColor
                              .transform([](const array<double, 3>& col) {
@@ -297,8 +297,7 @@ static void ApplyGlobalFields(RE::BSLightingShaderMaterialBase* mat,
                               .value_or(mat->textureClampMode);
 }
 
-bool MaterialManager::ApplyMaterialToNode(RE::BSGeometry* geometry,
-                                          const MATR& record) {
+bool ApplyMaterialToNode(RE::BSGeometry* geometry, const MATR& record) {
   if UNLIKELY (!geometry) return false;
   auto& shapeProperty = geometry->GetGeometryRuntimeData().shaderProperty;
   auto* lightingShader = geometry->lightingShaderProp_cast();
@@ -376,31 +375,25 @@ bool MaterialManager::ApplyMaterialToNode(RE::BSGeometry* geometry,
   return true;
 }
 
-bool MaterialManager::ApplyMaterialToRefr(RE::TESObjectREFR* refr,
-                                          const MATC& config) {
-  if UNLIKELY (!refr) return {};
-  auto* refrModel = refr->Get3D();
-  auto* parent = skyrim_cast<RE::NiNode*>(refrModel);
-  if UNLIKELY (!parent) return false;
-  for (const auto& [shapeName, materialID] : config.applies) {
-    auto* niAv = parent->GetObjectByName(RE::BSString(shapeName));
-    if (!niAv) {
-      _WARN("No object found for shape name: {}", shapeName);
+RE::NiNode* CloneNiNode(RE::NiNode* og) {
+  auto* clone = (RE::NiNode*)og->Clone();
+  return clone;
+}
+}  // namespace
+
+namespace MeshBuilder {
+void ApplyMaterialToMesh(RE::NiNode* root, const MATC& matc) {
+  for (const auto& [shapeName, matrFileID] : matc.applies) {
+    auto* shape = root->GetObjectByName(shapeName);
+    if (!shape) continue;
+    const auto matr = MaterialSwapper::GetMaterialRecord(matrFileID);
+    if (!matr) {
+      _ERROR("Failed to load material record");
       continue;
     }
-    auto* geometry = niAv->AsGeometry();
-    if (!geometry) {
-      _WARN("No geometry found for shape name: {}", shapeName);
-      continue;
-    }
-    auto record = MaterialSwapper::GetMaterialRecord(materialID);
-    if (!record) {
-      _ERROR("Failed to load material file ID: {}", materialID);
-      continue;
-    }
-    if (!ApplyMaterialToNode(geometry, *record)) {
-      _ERROR("Failed to apply material to node: {}", shapeName);
+    if (!ApplyMaterialToNode(shape->AsGeometry(), matr.value())) {
+      _ERROR("Failed to apply material to node {}", shapeName);
     }
   }
-  return true;
 }
+}  // namespace MeshBuilder

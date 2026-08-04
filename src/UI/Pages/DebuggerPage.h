@@ -2,7 +2,6 @@
 
 #include "UI/ImGui_Sugar.h"
 #include "Factories/ArmorFactory.h"
-#include "UniqueIDTable.h"
 
 namespace UI::Pages {
 struct DebuggerPageProps {
@@ -17,7 +16,6 @@ inline void DebuggerPage(const DebuggerPageProps& props) {
   ImGui_Child("HelperButtons", ImVec2{ImGui::GetContentRegionAvail().x / 2, 0}) {
     ImGui_Button("Clear save data") {
       Factories::ArmorFactory::GetSingleton()->ClearAllData();
-      UniqueIDTable::GetSingleton()->ClearAllData();
     }
   }
   // Add more debugging features here as needed

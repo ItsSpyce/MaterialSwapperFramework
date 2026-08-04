@@ -5,6 +5,7 @@
 #include "GeneratedShaderNames.h"
 #include "Graphics/TextureLoader.h"
 #include "Stats.h"
+#include "Options.h"
 
 #include <unordered_map>
 
@@ -537,6 +538,9 @@ class ShaderManager : public Singleton<ShaderManager> {
     if (cacheKey.empty()) {
       return false;
     }
+    if (!Options::GetSingleton()->EnableCaching()) {
+      return false;
+    }
 
     DirectX::TexMetadata metadata{};
     DirectX::ScratchImage cachedTexture;
@@ -577,7 +581,10 @@ class ShaderManager : public Singleton<ShaderManager> {
     if (cacheKey.empty()) {
       return;
     }
-    if (!texture) {
+    if UNLIKELY(!texture) {
+      return;
+    }
+    if (!Options::GetSingleton()->EnableCaching()) {
       return;
     }
 

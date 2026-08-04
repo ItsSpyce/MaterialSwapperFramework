@@ -2,9 +2,10 @@
 
 #include "V1.h"
 #include "V2.h"
+#include "V3.h"
 
 namespace Save {
-using SaveData = V2::SaveData;
+using SaveData = V3::SaveData;
 void SaveCallback(SKSE::SerializationInterface* iface);
 
 void LoadCallback(SKSE::SerializationInterface* iface);
