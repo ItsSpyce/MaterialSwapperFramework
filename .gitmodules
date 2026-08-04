@@ -8,3 +8,9 @@
 [submodule "lib/lcui"]
 	path = lib/lcui
 	url = https://github.com/ItsSpyce/LCUI.git
+[submodule "third-party/emhash"]
+	path = third-party/emhash
+	url = https://github.com/ktprime/emhash.git
+[submodule "third-party/half"]
+	path = third-party/half
+	url = https://github.com/ramenhut/half.git
