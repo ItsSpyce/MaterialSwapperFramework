@@ -11,9 +11,9 @@ class Stats : public Singleton<Stats> {
     unsigned int totalCalls;
   };
 public:
-  void LogTime(const string& identifier, const std::function<void()>& fn) {
+  void LogTime(const string& identifier, const std::function<void()>& func) {
     auto start = Clock::now();
-    fn();
+    func();
     auto end = Clock::now();
     auto duration = (end - start).count();
     lock_guard guard(lock_);

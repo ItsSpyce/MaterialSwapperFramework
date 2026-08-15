@@ -50,16 +50,17 @@ find_package(directxtk CONFIG REQUIRED)
 find_package(binary_io CONFIG REQUIRED)
 find_package(detours)
 find_package(sigc++-3 CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS algorithm)
+find_package(matchit CONFIG REQUIRED)
 
 add_subdirectory(${CommonLibPath} EXCLUDE_FROM_ALL)
 
-CPMAddPackage("gh:stephenberry/glaze@7.5.0")
+CPMAddPackage("gh:stephenberry/glaze@8.0.0")
 CPMAddPackage(
   NAME task-thread-pool
   URL https://github.com/alugowski/task-thread-pool/archive/refs/heads/main.tar.gz
 )
 CPMAddPackage("gh:neargye/magic_enum@0.9.8")
+CPMAddPackage("gh:ktprime/emhash@1.2.0")
 
 file(GLOB SHADER_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.hlsl")
 set(GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -73,9 +74,10 @@ file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "src/*.h")
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 # third-party
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third-party")
+file(GLOB_RECURSE THIRD_PARTY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/third-party/*.cpp")
 
 add_commonlibsse_plugin(${PROJECT_NAME}
-  SOURCES ${HEADERS} ${SOURCES}
+  SOURCES ${HEADERS} ${SOURCES} ${THIRD_PARTY_SOURCES}
   MINIMUM_SKSE_VERSION 0.0.0.0
 )
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/PCH.h)
@@ -88,8 +90,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   Microsoft::DirectXTK
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed/x64-windows-static-md/lib/detours.lib>
   sigc-3.0
-  Boost::algorithm
   magic_enum
+  matchit::matchit
+  emhash::emhash
 )
 
 if(DEFINED OUTPUT_FOLDER)

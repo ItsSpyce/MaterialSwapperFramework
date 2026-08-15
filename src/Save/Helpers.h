@@ -1,5 +1,7 @@
 #pragma once
 
+#include <glaze/glaze.hpp>
+
 namespace Save {
 namespace Helpers {
 
@@ -50,7 +52,7 @@ inline bool ReadData<RE::BSFixedString>(
 
 template <typename T>
 uint32_t ReadJsonObject(SKSE::SerializationInterface* iface, T& out) {
-  size_t jsonLength;
+  uint32_t jsonLength;
   if (!iface->ReadRecordData(jsonLength)) {
     _ERROR("Failed to read JSON size from serialization interface");
     return 0;

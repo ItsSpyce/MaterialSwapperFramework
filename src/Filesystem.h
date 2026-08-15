@@ -3,20 +3,20 @@
 namespace fs = std::filesystem;
 
 namespace Filesystem {
-static constexpr std::string MATERIAL_FILES_DIR = "Data/Materials";
-static constexpr std::string SKSE_PLUGINS_DIR = "Data/SKSE/Plugins";
-static constexpr std::string MATERIAL_PLUGIN_DIR =
+static std::string MATERIAL_FILES_DIR = "Data/Materials";
+static std::string SKSE_PLUGINS_DIR = "Data/SKSE/Plugins";
+static std::string MATERIAL_PLUGIN_DIR =
     SKSE_PLUGINS_DIR + "/MaterialSwapperFramework";
-static constexpr std::string MATERIAL_SHADER_DIR =
+static std::string MATERIAL_SHADER_DIR =
     MATERIAL_PLUGIN_DIR + "/shaders";
-static constexpr std::string MATERIAL_CACHE_DIR =
+static std::string MATERIAL_CACHE_DIR =
     MATERIAL_PLUGIN_DIR + "/cache";
-static constexpr std::string MATERIAL_CONFIG_DIR =
+static std::string MATERIAL_CONFIG_DIR =
     MATERIAL_PLUGIN_DIR + "/config";
-static constexpr std::string MATERIAL_CONDITIONS_DIR =
+static std::string MATERIAL_CONDITIONS_DIR =
     MATERIAL_PLUGIN_DIR + "/_conditions";
-static constexpr std::string TEXTURES_DIR = "Data/Textures";
-static constexpr std::string FILE_ID_BIN = MATERIAL_CACHE_DIR + "/file_ids.bin";
+static std::string TEXTURES_DIR = "Data/Textures";
+static std::string FILE_ID_BIN = MATERIAL_CACHE_DIR + "/file_ids.bin";
 
 inline fs::recursive_directory_iterator EnumerateMaterialFilesDir() {
   if (!fs::exists(MATERIAL_FILES_DIR) ||

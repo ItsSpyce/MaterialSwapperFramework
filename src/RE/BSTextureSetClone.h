@@ -3,6 +3,7 @@
 #include <srell.hpp>
 
 #include "StringHelpers.h"
+#include "Helpers/StringHelpers.h"
 
 namespace RE {
 class BSTextureSetClone {

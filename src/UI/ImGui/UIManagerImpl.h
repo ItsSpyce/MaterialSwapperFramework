@@ -40,7 +40,7 @@ class UIManagerImpl : public UIManager {
     return true;
   }
 
-  void Update(u32 timer) override {
+  void Update(float timer) override {
     ForEachWindow([&](Window* window) { window->Update(timer); });
   }
 

@@ -1,6 +1,7 @@
 #pragma once
 #include "SKEE64.h"
 #include "SKEE64PluginInterface.h"
+#include "Types.h"
 
 namespace Helpers {
 inline UniqueID GetUniqueID(RE::TESObjectREFR* refr,

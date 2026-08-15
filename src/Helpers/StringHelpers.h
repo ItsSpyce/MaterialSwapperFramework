@@ -87,23 +87,23 @@ inline size_t GetPosForOneOf(const string& str, const char* chars) {
 
 constexpr u32 GetStringHash(const char* str, size_t size) noexcept {
   u32 hash = 5381;
-  for (const char* c = str; c < data + size; ++c) {
+  for (const char* c = str; c < str + size; ++c) {
     hash = (hash << 5) + hash + (unsigned char)*c;
   }
   return hash;
 }
 
-constexpr u32 operator"" _h(const char* str, size_t size) noexcept {
+constexpr u32 operator""_h(const char* str, size_t size) noexcept {
   return GetStringHash(str, size);
 }
 
-inline std::string ToLower(const std::string_view str) noexcept {
+inline std::string ToLower(const std::string& str) noexcept {
   std::string lowerStr(str);
   std::ranges::transform(lowerStr, lowerStr.begin(), ::tolower);
   return lowerStr;
 }
 
-inline std::string operator"" _l(const std::string_view str) noexcept {
+inline std::string operator""_l(const char* str) noexcept {
   return ToLower(str);
 }
 
@@ -125,7 +125,8 @@ inline std::vector<std::string> Split(const std::string& str,
   return std::move(out);
 }
 
-inline std::string Join(const std::vector<std::string>& strings, const std::string& separator) {
+inline std::string Join(const std::vector<std::string>& strings,
+                        const std::string& separator) {
   std::string result{};
   for (const auto& str : strings) {
     result += str + separator;

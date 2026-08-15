@@ -1,5 +1,6 @@
 #pragma once
 
+#include <DirectXTex.h>
 #include "RE/Misc.h"
 
 namespace Graphics {

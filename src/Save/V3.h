@@ -1,6 +1,5 @@
 #pragma once
 
-#include <boost/algorithm/string/join.hpp>
 #include <emhash/hash_table8.hpp>
 #include <srell.hpp>
 
@@ -18,7 +17,7 @@ public:
   emhash8::HashMap<UniqueID, vector<string>> entries;
   u8 version{VERSION};
 
-  void Read(SKSE::SerializationInterface* iface, u32 type, u32 length) {
+  void Read(SKSE::SerializationInterface* iface, u32 type, u32) {
     static const auto parseRegex = srell::regex("\\(d+),(.*)|");
     if (type == 'V3') {
       size_t dataLen;
@@ -30,7 +29,7 @@ public:
         return;
       }
       std::string buffer(dataLen, '\0');
-      if (iface->ReadRecordData(buffer.data(), dataLen) == 0) {
+      if (iface->ReadRecordData(buffer.data(), dataLen) == 0u) {
         _ERROR("No read data found");
         return;
       }
@@ -56,7 +55,7 @@ public:
     for (const auto& [uid, materials] : entries) {
       if (materials.empty()) continue;
       out << uid << ':';
-      auto implodedStr = boost::algorithm::join(materials, ',');
+      auto implodedStr = StringHelpers::Join(materials, ",");
       out << implodedStr << '|';
     }
     auto str = out.str();
@@ -69,7 +68,7 @@ public:
     }
   }
 
-  bool Migrate(const V1::SaveData& from) override {
+  bool Migrate(const V1::SaveData&) override {
     return false;
   }
 

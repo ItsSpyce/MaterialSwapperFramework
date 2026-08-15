@@ -68,24 +68,24 @@ int igThemeV3(int hue07, int alt07, int nav07, int lit01 = 0, int compact01 = 0,
 
     auto lit = [&](ImVec4 hi) {
         float h,s,v; ImGui::ColorConvertRGBtoHSV(hi.x,hi.y,hi.z, h,s,v);
-        ImVec4 lit = ImColor::HSV(h,s*0.80,v*1.00, hi.w).Value;
+        auto lit = ImColor::HSV(h,s*0.80,v*1.00, hi.w).Value;
         return lit;
     };
     auto dim = [&](ImVec4 hi) {
         float h,s,v; ImGui::ColorConvertRGBtoHSV(hi.x,hi.y,hi.z, h,s,v);
-        ImVec4 dim = ImColor::HSV(h,s,lit01 ? v*0.65:v*0.65, hi.w).Value;
+        auto dim = ImColor::HSV(h,s,lit01 ? v*0.65:v*0.65, hi.w).Value;
         if( hi.z > hi.x && hi.z > hi.y ) return ImVec4(dim.x,dim.y,hi.z,dim.w);
         return dim;
     };
 
-    const ImVec4 cyan    = ImVec4(000/255.f, 192/255.f, 255/255.f, 1.00f);
-    const ImVec4 red     = ImVec4(230/255.f, 000/255.f, 000/255.f, 1.00f);
-    const ImVec4 yellow  = ImVec4(240/255.f, 210/255.f, 000/255.f, 1.00f);
-    const ImVec4 orange  = ImVec4(255/255.f, 144/255.f, 000/255.f, 1.00f);
-    const ImVec4 lime    = ImVec4(192/255.f, 255/255.f, 000/255.f, 1.00f);
-    const ImVec4 aqua    = ImVec4(000/255.f, 255/255.f, 192/255.f, 1.00f);
-    const ImVec4 magenta = ImVec4(255/255.f, 000/255.f,  88/255.f, 1.00f);
-    const ImVec4 purple  = ImVec4(192/255.f, 000/255.f, 255/255.f, 1.00f);
+    constexpr auto cyan    = ImVec4(000/255.f, 192/255.f, 255/255.f, 1.00f);
+    constexpr auto red     = ImVec4(230/255.f, 000/255.f, 000/255.f, 1.00f);
+    constexpr auto yellow  = ImVec4(240/255.f, 210/255.f, 000/255.f, 1.00f);
+    constexpr auto orange  = ImVec4(255/255.f, 144/255.f, 000/255.f, 1.00f);
+    constexpr auto lime    = ImVec4(192/255.f, 255/255.f, 000/255.f, 1.00f);
+    constexpr auto aqua    = ImVec4(000/255.f, 255/255.f, 192/255.f, 1.00f);
+    constexpr auto magenta = ImVec4(255/255.f, 000/255.f,  88/255.f, 1.00f);
+    constexpr auto purple  = ImVec4(192/255.f, 000/255.f, 255/255.f, 1.00f);
 
     ImVec4 alt = cyan;
     /**/ if( alt07 == 0 || alt07 == 'C' ) alt = cyan;
@@ -120,7 +120,7 @@ int igThemeV3(int hue07, int alt07, int nav07, int lit01 = 0, int compact01 = 0,
     else if( nav07 == 7 || nav07 == 'P' ) nav = purple;
     if( lit01 ) nav = dim(nav);
 
-    const ImVec4
+    constexpr auto
     link  = ImVec4(0.26f, 0.59f, 0.98f, 1.00f),
     grey0 = ImVec4(0.04f, 0.05f, 0.07f, 1.00f),
     grey1 = ImVec4(0.08f, 0.09f, 0.11f, 1.00f),

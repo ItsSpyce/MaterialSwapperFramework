@@ -5,9 +5,6 @@
 #include "MaterialSwapper.h"
 #include "MeshBuilder.h"
 #include "RE/Offset.h"
-#include "RE/BipedSkinContext.h"
-
-extern EventSource<PlayerViewChangeEvent> g_playerViewChangeSource;
 
 namespace Hooks {
 struct TESForm_SetFormEditorID {
@@ -63,81 +60,6 @@ struct Actor_CreateWeaponNodes {
       RE::Offset::Actor::CreateWeaponNodes};
 };
 
-struct Main_Update {
-  static void thunk() {
-    func();
-    auto* main = RE::Main::GetSingleton();
-    if (!main->GetRuntimeData().gameActive) {
-      // do something later maybe
-      _TRACE("Quit game called");
-      return;
-    }
-    auto* player = RE::PlayerCharacter::GetSingleton();
-    if (!player) {
-      _TRACE("No player found");
-      return;
-    }
-    if (auto* currentCell = player->GetParentCell()) {
-      if (playerCurrentCell != currentCell->GetFormID()) {
-        const PlayerCellChangeEvent cellEvent{
-            .isExterior = currentCell->IsExteriorCell(),
-            .isChangedInOut = isExteriorCell != currentCell->IsExteriorCell(),
-            .oldCell = playerCurrentCell,
-            .newCell = currentCell->GetFormID(),
-        };
-        g_cellChangeSource.Dispatch(cellEvent);
-        _TRACE(
-            "PlayerCellChangeEvent dispatched: isExterior={}, "
-            "isChangedInOut={}",
-            cellEvent.isExterior, cellEvent.isChangedInOut);
-      }
-      playerCurrentCell = currentCell->GetFormID();
-      isExteriorCell = currentCell->IsExteriorCell();
-    }
-    if (auto* sky = RE::Sky::GetSingleton()) {
-      auto* weather = sky->overrideWeather  ? sky->overrideWeather
-                      : sky->currentWeather ? sky->currentWeather
-                                            : sky->defaultWeather;
-      if (weather && weather->data.flags.underlying() != currentWeather) {
-        g_weatherChangeSource.Dispatch(WeatherChangeEvent{});
-        currentWeather = weather->data.flags.underlying();
-      }
-    }
-    const FrameEvent frameEvent{
-        .gamePaused = main ? main->GetRuntimeData().freezeTime : false,
-    };
-    g_frameEventSource.Dispatch(frameEvent);
-  }
-
-  static inline REL::Relocation<decltype(&thunk)> func;
-  static inline REL::Relocation rel{RE::Offset::Main::Update};
-  static inline REL::Relocation offset{RE::Offset::Main::UpdateOffset};
-  static inline RE::FormID playerCurrentCell;
-  static inline u8 currentWeather;
-  static inline bool isExteriorCell;
-};
-
-struct PlayerCamera_SwitchPOV {
-  static void thunk(RE::PlayerCamera* _this, void* a1) {
-    func(_this, a1);
-    const auto thirdPerson =
-        RE::PlayerCamera::GetSingleton()->IsInThirdPerson();
-    if (thirdPerson != wasLastChangeThirdPerson) {
-      wasLastChangeThirdPerson = thirdPerson;
-      const PlayerViewChangeEvent event{
-          .thirdPerson = thirdPerson,
-      };
-      g_playerViewChangeSource.Dispatch(event);
-    }
-  }
-
-  static inline REL::Relocation<decltype(&thunk)> func;
-  static inline REL::Relocation rel{RE::Offset::PlayerCamera::UpdatePOV};
-  static inline REL::Relocation offset{
-      RE::Offset::PlayerCamera::UpdatePOVOffset};
-  static inline bool wasLastChangeThirdPerson{false};
-};
-
 struct InventoryUtils_WornHasKeyword {
   static bool __fastcall thunk(RE::InventoryEntryData* entryData,
                                RE::BGSKeyword* keyword) {
@@ -184,7 +106,5 @@ inline void Install() noexcept {
   DetourTransactionCommit();
 
   stl::write_vfunc<RE::TESForm, TESForm_SetFormEditorID>();
-  stl::write_thunk_call<Main_Update>();
-  stl::write_thunk_call<PlayerCamera_SwitchPOV>();
 }
 }  // namespace Hooks

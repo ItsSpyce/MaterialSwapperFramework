@@ -2,8 +2,9 @@
 
 // Shut up, I'm tired of having these elsewhere
 
-#define FOR_IN_DIR(_RDI) \
-  for (auto it = fs::begin(_RDI); it != fs::end(_RDI); ++it)
+#define FOR_IN_DIR(_RDI, _ITERATOR)                                  \
+  for (auto _ITERATOR = fs::begin(_RDI); _ITERATOR != fs::end(_RDI); \
+       ++_ITERATOR)
 
 #define FIND_IN(_ITERABLE, _ITERATOR, _FIND)        \
   if (const auto _ITERATOR = _ITERABLE.find(_FIND); \

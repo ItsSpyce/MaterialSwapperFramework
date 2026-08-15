@@ -1,7 +1,9 @@
 #pragma once
+
 #include "Cache/EditorIDCache.h"
 #include "RaceMenuHelpers.h"
 #include "StringHelpers.h"
+#include "Types.h"
 
 namespace Helpers {
 inline bool IsModName(const std::string_view str) {
@@ -36,18 +38,17 @@ inline u32 GetFormID(const std::string& name) {
 }
 
 inline void VisitInventoryItems(RE::TESObjectREFR* refr,
-                                const Visitor<InventoryItem*>& visitor) {
+                                const Visitor<InventoryItem>& visitor) {
   for (auto inventoryData = refr->GetInventory();
        auto& [obj, data] : inventoryData) {
     if (!obj || !data.second) {
       continue;  // Skip if object or data is null
     }
     auto uid = GetUniqueID(refr, data.second.get(), false);
-    auto* inventoryItem = new InventoryItem{.object = obj,
-                                            .count = data.first,
-                                            .data = std::move(data.second),
-                                            .uid = uid};
-    visitor(inventoryItem);
+    visitor(InventoryItem{.object = obj,
+             .count = data.first,
+             .data = std::move(data.second),
+             .uid = uid});
   }
 }
 

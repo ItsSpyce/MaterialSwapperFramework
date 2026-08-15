@@ -1,7 +1,5 @@
 #include "UI/Pages/MaterialsPage.h"
 
-#include "Factories/ArmorFactory.h"
-#include "Helpers/RaceMenuHelpers.h"
 #include "Helpers/SkyrimHelpers.h"
 #include "MaterialSwapper.h"
 #include "Translations.h"
@@ -18,12 +16,11 @@ void MaterialsPage(const MaterialsPageProps&) {
 
   ImGui_Child("MaterialsList") {
     ImGui_Button(Translations::materialsPageResetButton()) {
-      Factories::ArmorFactory::GetSingleton()->ResetMaterials(actor);
+      MaterialSwapper::ResetEquippedArmors(actor);
     }
 
     ImGui_TabBar("MaterialsTabBar") {
       ImGui_TabItem(Translations::materialsPageArmorsTabHeader()) {
-        
         ImGui_Table("ArmorTable", 2, ImGuiTableFlags_BordersInnerH,
                     {ImGui::GetContentRegionAvail().x * .55f, 0.f}) {
           Helpers::VisitEquippedInventoryItems(
@@ -44,12 +41,12 @@ void MaterialsPage(const MaterialsPageProps&) {
                         selectedSlot = slot;
                         availableMaterials.clear();
                         MaterialSwapper::VisitApplicableMaterials(
-                          data->object, [](const MATC& material) {
-                            auto [it, added] = availableMaterials.try_emplace(material.layer, vector<MATC>());
-                            it->second.push_back(material);
-                            return RE::BSVisit::BSVisitControl::kContinue;
-                          }
-                        );
+                            data->object, [](const MATC& material) {
+                              auto [it, added] = availableMaterials.try_emplace(
+                                  material.layer, vector<MATC>());
+                              it->second.push_back(material);
+                              return RE::BSVisit::BSVisitControl::kContinue;
+                            });
                       }
                     }
                   }
@@ -86,7 +83,8 @@ void MaterialsPage(const MaterialsPageProps&) {
               }
             }
             MaterialSwapper::VisitApplicableMaterials(
-                selectedItem->object, [&](const MATC& material) {
+                actor->GetWornArmor(selectedSlot, true),
+                [&](const MATC& material) {
                   if (!material.isHidden) {
                     ImGui_Row {
                       ImGui_Column {
@@ -105,10 +103,7 @@ void MaterialsPage(const MaterialsPageProps&) {
                                   "item.");
                             }
                             MaterialSwapper::ApplyArmorMaterial(
-                                actor, selectedItem->Sl)
-                                Factories::ArmorFactory::GetSingleton()
-                                    ->ApplyMaterial(actor, selectedItem,
-                                                    &material, true);
+                                actor, selectedSlot, material);
                           }
                         }
                       }

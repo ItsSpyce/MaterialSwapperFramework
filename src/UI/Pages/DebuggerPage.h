@@ -1,7 +1,7 @@
 #pragma once
 
+#include "MaterialSwapper.h"
 #include "UI/ImGui_Sugar.h"
-#include "Factories/ArmorFactory.h"
 
 namespace UI::Pages {
 struct DebuggerPageProps {
@@ -15,7 +15,7 @@ inline void DebuggerPage(const DebuggerPageProps& props) {
   ImGui::Separator();
   ImGui_Child("HelperButtons", ImVec2{ImGui::GetContentRegionAvail().x / 2, 0}) {
     ImGui_Button("Clear save data") {
-      Factories::ArmorFactory::GetSingleton()->ClearAllData();
+      MaterialSwapper::ResetAll();
     }
   }
   // Add more debugging features here as needed

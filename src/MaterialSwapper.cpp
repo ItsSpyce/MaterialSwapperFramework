@@ -1,16 +1,16 @@
 #include "MaterialSwapper.h"
 
+#include <emhash/hash_table5.hpp>
+
 #include "Cache/FilenameIDCache.h"
-#include "Core/MaterialScope.h"
 #include "Filesystem.h"
-#include "Graphics/MaterialManager.h"
 #include "Helpers/JsonHelpers.h"
-#include "Helpers/MaterialHelpers.h"
 #include "Helpers/RaceMenuHelpers.h"
 #include "Helpers/SkyrimHelpers.h"
+#include "MeshBuilder.h"
 #include "ModState.h"
-#include "Result.h"
-#include "emhash/hash_table5.hpp"
+
+#undef GetObject
 
 namespace {
 namespace fs = std::filesystem;
@@ -19,8 +19,8 @@ using RE::BSVisit::BSVisitControl;
 std::mutex g_lock;
 emhash5::HashMap<RE::FormID, emhash8::HashMap<string, MATC>> g_configs;
 emhash5::HashMap<FileID, MATR> g_records;
-consteval size_t MAX_SEARCH_HISTORY = 16;
-consteval auto DEFAULT_MATERIAL_KEY = "__DEFAULT__";
+constexpr size_t MAX_SEARCH_HISTORY = 16;
+constexpr auto DEFAULT_MATERIAL_KEY = "__DEFAULT__";
 
 template <typename T>
 std::optional<T> RecursivelyFind(
@@ -46,21 +46,19 @@ result<MATR> ReadMaterialJson(const std::string& filename) noexcept {
   glz::generic json;
   MATR record;
   if (!fs::exists(filename)) {
-    return Err<MATR>("Material file does not exist: {}", filename);
+    return Err{"Material file does not exist: {}", filename};
   }
   record.id = FilenameIDCache::GetFilenameID(filename);
   if (const auto it = g_records.find(record.id); it != g_records.end()) {
-    return Ok(it->second);
+    return Ok{it->second};
   }
   if (auto err = glz::read_file_jsonc(json, filename, string{})) {
     auto cleanedErr = glz::format_error(err);
-    return Err<MATR>("Failed to read material file {}: {}", filename,
-                     cleanedErr);
+    return Err{"Failed to read material file {}: {}", filename, cleanedErr};
   }
   if (auto inherits = JsonHelpers::MaybeGet<std::string>(json, "inherits")) {
-    auto parent = ReadMaterialJson(inherits.value());
-    if (parent.has_value()) {
-      record.inherits = parent->id;
+    if (auto parent = ReadMaterialJson(inherits.value())) {
+      record.inherits = parent.value().id;
     }
   }
   {
@@ -94,11 +92,15 @@ result<MATR> ReadMaterialJson(const std::string& filename) noexcept {
     SET_TEXTURE(colorBlendMap);
 #undef SET_TEXTURE
   }
-  auto uvOffset =
-      JsonHelpers::MaybeGet<array<half, 2>>(json, "uvOffset").value_or({0, 0});
-  auto uvScale =
-      JsonHelpers::MaybeGet<array<half, 2>>(json, "uvScale").value_or({1, 1});
-  record.uv = uv(uvScale, uvOffset);
+  record.uv = uv{1, 1, 0, 0};
+  if (json.contains("uvOffset")) {
+    record.uv->set_offset(json["uvOffset"].get_array()[0].get_number(),
+                          json["uvOffset"].get_array()[1].get_number());
+  }
+  if (json.contains("uvScale")) {
+    record.uv->set_scale(json["uvScale"].get_array()[2].get_number(),
+                         json["uvScale"].get_array()[3].get_number());
+  }
   record.clamp = JsonHelpers::MaybeGet<u8>(json, "clamp");
   record.transparency =
       JsonHelpers::MaybeGet<half>(json, "transparency")
@@ -117,34 +119,29 @@ result<MATR> ReadMaterialJson(const std::string& filename) noexcept {
   record.specularPower = JsonHelpers::MaybeGet<half>(json, "specularPower");
   record.subsurfaceLightingRolloff =
       JsonHelpers::MaybeGet<half>(json, "subsurfaceLightingRolloff");
-  record.specularColor =
-      JsonHelpers::MaybeGet<array<u8, 3>>(json, "specularColor");
+  record.specularColor = JsonHelpers::MaybeGetArray<3>(json, "specularColor");
   record.specularMult = JsonHelpers::MaybeGet<half>(json, "specularMult");
   record.smoothness = JsonHelpers::MaybeGet<half>(json, "smoothness");
   record.fresnelPower = JsonHelpers::MaybeGet<half>(json, "fresnelPower");
-  record.emitColor = JsonHelpers::MaybeGet<array<u8, 3>>(json, "emitColor");
+  record.emitColor = JsonHelpers::MaybeGetArray<3>(json, "emitColor");
   record.emitMult = JsonHelpers::MaybeGet<half>(json, "emitMult");
   record.colorBlendMode =
       JsonHelpers::MaybeGet<u8>(json, "colorBlendMode")
           .transform([](const u8 v) { return (ColorBlendMode)v; });
-  record.colorChannelR =
-      JsonHelpers::MaybeGet<array<u8, 4>>(json, "colorChannelR");
-  record.colorChannelG =
-      JsonHelpers::MaybeGet<array<u8, 4>>(json, "colorChannelG");
-  record.colorChannelB =
-      JsonHelpers::MaybeGet<array<u8, 4>>(json, "colorChannelB");
-  return Ok(record);
+  record.colorChannelR = JsonHelpers::MaybeGetArray<4>(json, "colorChannelR");
+  record.colorChannelG = JsonHelpers::MaybeGetArray<4>(json, "colorChannelG");
+  record.colorChannelB = JsonHelpers::MaybeGetArray<4>(json, "colorChannelB");
+  return Ok{record};
 }
 
-result<std::vector<MATC>> ReadConfigJson(const std::string& filename) {
+fn ReadConfigJson(const std::string& filename) -> result<std::vector<MATC>> {
   std::vector<MATC> matConfigs;
-  if (filename[0] == '_') return Ok(matConfigs);
+  if (filename[0] == '_') return Ok{matConfigs};
   std::unordered_map<std::string, std::vector<glz::generic>> json;
   _DEBUG("Reading material config {}", filename);
-  if (auto err = glz::read_file_json(json, filename, "")) {
-    return Err<std::vector<MATC>>(
-        "Failed to read material config file at {}:\r\n{}", filename,
-        glz::format_error(err));
+  if (auto err = glz::read_file_json(json, filename, std::string{})) {
+    return Err{"Failed to read material config file at {}:\r\n{}", filename,
+               glz::format_error(err)};
   }
   for (const auto& [formID, configs] : json) {
     for (const auto& config : configs) {
@@ -170,22 +167,19 @@ result<std::vector<MATC>> ReadConfigJson(const std::string& filename) {
         // legacy condition handling
         if (condition.contains("type")) {
           _DEBUG("Converting legacy condition");
-          switch (condition["type"].get_string()) {
-            case "dayOfWeek":
-              materialCondition.function = MaterialFunctionID::GetDayOfWeek;
-              break;
-            case "weather":
-              materialCondition.function =
-                  MaterialFunctionID::GetIsCurrentWeather;
-              break;
-            default:
-              break;
+          const auto type = condition["type"].get_string();
+          if (type == "dayOfWeek") {
+            materialCondition.function = MaterialFunctionID::GetDayOfWeek;
+          } else if (type == "weather") {
+            materialCondition.function =
+                MaterialFunctionID::GetIsCurrentWeather;
           }
 
           materialCondition.params = {
-              condition["value"].get<MaterialConditionParam>()};
+              condition["value"].as<std::vector<MaterialConditionParam>>()};
         } else {
-          materialCondition = condition.as<MaterialCondition>();
+          // TODO: fix this, glaze doesn't like it
+          //materialCondition = condition.as<MaterialCondition>();
         }
         item.conditions.emplace_back(materialCondition);
       }
@@ -193,11 +187,10 @@ result<std::vector<MATC>> ReadConfigJson(const std::string& filename) {
           JsonHelpers::MaybeGet<std::unordered_map<std::string, std::string>>(
               config, "applies")
               .value_or({});
-      for (const auto& [shape, filename] : applies) {
+      for (const auto& [shape, matrFile] : applies) {
         const auto path =
-            StringHelpers::AssertPrefix(filename, "Data\\materials\\");
-        const auto matr = ReadMaterialJson(path);
-        if (matr.has_value()) {
+            StringHelpers::AssertPrefix(matrFile, "Data\\materials\\");
+        if (const auto matr = ReadMaterialJson(path)) {
           const auto filenameID = FilenameIDCache::GetFilenameID(path);
           g_records[filenameID] = matr.value();
           item.applies.emplace_back(std::tuple(shape, filenameID));
@@ -206,7 +199,7 @@ result<std::vector<MATC>> ReadConfigJson(const std::string& filename) {
       matConfigs.emplace_back(item);
     }
   }
-  return Ok(matConfigs);
+  return Ok{matConfigs};
 }
 
 RE::NiNode* CloneWithMaterial(RE::NiNode* node, RE::FormID formId,
@@ -223,9 +216,9 @@ RE::NiNode* CloneWithMaterial(RE::NiNode* node, RE::FormID formId,
     if (material && material->name.contains(".json")) {
       const auto materialFileID =
           FilenameIDCache::GetFilenameID(material->name.c_str());
-      const auto matr = MaterialSwapper::GetMaterialRecord(materialFileID);
-      if (matr) {
-        MaterialManager::ApplyMaterialToNode(ts, matr.value());
+      if (const auto matr =
+              MaterialSwapper::GetMaterialRecord(materialFileID)) {
+        MeshBuilder::ApplyMaterialToNode(ts, matr.value());
       } else {
         _ERROR("Failed to load material record {}", material->name.c_str());
         return BSVisitControl::kContinue;
@@ -241,15 +234,11 @@ RE::NiNode* CloneWithMaterial(RE::NiNode* node, RE::FormID formId,
         const auto matr =
             MaterialSwapper::GetMaterialRecord(materialPath.value());
         if (!matr) {
-          _ERROR("Failed to load material record {}", materialPath);
+          _ERROR("Failed to load material record {}", materialPath.value());
           continue;
         }
-        MaterialScope scope(matc, matr);
         _TRACE("Applying saved material {}", materialName);
-        MaterialManager::ApplyMaterialToNode(
-            ts, matr,
-            MaterialHelpers::GetMaterialShapeKey(formId, materialPath.value(),
-                                                 materialName));
+        MeshBuilder::ApplyMaterialToNode(ts, matr.value());
       }
     }
     return BSVisitControl::kContinue;
@@ -275,6 +264,20 @@ void UpdateInventoryItemMaterials(const UniqueID uid,
                                       ", "));
   Helpers::SetItemDisplayName(data, name.c_str());
 }
+
+void VisitMaterials(const UniqueID uid, const Visitor<MATC>& visitor) {
+  auto formID = Helpers::GetFormIDForUniqueID(uid);
+  FIND_IN(g_configs, it, formID) {
+    for (const auto& materials = ModState::GetSingleton()->GetMaterials(uid);
+         const auto& material : materials) {
+      FIND_IN(it->second, matcIt, material) {
+        if (visitor(matcIt->second) == BSVisitControl::kStop) {
+          return;
+        }
+      }
+    }
+  }
+}
 }  // namespace
 
 namespace MaterialSwapper {
@@ -283,21 +286,18 @@ void ReadMaterialConfigurations() {
   g_configs.clear();
   // this is faster than for-each over everything apparently?
   const auto globalRdi = Filesystem::EnumerateMaterialConfigDir();
-  FOR_IN_DIR(globalRdi) {
-    const auto configs = ReadConfigJson(it->path().string());
-    if (!configs.has_value()) {
-      _ERROR("Failed to read config file {}: {}", it->path(),
-             configs.error().what());
+  FOR_IN_DIR(globalRdi, fileIt) {
+    const auto configs = ReadConfigJson(fileIt->path().string());
+    if (!configs) {
+      _ERROR("Failed to read config file {}: {}", fileIt->path().string(),
+             configs.error());
       continue;
     }
     for (const auto& config : configs.value()) {
-      // you might call me dumb for this but emhash doesn't support
-      // refing a value then modifying. I mean, it _does_ but it has
-      // to rehash which is more expensive than just getting and then
-      // upserting
-      auto& [formConfigs, _] =
-          g_configs.do_insert(config.form, emhash8::HashMap<string, MATC>{});
-      formConfigs->second.emplace(config.name, config);
+      FIND_IN(g_configs, it, config.form) { it->second[config.name] = config; }
+      else {
+        g_configs[config.form] = {{config.name, config}};
+      }
     }
   }
   for (const auto& modDirectory : Filesystem::EnumerateModsInMaterialDir()) {
@@ -313,15 +313,18 @@ void ReadMaterialConfigurations() {
       if (!it->is_regular_file() || it->path().extension() != ".json") continue;
       const auto configs = ReadConfigJson(it->path().string());
       for (const auto& config : configs.value()) {
-        auto& [formConfigs, _] =
-            g_configs.do_insert(config.form, emhash8::HashMap<string, MATC>{});
-        formConfigs->second.emplace(config.name, config);
+        FIND_IN(g_configs, it, config.form) {
+          it->second[config.name] = config;
+        }
+        else {
+          g_configs[config.form] = {{config.name, config}};
+        }
       }
     }
   }
 }
 
-void VisitMaterialFiles(RE::FormID formID,
+void VisitMaterialFiles(const RE::FormID formID,
                         const Visitor<const MATC&>& visitor) {
   if (formID == NULL) return;
   FIND_IN(g_configs, it, formID) {
@@ -333,14 +336,14 @@ void VisitMaterialFiles(RE::FormID formID,
   }
 }
 
-_NODISCARD std::optional<const MATR&> GetMaterialRecord(FileID fileID) {
+_NODISCARD std::optional<MATR> GetMaterialRecord(const FileID fileID) {
   if (fileID == NULL) return std::nullopt;
   FIND_IN(g_records, it, fileID) { return it->second; }
   return std::nullopt;
 }
 
-_NODISCARD std::optional<const MATC&> GetMaterialConfig(
-    RE::FormID formID, const std::string& name) {
+_NODISCARD std::optional<MATC> GetMaterialConfig(RE::FormID formID,
+                                                 const std::string& name) {
   if (formID == NULL) return std::nullopt;
   FIND_IN(g_configs, it, formID) {
     FIND_IN(it->second, mIt, name) { return mIt->second; }
@@ -348,12 +351,12 @@ _NODISCARD std::optional<const MATC&> GetMaterialConfig(
   return std::nullopt;
 }
 
-_NODISCARD std::optional<const MATC&> GetDefaultMaterialConfig(
-    RE::FormID formID) {
+_NODISCARD std::optional<MATC> GetDefaultMaterialConfig(
+    const RE::FormID formID) {
   return GetMaterialConfig(formID, DEFAULT_MATERIAL_KEY);
 }
 
-_NODISCARD bool HasMaterialConfigs(RE::FormID formID) {
+_NODISCARD bool HasMaterialConfigs(const RE::FormID formID) {
   if (formID == NULL) return false;
   return g_configs.contains(formID);
 }
@@ -372,19 +375,19 @@ void VisitApplicableMaterials(const RE::TESForm* form,
 }
 
 void ResetEquippedArmors(RE::Actor* actor) {
-  for (u8 i = 1; i < 32; ++i) {
+  for (unsigned i = 1; i < 32; ++i) {
     ResetEquippedArmor(actor, (RE::BipedObjectSlot)(1 << i));
   }
 }
 
-void ResetEquippedArmor(RE::Actor* actor, RE::BipedObjectSlot slot) {
+void ResetEquippedArmor(RE::Actor* actor, const RE::BipedObjectSlot slot) {
   auto* equipped = actor->GetWornArmor(slot);
   auto uid = Helpers::GetUniqueID(actor, slot, false);
   if (!equipped || uid == NULL) return;
   SCOPE_GUARD(g_lock);
 }
 
-void ApplyArmorMaterial(RE::Actor* actor, RE::BipedObjectSlot slot,
+void ApplyArmorMaterial(RE::Actor* actor, const RE::BipedObjectSlot slot,
                         const MATC& config) {
   auto* equipped = actor->GetWornArmor(slot);
   auto uid = Helpers::GetUniqueID(actor, slot, true);
@@ -392,17 +395,19 @@ void ApplyArmorMaterial(RE::Actor* actor, RE::BipedObjectSlot slot,
   SCOPE_GUARD(g_lock);
   std::vector currentMaterials{config};
   ModState::GetSingleton()->VisitMaterials(uid, [&](const auto& name) {
-    if (!std::ranges::contains(currentMaterials, name)) {
+    if (!std::ranges::any_of(currentMaterials, [name](MATC& matc) {
+          return matc.name == name;
+        })) {
       if (const auto& matc = GetMaterialConfig(equipped->GetFormID(), name);
           matc.has_value() && matc.value().layer != config.layer) {
-        currentMaterials.emplace_back(matc);
+        currentMaterials.emplace_back(matc.value());
       }
     }
     return BSVisitControl::kContinue;
   });
   auto* invItem = Helpers::GetInventoryItemWithUID(actor, uid);
   UpdateInventoryItemMaterials(uid, invItem->data.get(), currentMaterials);
-  MaterialManager::ApplyMaterialToRefr(actor, config);
+  MeshBuilder::ApplyMaterialToRefr(actor, config);
 }
 
 void LoadArmorMaterials(RE::Actor* actor) {
@@ -433,5 +438,52 @@ void VisitAppliedArmorMaterials(RE::Actor* actor, RE::InventoryEntryData* data,
     }
     return result;
   });
+}
+
+void VisitMaterialFiles(RE::FormID formID, const Visitor<MATC>& visitor) {
+  FIND_IN(g_configs, it, formID) {
+    for (const auto& matc : it->second | std::views::values) {
+      if (visitor(matc) == BSVisitControl::kStop) {
+        return;
+      }
+    }
+  }
+}
+
+void VisitApplicableMaterials(const RE::TESForm* form,
+                              const Visitor<MATC>& visitor) {
+  if (const auto* refr = form->AsReference()) {
+    VisitMaterialFiles(refr->GetRawFormID(), visitor);
+  } else {
+    VisitMaterialFiles(form->GetFormID(), visitor);
+  }
+}
+
+void VisitAppliedArmorMaterials(RE::Actor* actor, RE::BipedObjectSlot slot,
+                                const Visitor<MATC>& visitor) {
+  auto uid = Helpers::GetUniqueID(actor, slot, false);
+  if (uid == NULL) {
+    return;
+  }
+  VisitMaterials(uid, visitor);
+}
+
+void VisitAppliedArmorMaterials(RE::Actor* actor, RE::InventoryEntryData* data,
+                                const Visitor<MATC>& visitor) {
+  const auto uid = Helpers::GetUniqueID(actor, data, false);
+  if (uid == NULL) {
+    return;
+  }
+  VisitMaterials(uid, visitor);
+}
+
+void VisitAppliedWeaponMaterials(RE::Actor* actor, bool left,
+                                 const Visitor<MATC>& visitor) {
+  const auto* data = actor->GetEquippedEntryData(left);
+  const auto uid = Helpers::GetUniqueID(actor, data, false);
+  if (uid == NULL) {
+    return;
+  }
+  VisitMaterials(uid, visitor);
 }
 }  // namespace MaterialSwapper

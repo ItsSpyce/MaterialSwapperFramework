@@ -8,6 +8,7 @@
 #include "Options.h"
 
 #include <unordered_map>
+#include <d3dcompiler.h>
 
 namespace Graphics {
 class ShaderManager : public Singleton<ShaderManager> {
@@ -123,7 +124,7 @@ class ShaderManager : public Singleton<ShaderManager> {
     ID3D11ShaderResourceView* maskSrv = nullptr;
     const bool hasMask = maskPath && maskPath[0] != '\0';
     if (hasMask) {
-      auto* maskTexture = TextureLoader::LoadTexture(maskPath);
+      const auto maskTexture = TextureLoader::LoadTexture(maskPath);
       RETURN_IF_FALSE(maskTexture)
       RETURN_IF_FALSE(maskTexture->rendererTexture)
       RETURN_IF_FALSE(maskTexture->rendererTexture->resourceView)
@@ -196,7 +197,7 @@ class ShaderManager : public Singleton<ShaderManager> {
       return false;
     }
 
-    auto* maskTexture = TextureLoader::LoadTexture(maskPath);
+    const auto maskTexture = TextureLoader::LoadTexture(maskPath);
     RETURN_IF_FALSE(maskTexture)
     RETURN_IF_FALSE(maskTexture->rendererTexture)
     RETURN_IF_FALSE(maskTexture->rendererTexture->resourceView)

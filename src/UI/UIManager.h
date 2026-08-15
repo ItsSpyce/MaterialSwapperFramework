@@ -8,7 +8,7 @@ class Window {
  public:
   virtual void Initialize() {}
   virtual void Render() const = 0;
-  virtual void Update(u32 timer) = 0;
+  virtual void Update(float timer) = 0;
   virtual void Show() { isOpen_ = true; }
   virtual void Hide() { isOpen_ = false; }
   NODISCARD bool IsOpen() const { return isOpen_; }
@@ -52,7 +52,7 @@ class UIManager {
   virtual void HandleKey(const RE::CharEvent* event) = 0;
   virtual void HandleMouse(const RE::ButtonEvent* event) = 0;
   virtual void Render() = 0;
-  virtual void Update(u32 timer) = 0;
+  virtual void Update(float timer) = 0;
 
   bool Install(ID3D11Device* device, ID3D11DeviceContext* deviceContext,
                DXGI_SWAP_CHAIN_DESC& desc) {

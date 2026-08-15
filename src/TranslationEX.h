@@ -3,6 +3,8 @@
 #include <glaze/glaze.hpp>
 #include <emhash/hash_table8.hpp>
 
+#include "Macros.h"
+
 template <typename T>
 concept translation = requires(T t) {
   { t.value } -> std::convertible_to<std::string>;

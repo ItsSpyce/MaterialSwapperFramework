@@ -1,4 +1,5 @@
 #pragma once
+#include "STL.h"
 
 namespace UI::Hooks {
 struct InputHook {
