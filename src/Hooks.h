@@ -69,7 +69,7 @@ struct InventoryUtils_WornHasKeyword {
         bool didFind = false;
         MaterialSwapper::VisitAppliedArmorMaterials(
             actor, entryData, [&](const MATC& config) {
-              if (ranges::contains(config.keywords,
+              if (std::ranges::contains(config.keywords,
                                    EditorIDCache::GetEditorID(keyword))) {
                 didFind = true;
                 return RE::BSVisit::BSVisitControl::kStop;

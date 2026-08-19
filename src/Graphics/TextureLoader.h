@@ -9,7 +9,7 @@ class TextureLoader : public Singleton<TextureLoader> {
  public:
   TextureLoader() {}
 
-  static RE::NiPointer<RE::NiSourceTexture> LoadTexture(const string& path) {
+  static RE::NiPointer<RE::NiSourceTexture> LoadTexture(const std::string& path) {
     RE::NiTexturePtr texturePtr;
     RE::GetTexture(path.c_str(), true, texturePtr, false);
     if (!texturePtr) {

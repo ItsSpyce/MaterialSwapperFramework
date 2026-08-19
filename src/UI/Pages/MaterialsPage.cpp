@@ -8,7 +8,7 @@
 namespace UI::Pages {
 void MaterialsPage(const MaterialsPageProps&) {
   static RE::BipedObjectSlot selectedSlot = RE::BipedObjectSlot::kNone;
-  static emhash8::HashMap<int32_t, vector<MATC>> availableMaterials;
+  static emhash8::HashMap<int32_t, std::vector<MATC>> availableMaterials;
   auto ref = RE::Console::GetSelectedRef();
   auto* actor = ref && ref->As<RE::Actor>()
                     ? ref->As<RE::Actor>()
@@ -43,7 +43,7 @@ void MaterialsPage(const MaterialsPageProps&) {
                         MaterialSwapper::VisitApplicableMaterials(
                             data->object, [](const MATC& material) {
                               auto [it, added] = availableMaterials.try_emplace(
-                                  material.layer, vector<MATC>());
+                                  material.layer, std::vector<MATC>());
                               it->second.push_back(material);
                               return RE::BSVisit::BSVisitControl::kContinue;
                             });

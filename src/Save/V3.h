@@ -14,7 +14,7 @@ class SaveData : public Types::IMigrate<V1::SaveData>,
                  public Types::IMigrate<V2::SaveData> {
 public:
   static constexpr u8 VERSION = 3;
-  emhash8::HashMap<UniqueID, vector<string>> entries;
+  emhash8::HashMap<UniqueID, std::vector<std::string>> entries;
   u8 version{VERSION};
 
   void Read(SKSE::SerializationInterface* iface, u32 type, u32) {
@@ -73,7 +73,7 @@ public:
   }
 
   bool Migrate(const V2::SaveData& from) override {
-    for (const auto oldEntries : from.armorRecords | views::values) {
+    for (const auto oldEntries : from.armorRecords | std::views::values) {
       for (const auto [uniqueID, appliedMaterials] : oldEntries) {
         entries[uniqueID] = appliedMaterials;
       }

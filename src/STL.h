@@ -2,8 +2,6 @@
 
 #include <detours/detours.h>
 
-#include <expected>
-
 namespace stl {
 using namespace SKSE::stl;
 
@@ -104,7 +102,7 @@ struct call_once {
   template <typename... Args>
   void operator()(Args... args) {
     if (hasCalled) return;
-    func(std::forward<Args>(args));
+    func(std::forward<Args>(args)...);
     hasCalled = true;
   }
 };
@@ -124,11 +122,14 @@ Ok(const char (&)[N]) -> Ok<std::string>;
 template <typename T>
 Ok(T&&) -> Ok<std::decay_t<T>>;
 
-template <typename T> struct fmt::formatter<Ok<T>>: formatter<string_view> {
+#ifdef FMT_VERSION
+template <typename T>
+struct fmt::formatter<Ok<T>> : formatter<string_view> {
   auto format(Ok<T>& ok, format_context& ctx) const {
     return formatter<string_view>::format(ok.value(), ctx);
   }
 };
+#endif
 
 struct Err {
   std::string error;
@@ -140,11 +141,14 @@ struct Err {
       : error(fmt::format(format, std::forward<Args>(args)...)) {}
 };
 
-template <> struct fmt::formatter<Err>: formatter<string_view> {
+#ifdef FMT_VERSION
+template <>
+struct fmt::formatter<Err> : formatter<string_view> {
   auto format(Err& err, format_context& ctx) const {
     return formatter<string_view>::format(err.error, ctx);
   }
 };
+#endif
 
 template <typename T>
 class result {
@@ -166,15 +170,9 @@ class result {
   result(Err&& err) : data_(std::in_place_index<1>, std::move(err.error)) {}
   result(const Err& err) : data_(std::in_place_index<1>, err.error) {}
 
-  [[nodiscard]]
-  bool is_ok() const noexcept {
-    return data_.index() == 0;
-  }
+  _NODISCARD bool is_ok() const noexcept { return data_.index() == 0; }
 
-  [[nodiscard]]
-  bool is_err() const noexcept {
-    return data_.index() == 1;
-  }
+  _NODISCARD bool is_err() const noexcept { return data_.index() == 1; }
 
   explicit operator bool() const noexcept { return is_ok(); }
 
@@ -190,3 +188,16 @@ class result {
 
   std::string&& error() && { return std::get<1>(std::move(data_)); }
 };
+
+#ifdef FMT_VERSION
+template <typename T>
+struct fmt::formatter<result<T>> : formatter<string_view> {
+  auto format(result<T>& r, format_context& ctx) const {
+    if (r.is_ok()) {
+      return formatter<string_view>::format(r.value(), ctx);
+    } else {
+      return formatter<string_view>::format(r.error(), ctx);
+    }
+  }
+};
+#endif

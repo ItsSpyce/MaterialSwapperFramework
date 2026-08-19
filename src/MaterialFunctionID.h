@@ -407,4 +407,5 @@ enum class MaterialFunctionID : u16 {
   GetRaceMenuMorph,
 
   Total,
+  NONE,
 };

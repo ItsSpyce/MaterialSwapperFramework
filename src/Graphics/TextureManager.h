@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Result.h"
 #include "ShaderManager.h"
 
 namespace Graphics {
@@ -10,8 +9,8 @@ class TextureManager : public Singleton<TextureManager> {
   TextureManager() = default;
   ~TextureManager() = default;
 
-  result<RE::NiSourceTexturePtr> GetNiSourceTexture(const string& filename,
-                                                    const string& name) {
+  result<RE::NiSourceTexturePtr> GetNiSourceTexture(const std::string& filename,
+                                                    const std::string& name) {
 
     D3D11_TEXTURE2D_DESC texDesc;
     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -53,39 +52,39 @@ class TextureManager : public Singleton<TextureManager> {
 #undef Ok
 #undef Err
   }
-  result<> GetTexture2D(const string& filename,
+  result<> GetTexture2D(const std::string& filename,
                         D3D11_TEXTURE2D_DESC& textureDesc,
                         D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
                         DXGI_FORMAT newFormat, UINT newWidth, UINT newHeight,
                         ComPtr<ID3D11Texture2D>& output) {
     return Ok();
   }
-  result<> GetTexture2D(const string& filename,
+  result<> GetTexture2D(const std::string& filename,
                         D3D11_TEXTURE2D_DESC& textureDesc,
                         D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
                         DXGI_FORMAT newFormat,
                         ComPtr<ID3D11Texture2D>& output) {
     return Ok();
   }
-  result<> GetTexture2D(const string& filename,
+  result<> GetTexture2D(const std::string& filename,
                         D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
                         DXGI_FORMAT newFormat,
                         ComPtr<ID3D11Texture2D>& output) {
     return Ok();
   }
-  result<> GetTexture2D(const string& filename,
+  result<> GetTexture2D(const std::string& filename,
                         D3D11_TEXTURE2D_DESC& textureDesc,
                         DXGI_FORMAT newFormat,
                         ComPtr<ID3D11Texture2D>& output) {
     return Ok();
   }
-  result<> GetTexture2D(const string& filename, DXGI_FORMAT newFormat,
+  result<> GetTexture2D(const std::string& filename, DXGI_FORMAT newFormat,
                         ComPtr<ID3D11Texture2D>& output) {
     return Ok();
   }
-  result<> UpdateTexture(const string& filename) { return Ok(); }
+  result<> UpdateTexture(const std::string& filename) { return Ok(); }
 
-  static RE::NiTexture* CreateTexture(const RE::BSFixedString& name) {
+  static RE::NiTexture* CreateTexture(const RE::BSFixedstd::string& name) {
     using func_t = decltype(&CreateTexture);
     REL::VariantID offset(69335, 70717, 0x00CAEF60);
     REL::Relocation<func_t> func{offset};
@@ -98,7 +97,7 @@ class TextureManager : public Singleton<TextureManager> {
   };
 
   static result<CreateSourceTextureResult> CreateSourceTexture(
-      const string& name, RE::NiSourceTexturePtr& out) {
+      const std::string& name, RE::NiSourceTexturePtr& out) {
     if (const auto found = GetSingleton()->sourceTextureCache_.find(name);
         found != GetSingleton()->sourceTextureCache_.end()) {
       out = found->second;
@@ -155,7 +154,7 @@ class TextureManager : public Singleton<TextureManager> {
                            ComPtr<ID3D11Texture2D> dstTexture) {
     return Ok();
   }
-  result<> GetTextureFromFile(std::string filePath,
+  result<> GetTextureFromFile(std::std::string filePath,
                               ComPtr<ID3D11Texture2D>& texture,
                               ComPtr<ID3D11ShaderResourceView>& srv) {
     return Ok();
@@ -166,14 +165,14 @@ class TextureManager : public Singleton<TextureManager> {
     return CompressionTarget::kNone;
   }
 
-  result<> CreateNiTexture(const string&& name, ComPtr<ID3D11Texture2D> dstTex,
+  result<> CreateNiTexture(const std::string&& name, ComPtr<ID3D11Texture2D> dstTex,
                            ComPtr<ID3D11ShaderResourceView> dstSRV,
                            RE::NiSourceTexturePtr& output) {
     return Ok();
   }
 
  private:
-  concurrency::concurrent_unordered_map<string, RE::NiSourceTexturePtr>
+  concurrency::concurrent_unordered_map<std::string, RE::NiSourceTexturePtr>
       sourceTextureCache_;
 };
 }  // namespace Graphics

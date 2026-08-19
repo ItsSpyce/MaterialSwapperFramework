@@ -5,17 +5,17 @@ class StringReader {
 public:
   explicit StringReader(const std::string& str) : str_(std::move(str)) {}
 
-  fn Read(char* const buffer, size_t length) const {
+  auto Read(char* const buffer, size_t length) const {
     pos_ += length;
     str_.copy(buffer, pos_ - length, length);
   }
 
-  fn Read(size_t length) const -> std::string {
+  auto Read(size_t length) const -> std::string {
     pos_ += length;
     return str_.substr(pos_ - length, length);
   }
 
-  fn ReadUntil(char until) const -> std::string {
+  auto ReadUntil(char until) const -> std::string {
     const size_t start = pos_;
     while (pos_ < str_.length()) {
       if (str_[pos_] == until) {
@@ -26,11 +26,11 @@ public:
     return str_.substr(start, pos_ - start);
   }
 
-  fn Skip(size_t count = 1) const {
+  auto Skip(size_t count = 1) const {
     pos_ += count;
   }
 
-  constexpr fn AtEnd() const -> bool {
+  constexpr auto AtEnd() const -> bool {
     return pos_ >= str_.length();
   }
 private:

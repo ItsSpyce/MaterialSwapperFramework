@@ -1,13 +1,27 @@
 #pragma once
 
-#include <magic_enum/magic_enum.hpp>
+#include <RE/Skyrim.h>
+#include <REL/Relocation.h>
+#include <REX/REX/Singleton.h>
+#include <SKSE/SKSE.h>
 #include <half/half.h>
+#include <wrl/client.h>
+
+#include <magic_enum/magic_enum.hpp>
 
 #include "Macros.h"
 #include "STL.h"
 
 // Definitions
-#define opt std::optional
+namespace logger = SKSE::log;
+namespace fs = std::filesystem;
+
+template <class T>
+using Singleton = REX::Singleton<T>;
+using Microsoft::WRL::ComPtr;
+
+template <typename T>
+using opt = std::optional<T>;
 using IStreamPtr = std::unique_ptr<std::istream>;
 using i8 = int8_t;
 using i16 = int16_t;
@@ -34,7 +48,8 @@ struct uv;
 struct MaterialCondition;
 struct MATR;
 struct MATC;
-using MaterialConditionParam = std::variant<std::string, bool, double>;
+using MaterialConditionParam =
+    std::optional<std::variant<std::string, bool, double, int>>;
 
 // Implementations
 
@@ -50,9 +65,7 @@ struct _NODISCARD opt_bool {
     return value_ == kNone ? other : value();
   }
 
-  constexpr explicit operator bool() const noexcept {
-    return value_ != kNone;
-  }
+  constexpr explicit operator bool() const noexcept { return value_ != kNone; }
 
   constexpr bool operator==(const opt_bool& rhs) const {
     return value_ == rhs.value_;
@@ -76,23 +89,23 @@ struct _NODISCARD uv {
      const half& offsetY)
       : data_(scaleX, scaleY, offsetX, offsetY) {}
 
-  uv(const array<half, 2>& scale, const array<half, 2>& offset)
+  uv(const std::array<half, 2>& scale, const std::array<half, 2>& offset)
       : data_(scale[0], scale[1], offset[0], offset[1]) {}
 
-  fn scale() const -> RE::NiPoint2 {
+  auto scale() const -> RE::NiPoint2 {
     return {half::ToFloat32Fast(data_[0]), half::ToFloat32Fast(data_[1])};
   }
 
-  fn set_scale(const half& x, const half& y) {
+  auto set_scale(const half& x, const half& y) {
     data_[0] = x;
     data_[1] = y;
   }
 
-  fn offset() const -> RE::NiPoint2 {
+  auto offset() const -> RE::NiPoint2 {
     return {half::ToFloat32Fast(data_[2]), half::ToFloat32Fast(data_[3])};
   }
 
-  fn set_offset(const half& x, const half& y) {
+  auto set_offset(const half& x, const half& y) {
     data_[2] = x;
     data_[3] = y;
   }
@@ -161,9 +174,9 @@ enum class MaterialFlags : u64 {
 
 struct MaterialCondition {
   MaterialFunctionID function;
+  std::string variable;
   RE::CONDITION_ITEM_DATA::OpCode op;
-  bool negate;
-  std::vector<MaterialConditionParam> params;
+  MaterialConditionParam param;
 };
 
 struct MATR {
@@ -212,25 +225,25 @@ struct MATR {
   opt<half> backLightPower;
   opt<half> specularPower;
   opt<half> subsurfaceLightingRolloff;
-  opt<array<u8, 3>> specularColor;
+  opt<std::array<u8, 3>> specularColor;
   opt<half> specularMult;
   opt<half> smoothness;
   opt<half> fresnelPower;
-  opt<array<u8, 3>> emitColor;
+  opt<std::array<u8, 3>> emitColor;
   opt<half> emitMult;
 
   // custom fields
   opt<ColorBlendMode> colorBlendMode;
-  opt<array<u8, 4>> colorChannelR;
-  opt<array<u8, 4>> colorChannelG;
-  opt<array<u8, 4>> colorChannelB;
+  opt<std::array<u8, 4>> colorChannelR;
+  opt<std::array<u8, 4>> colorChannelG;
+  opt<std::array<u8, 4>> colorChannelB;
 
   bool operator==(const MATR& rhs) const { return rhs.id == id; }
 };
 
 struct MATC {
   RE::FormID form;
-  string name;
+  std::string name;
   std::vector<std::tuple<std::string, FileID>> applies;
   std::vector<std::string> keywords;
   std::vector<MaterialCondition> conditions;
@@ -239,12 +252,20 @@ struct MATC {
   bool isHidden = false;
   bool modifyName = true;
 
-  _NODISCARD fn find_material(const std::string& shape) const
+  _NODISCARD auto find_material(const std::string& shape) const
       -> std::optional<uint16_t> {
     for (const auto [key, value] : applies) {
       if (key == shape) return std::optional(value);
     }
     return std::nullopt;
+  }
+
+  auto visit_shapes(const Visitor<const std::string&, FileID>& visitor) const {
+    for (const auto [key, fileID] : applies) {
+      if (visitor(key, fileID) == RE::BSVisit::BSVisitControl::kStop) {
+        return;
+      }
+    }
   }
 
   bool operator==(const MATC& rhs) const {

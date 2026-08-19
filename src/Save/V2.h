@@ -11,10 +11,10 @@ namespace Save::V2 {
 class SaveData : public Types::IMigrate<V1::SaveData> {
  public:
   static constexpr u8 VERSION = 2;
-  unordered_map<RE::FormID, vector<Types::ArmorRecordEntryV2>> armorRecords{};
-  unordered_map<RE::FormID, vector<Types::WeaponRecordEntryV2>> weaponRecords{};
+  std::unordered_map<RE::FormID, std::vector<Types::ArmorRecordEntryV2>> armorRecords{};
+  std::unordered_map<RE::FormID, std::vector<Types::WeaponRecordEntryV2>> weaponRecords{};
   Types::UniqueIDHistoryV2 uniqueIDHistory{};
-  vector<Types::NPCRecordEntryV2> npcRecords{};
+  std::vector<Types::NPCRecordEntryV2> npcRecords{};
   u8 version{VERSION};
 
   void Read(SKSE::SerializationInterface* iface, uint32_t type,

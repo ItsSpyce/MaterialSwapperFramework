@@ -19,8 +19,8 @@ class TranslationEX {
   using hash_map = emhash8::HashMap<std::string, std::string>;
  public:
   struct TranslationKey {
-    string name;
-    string value;
+    std::string name;
+    std::string value;
 
     const char* operator()() { return TryTranslate(*this); }
   };
@@ -101,7 +101,7 @@ class TranslationEX {
       _WARN("Translation file does not exist: {}", translationFile);
       return;
     }
-    string buffer;
+    std::string buffer;
     std::unordered_map<std::string, std::string> translations;
     if (auto err = glz::read_file_json(translations, translationFile, buffer)) {
       auto cleanedError = glz::format_error(err);

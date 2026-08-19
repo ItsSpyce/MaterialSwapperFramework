@@ -3,6 +3,7 @@
 #include <emhash/hash_table5.hpp>
 
 #include "Cache/FilenameIDCache.h"
+#include "Conditions/ConditionParser.h"
 #include "Filesystem.h"
 #include "Helpers/JsonHelpers.h"
 #include "Helpers/RaceMenuHelpers.h"
@@ -17,7 +18,7 @@ namespace fs = std::filesystem;
 using RE::BSVisit::BSVisitControl;
 
 std::mutex g_lock;
-emhash5::HashMap<RE::FormID, emhash8::HashMap<string, MATC>> g_configs;
+emhash5::HashMap<RE::FormID, emhash8::HashMap<std::string, MATC>> g_configs;
 emhash5::HashMap<FileID, MATR> g_records;
 constexpr size_t MAX_SEARCH_HISTORY = 16;
 constexpr auto DEFAULT_MATERIAL_KEY = "__DEFAULT__";
@@ -52,7 +53,7 @@ result<MATR> ReadMaterialJson(const std::string& filename) noexcept {
   if (const auto it = g_records.find(record.id); it != g_records.end()) {
     return Ok{it->second};
   }
-  if (auto err = glz::read_file_jsonc(json, filename, string{})) {
+  if (auto err = glz::read_file_jsonc(json, filename, std::string{})) {
     auto cleanedErr = glz::format_error(err);
     return Err{"Failed to read material file {}: {}", filename, cleanedErr};
   }
@@ -134,7 +135,7 @@ result<MATR> ReadMaterialJson(const std::string& filename) noexcept {
   return Ok{record};
 }
 
-fn ReadConfigJson(const std::string& filename) -> result<std::vector<MATC>> {
+result<std::vector<MATC>> ReadConfigJson(const std::string& filename) {
   std::vector<MATC> matConfigs;
   if (filename[0] == '_') return Ok{matConfigs};
   std::unordered_map<std::string, std::vector<glz::generic>> json;
@@ -175,13 +176,22 @@ fn ReadConfigJson(const std::string& filename) -> result<std::vector<MATC>> {
                 MaterialFunctionID::GetIsCurrentWeather;
           }
 
-          materialCondition.params = {
-              condition["value"].as<std::vector<MaterialConditionParam>>()};
+          materialCondition.param =
+              condition["value"]
+                  .as<std::vector<MaterialConditionParam>>()
+                  .front();
+          item.conditions.emplace_back(materialCondition);
         } else {
-          // TODO: fix this, glaze doesn't like it
-          //materialCondition = condition.as<MaterialCondition>();
+          auto cond =
+              Conditions::ParseFromString(condition.get_string().c_str());
+          if (cond.is_ok()) {
+            item.conditions.emplace_back(materialCondition);
+          } else {
+            _ERROR("Failed to parse condition string for {} {}: {}", item.form,
+                   item.name, cond.error());
+            continue;
+          }
         }
-        item.conditions.emplace_back(materialCondition);
       }
       const auto applies =
           JsonHelpers::MaybeGet<std::unordered_map<std::string, std::string>>(
@@ -203,7 +213,7 @@ fn ReadConfigJson(const std::string& filename) -> result<std::vector<MATC>> {
 }
 
 RE::NiNode* CloneWithMaterial(RE::NiNode* node, RE::FormID formId,
-                              const vector<string>& materials) {
+                              const std::vector<std::string>& materials) {
   auto* clone = (RE::NiNode*)node->Clone();
   RE::BSVisit::TraverseScenegraphObjects(clone, [&](RE::NiAVObject* geometry) {
     auto* ts = geometry->AsTriShape();
@@ -250,18 +260,19 @@ void UpdateInventoryItemMaterials(const UniqueID uid,
                                   RE::InventoryEntryData* data,
                                   const std::vector<MATC>& materials) {
   ModState::GetSingleton()->SetMaterials(
-      uid, materials | views::transform([](auto& matc) { return matc.name; }) |
-               ranges::to<std::vector>());
+      uid, materials | std::views::transform([](auto& matc) {
+             return matc.name;
+           }) | std::ranges::to<std::vector>());
   Helpers::ResetDisplayName(data);
 
-  const auto name =
-      fmt::format("{} [{}]", data->GetDisplayName(),
-                  StringHelpers::Join(materials | views::filter([](auto& matc) {
-                                        return matc.modifyName;
-                                      }) | views::transform([](auto& matc) {
-                                        return matc.name;
-                                      }) | ranges::to<std::vector>(),
-                                      ", "));
+  const auto name = fmt::format(
+      "{} [{}]", data->GetDisplayName(),
+      StringHelpers::Join(materials | std::views::filter([](auto& matc) {
+                            return matc.modifyName;
+                          }) | std::views::transform([](auto& matc) {
+                            return matc.name;
+                          }) | std::ranges::to<std::vector>(),
+                          ", "));
   Helpers::SetItemDisplayName(data, name.c_str());
 }
 
@@ -328,7 +339,7 @@ void VisitMaterialFiles(const RE::FormID formID,
                         const Visitor<const MATC&>& visitor) {
   if (formID == NULL) return;
   FIND_IN(g_configs, it, formID) {
-    for (const auto& config : it->second | views::values) {
+    for (const auto& config : it->second | std::views::values) {
       if (const auto control = visitor(config);
           control == BSVisitControl::kStop)
         return;
@@ -366,7 +377,7 @@ void ResetAll() { SCOPE_GUARD(g_lock); }
 void VisitApplicableMaterials(const RE::TESForm* form,
                               const Visitor<const MATC&>& visitor) {
   FIND_IN(g_configs, it, form->GetFormID()) {
-    for (const auto& matc : it->second | views::values) {
+    for (const auto& matc : it->second | std::views::values) {
       if (visitor(matc) == BSVisitControl::kStop) {
         return;
       }

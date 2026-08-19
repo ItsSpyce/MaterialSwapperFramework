@@ -57,7 +57,7 @@ uint32_t ReadJsonObject(SKSE::SerializationInterface* iface, T& out) {
     _ERROR("Failed to read JSON size from serialization interface");
     return 0;
   }
-  string json(jsonLength, '\0');
+  std::string json(jsonLength, '\0');
   if (!iface->ReadRecordData(json.data(), jsonLength)) {
     _ERROR("Failed to read JSON data from serialization interface");
     return 0;
@@ -73,7 +73,7 @@ uint32_t ReadJsonObject(SKSE::SerializationInterface* iface, T& out) {
 
 template <typename T>
 bool WriteJsonObject(SKSE::SerializationInterface* iface, const T& obj) {
-  string json{};
+  std::string json{};
   if (auto err = glz::write_json(obj, json)) {
     auto cleanedError = glz::format_error(err);
     _ERROR("Failed to write object to JSON: {}", cleanedError);

@@ -136,7 +136,7 @@ inline InventoryItem* GetInventoryItemWithUID(RE::TESObjectREFR* refr,
 }
 
 template <typename T>
-T* GetOrCreateType(RE::ExtraDataList* list, function<T*()> configure) {
+T* GetOrCreateType(RE::ExtraDataList* list, std::function<T*()> configure) {
   if (!list) {
     return nullptr;
   }

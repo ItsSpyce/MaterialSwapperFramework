@@ -7,7 +7,7 @@
 class Options : public Singleton<Options> {
   using level = spdlog::level::level_enum;
   struct OptionsInternal {
-    string logLevel = "info";
+    std::string logLevel = "info";
     i32 applyMaterialTickDelay = 1;
     u32 openWindowKey = 68;
     u32 maxCoroutineOpsPerFrame = 500;
@@ -22,7 +22,7 @@ class Options : public Singleton<Options> {
                 "MaterialSwapperFramework.json";
     OptionsInternal options;
     if (auto err = glz::read_file_json<glz::opts{.comments = true}>(
-            options, path.string(), string{})) {
+            options, path.string(), std::string{})) {
       auto cleanedErr = glz::format_error(err);
       stl::report_and_fail(cleanedErr);
     }
@@ -45,7 +45,7 @@ class Options : public Singleton<Options> {
     }
     applyMaterialTickDelay_ = options.applyMaterialTickDelay;
     openWindowKey_ = options.openWindowKey;
-    maxCoroutineOpsPerFrame_ = max(10u, options.maxCoroutineOpsPerFrame);
+    maxCoroutineOpsPerFrame_ = std::max(10u, options.maxCoroutineOpsPerFrame);
     enableCaching_ = options.enableCaching;
   }
 

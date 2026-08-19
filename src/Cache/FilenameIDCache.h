@@ -13,7 +13,7 @@ public:
   /// </summary>
   /// <param name="filename"></param>
   /// <returns>TextureID</returns>
-  _NODISCARD static fn GetFilenameID(const std::string& filename) -> FileID {
+  _NODISCARD static FileID GetFilenameID(const std::string& filename) {
     // but spyce, why would we immediately increment! 0 is valid!
     // no it's not. 0 = NULL.
 
@@ -27,7 +27,7 @@ public:
     return result;
   }
 
-  _NODISCARD static fn GetPathForID(const FileID id) -> result<std::string> {
+  _NODISCARD static result<std::string> GetPathForID(const FileID id) {
     if (id == NULL) return Err{"Received NULL for file ID"};
     SCOPE_GUARD(lock_);
     FIND_IN(fileIDs_, it, id) {
@@ -36,7 +36,7 @@ public:
     return Err{"Failed to find file ID {}", id};
   }
 
-  static fn Clear() {
+  static void Clear() {
     SCOPE_GUARD(lock_);
     fileIDs_.clear();
     filenames_.clear();

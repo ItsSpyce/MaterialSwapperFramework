@@ -76,9 +76,7 @@
 #define LIKELY(_X)
 #define UNLIKELY(_X)
 #endif
-#define ENUMI(_V) 1 << _V
-
-// lord help me for I have sinned
-#define fn auto
+#define ENUMI(_V) 1ULL << _V
 
 #define SCOPE_GUARD(_LOCK) std::scoped_lock<std::mutex> guard(_LOCK)
+

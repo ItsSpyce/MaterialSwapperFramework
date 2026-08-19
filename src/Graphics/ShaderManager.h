@@ -57,7 +57,7 @@ class ShaderManager : public Singleton<ShaderManager> {
     bool usedFallbackFormat{false};
   };
 
-  static bool HasHlslExtension(string_view shaderName) {
+  static bool HasHlslExtension(std::string_view shaderName) {
     return shaderName.ends_with(".hlsl");
   }
 
@@ -89,7 +89,7 @@ class ShaderManager : public Singleton<ShaderManager> {
                              ID3D11ShaderResourceView* inResourceView,
                              const char* maskPath,
                              DirectX::XMFLOAT4 paintColor, UINT blendMode,
-                             string_view cacheKey,
+                             std::string_view cacheKey,
                              ID3D11ShaderResourceView** out) {
     RETURN_IF_FALSE(in || inResourceView)
     RETURN_IF_FALSE(out)
@@ -158,7 +158,7 @@ class ShaderManager : public Singleton<ShaderManager> {
       const char* maskPath, DirectX::XMFLOAT4 redChannelColor,
       DirectX::XMFLOAT4 greenChannelColor,
       DirectX::XMFLOAT4 blueChannelColor, UINT blendMode,
-      string_view cacheKey, ID3D11ShaderResourceView** out) {
+      std::string_view cacheKey, ID3D11ShaderResourceView** out) {
     RETURN_IF_FALSE(in || inResourceView)
     RETURN_IF_FALSE(maskPath)
     RETURN_IF_FALSE(maskPath[0] != '\0')
@@ -279,11 +279,11 @@ class ShaderManager : public Singleton<ShaderManager> {
     return true;
   }
 
-  bool GetShaderBlob(string_view shaderName, string_view entryPoint,
-                     string_view target, Blob& out) {
+  bool GetShaderBlob(std::string_view shaderName, std::string_view entryPoint,
+                     std::string_view target, Blob& out) {
     RETURN_IF_FALSE(!HasHlslExtension(shaderName))
 
-    const string shaderKey(shaderName);
+    const std::string shaderKey(shaderName);
     if (const auto it = shaderBlobs_.find(shaderKey); it != shaderBlobs_.end()) {
       out = it->second;
       return true;
@@ -291,13 +291,13 @@ class ShaderManager : public Singleton<ShaderManager> {
 
     const auto shaderSourcePath =
         Filesystem::Join(Filesystem::MATERIAL_SHADER_DIR,
-                         string(shaderName) + ".hlsl");
+                         std::string(shaderName) + ".hlsl");
     const auto compiledShaderDir =
         Filesystem::Join(Filesystem::MATERIAL_SHADER_DIR, "compiled");
     const auto compiledShaderPath = Filesystem::Join(
-        compiledShaderDir, string(shaderName) + "." + string(target) + ".cso");
+        compiledShaderDir, std::string(shaderName) + "." + std::string(target) + ".cso");
 
-    error_code ec;
+    std::error_code ec;
     fs::create_directories(compiledShaderDir, ec);
     if (ec) {
       _WARN("Failed to create shader cache directory {}: {}",
@@ -306,7 +306,7 @@ class ShaderManager : public Singleton<ShaderManager> {
 
     if (fs::exists(compiledShaderPath, ec) && !ec) {
       bool shouldCompile = true;
-      if (error_code sourceEc; fs::exists(shaderSourcePath, sourceEc) && !sourceEc) {
+      if (std::error_code sourceEc; fs::exists(shaderSourcePath, sourceEc) && !sourceEc) {
         const auto compiledTime = fs::last_write_time(compiledShaderPath, ec);
         const auto sourceTime = fs::last_write_time(shaderSourcePath, sourceEc);
         shouldCompile = ec || sourceEc || compiledTime < sourceTime;
@@ -351,10 +351,10 @@ class ShaderManager : public Singleton<ShaderManager> {
     return true;
   }
 
-  bool GetComputeShader(string_view shaderName, ComputeShader& out) {
+  bool GetComputeShader(std::string_view shaderName, ComputeShader& out) {
     RETURN_IF_FALSE(!HasHlslExtension(shaderName))
 
-    const string shaderKey(shaderName);
+    const std::string shaderKey(shaderName);
     if (const auto it = computeShaders_.find(shaderKey); it != computeShaders_.end()) {
       out = it->second;
       return true;
@@ -370,7 +370,7 @@ class ShaderManager : public Singleton<ShaderManager> {
         shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), nullptr,
         &shader);
     if (FAILED(shaderHr)) {
-      _ERROR("Failed to create compute shader {}: {:08X}", string(shaderName),
+      _ERROR("Failed to create compute shader {}: {:08X}", std::string(shaderName),
              shaderHr);
       return false;
     }
@@ -380,20 +380,20 @@ class ShaderManager : public Singleton<ShaderManager> {
     return true;
   }
 
-  bool GetPixelShader(string_view shaderName, PixelShader& out) {
+  bool GetPixelShader(std::string_view shaderName, PixelShader& out) {
     UNUSED(shaderName);
     UNUSED(out);
     NOT_IMPLEMENTED
   }
 
-  bool GetVertexShader(string_view shaderName, VertexShader& out) {
+  bool GetVertexShader(std::string_view shaderName, VertexShader& out) {
     UNUSED(shaderName);
     UNUSED(out);
     NOT_IMPLEMENTED
   }
 
-  bool GetConstantBuffer(string_view shaderName, UINT byteWidth, Buffer& out) {
-    const string shaderKey(shaderName);
+  bool GetConstantBuffer(std::string_view shaderName, UINT byteWidth, Buffer& out) {
+    const std::string shaderKey(shaderName);
     if (const auto it = constantBuffers_.find(shaderKey); it != constantBuffers_.end()) {
       out = it->second;
       return true;
@@ -458,8 +458,8 @@ class ShaderManager : public Singleton<ShaderManager> {
     old.cs.Attach(previousShaderRaw);
 
     ID3D11ShaderResourceView* previousSrvsRaw[2]{};
-    context_->CSGetShaderResources(0, size(previousSrvsRaw), previousSrvsRaw);
-    for (size_t i = 0; i < size(previousSrvsRaw); ++i) {
+    context_->CSGetShaderResources(0, std::size(previousSrvsRaw), previousSrvsRaw);
+    for (size_t i = 0; i < std::size(previousSrvsRaw); ++i) {
       old.srv[i].Attach(previousSrvsRaw[i]);
     }
 
@@ -534,7 +534,7 @@ class ShaderManager : public Singleton<ShaderManager> {
     return true;
   }
 
-  bool TryLoadTextureFromCache(string_view cacheKey,
+  bool TryLoadTextureFromCache(std::string_view cacheKey,
                                ID3D11ShaderResourceView** out) const {
     if (cacheKey.empty()) {
       return false;
@@ -546,7 +546,7 @@ class ShaderManager : public Singleton<ShaderManager> {
     DirectX::TexMetadata metadata{};
     DirectX::ScratchImage cachedTexture;
     const auto cachePath = Filesystem::Join(Filesystem::MATERIAL_CACHE_DIR,
-                                            string(cacheKey) + ".dds");
+                                            std::string(cacheKey) + ".dds");
     const HRESULT loadHr = DirectX::LoadFromDDSFile(
         cachePath.wstring().c_str(), DirectX::DDS_FLAGS_NONE, &metadata,
         cachedTexture);
@@ -578,7 +578,7 @@ class ShaderManager : public Singleton<ShaderManager> {
     return true;
   }
 
-  void WriteTextureToCache(ID3D11Texture2D* texture, string_view cacheKey) const {
+  void WriteTextureToCache(ID3D11Texture2D* texture, std::string_view cacheKey) const {
     if (cacheKey.empty()) {
       return;
     }
@@ -589,7 +589,7 @@ class ShaderManager : public Singleton<ShaderManager> {
       return;
     }
 
-    error_code ec;
+    std::error_code ec;
     fs::create_directories(Filesystem::MATERIAL_CACHE_DIR, ec);
     if (ec) {
       _WARN("Failed to create cache directory {}: {}",
@@ -613,7 +613,7 @@ class ShaderManager : public Singleton<ShaderManager> {
     }
 
     const auto cachePath = Filesystem::Join(Filesystem::MATERIAL_CACHE_DIR,
-                                            string(cacheKey) + ".dds");
+                                            std::string(cacheKey) + ".dds");
     const HRESULT saveHr = DirectX::SaveToDDSFile(
         capturedTexture.GetImages(), capturedTexture.GetImageCount(),
         capturedTexture.GetMetadata(), DirectX::DDS_FLAGS_NONE,
@@ -698,10 +698,10 @@ class ShaderManager : public Singleton<ShaderManager> {
   Device device_;
   Context context_;
   SamplerState linearClampSampler_;
-  unordered_map<string, Blob> shaderBlobs_;
-  unordered_map<string, ComputeShader> computeShaders_;
-  unordered_map<string, PixelShader> pixelShaders_;
-  unordered_map<string, VertexShader> vertexShaders_;
-  unordered_map<string, Buffer> constantBuffers_;
+  std::unordered_map<std::string, Blob> shaderBlobs_;
+  std::unordered_map<std::string, ComputeShader> computeShaders_;
+  std::unordered_map<std::string, PixelShader> pixelShaders_;
+  std::unordered_map<std::string, VertexShader> vertexShaders_;
+  std::unordered_map<std::string, Buffer> constantBuffers_;
 };
 }  // namespace Graphics

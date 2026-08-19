@@ -9,7 +9,6 @@
 #include "Types.h"
 
 namespace {
-
 using ShaderFlag = RE::BSShaderProperty::EShaderPropertyFlag;
 using ShaderFlag8 = RE::BSShaderProperty::EShaderPropertyFlag8;
 using ShaderProperty = RE::BSLightingShaderProperty;

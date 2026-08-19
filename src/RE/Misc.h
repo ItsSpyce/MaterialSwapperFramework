@@ -21,7 +21,7 @@ static void GetTexture(const char* a_path, bool a_demand,
   return func(a_path, a_demand, a_out, a_4, a_5, a_6);
 }
 
-static bool LoadTexture(const string& name, NiPointer<NiSourceTexture>& out) {
+static bool LoadTexture(const std::string& name, NiPointer<NiSourceTexture>& out) {
   NiSourceTexturePtr newTexture;
   LoadTexture(name, newTexture);
   if (!newTexture) {

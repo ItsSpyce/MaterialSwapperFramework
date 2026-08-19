@@ -13,7 +13,7 @@ class RollingList {
 
   class iter {
   public:
-    using category = random_access_iterator_tag;
+    using category = std::random_access_iterator_tag;
     using dif_type = ptrdiff_t;
 
     iter() = default;
@@ -110,7 +110,7 @@ class RollingList {
 
   class const_iter {
   public:
-    using category = random_access_iterator_tag;
+    using category = std::random_access_iterator_tag;
     using dif_type = ptrdiff_t;
 
     const_iter() = default;
@@ -232,14 +232,14 @@ public:
 
   ref_type at(size_type index) {
     if (index >= size_) {
-      throw out_of_range("index out of range");
+      throw std::out_of_range("index out of range");
     }
     return (*this)[index];
   }
 
   const_ref_type at(size_type index) const {
     if (index >= size_) {
-      throw out_of_range("index out of range");
+      throw std::out_of_range("index out of range");
     }
     return (*this)[index];
   }
@@ -312,7 +312,7 @@ public:
   }
 
 private:
-  array<T, N> contents_;
+  std::array<T, N> contents_;
   size_type size_ = 0, position_ = 0;
 
   size_type physical_index(size_type index) const noexcept {

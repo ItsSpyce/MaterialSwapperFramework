@@ -163,7 +163,7 @@ class UIManager {
   static inline bool isShowing_;
   static inline bool drawCursor_;
   static inline std::mutex windowsLock_;
-  static inline array<Window*, 16> windows_;
+  static inline std::array<Window*, 16> windows_;
   static inline u8 windowsCount_;
   static inline u8 openWindowKey_;
   std::mutex inputLock_;
@@ -229,7 +229,7 @@ class UIManager {
     }
   }
 
-  void ForEachWindow(const function<void(Window*)>& func) {
+  void ForEachWindow(const std::function<void(Window*)>& func) {
     std::scoped_lock lock(windowsLock_);
     for (u8 i = 0; i < windowsCount_; ++i) {
       if (auto* window = windows_[i]) {

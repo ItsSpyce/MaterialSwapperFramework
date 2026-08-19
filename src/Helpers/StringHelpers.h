@@ -75,14 +75,14 @@ inline const char* GetSlotName(const RE::BIPED_OBJECTS::BIPED_OBJECT slot) {
   }
 }
 
-inline size_t GetPosForOneOf(const string& str, const char* chars) {
+inline size_t GetPosForOneOf(const std::string& str, const char* chars) {
   for (size_t i = 0; i < strlen(chars); ++i) {
     const auto c = chars[i];
-    if (auto pos = str.find(c); pos != string::npos) {
+    if (auto pos = str.find(c); pos != std::string::npos) {
       return pos;
     }
   }
-  return string::npos;
+  return std::string::npos;
 }
 
 constexpr u32 GetStringHash(const char* str, size_t size) noexcept {
@@ -107,7 +107,7 @@ inline std::string operator""_l(const char* str) noexcept {
   return ToLower(str);
 }
 
-inline const char* GetNonNull(const initializer_list<const char*> strings) {
+inline const char* GetNonNull(const std::initializer_list<const char*> strings) {
   for (auto& str : strings) {
     if (str != nullptr && strlen(str) > 0 && str[0] != '\0') return str;
   }

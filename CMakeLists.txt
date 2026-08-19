@@ -28,6 +28,8 @@ include(CPM)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
 SET(GLZ_USE_AVX2 ON)
+
+option(MSF_TESTS "Enable MaterialSwapperFramework tests" OFF)
 set(BUILD_TESTS OFF)
 
 if(MSVC)
@@ -76,13 +78,7 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third-party")
 file(GLOB_RECURSE THIRD_PARTY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/third-party/*.cpp")
 
-add_commonlibsse_plugin(${PROJECT_NAME}
-  SOURCES ${HEADERS} ${SOURCES} ${THIRD_PARTY_SOURCES}
-  MINIMUM_SKSE_VERSION 0.0.0.0
-)
-target_precompile_headers(${PROJECT_NAME} PRIVATE src/PCH.h)
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
-target_link_libraries(${PROJECT_NAME} PRIVATE
+set(DEPENDENCIES
   spdlog::spdlog
   imgui::imgui
   glaze::glaze
@@ -94,6 +90,33 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   matchit::matchit
   emhash::emhash
 )
+
+add_commonlibsse_plugin(${PROJECT_NAME}
+  SOURCES ${HEADERS} ${SOURCES} ${THIRD_PARTY_SOURCES}
+  MINIMUM_SKSE_VERSION 0.0.0.0
+)
+target_precompile_headers(${PROJECT_NAME} PRIVATE src/PCH.h)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${DEPENDENCIES})
+
+if(INCLUDE_TESTS)
+  find_package(Catch2 3 CONFIG REQUIRED)
+  include(CTest)
+  include(Catch)
+
+  file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS "test/*.cpp")
+
+  add_executable(tests ${TEST_SOURCES})
+  target_compile_definitions(tests PRIVATE INCLUDE_TESTS)
+  target_precompile_headers(tests PRIVATE src/PCH.h)
+  target_compile_features(tests PRIVATE cxx_std_23)
+  target_link_libraries(tests PRIVATE
+    CommonLibSSE::CommonLibSSE
+    ${DEPENDENCIES}
+    Catch2::Catch2WithMain
+  )
+  catch_discover_tests(tests)
+endif()
 
 if(DEFINED OUTPUT_FOLDER)
     set(DLL_FOLDER "${OUTPUT_FOLDER}/SKSE/Plugins")
