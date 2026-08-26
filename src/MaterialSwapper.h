@@ -30,6 +30,7 @@ void VisitAppliedArmorMaterials(RE::Actor* actor, RE::InventoryEntryData* data,
                                 const Visitor<MATC>& visitor);
 void VisitAppliedArmorMaterials(RE::Actor* actor, RE::BipedObjectSlot slot,
                                 const Visitor<MATC>& visitor);
+result<RE::NiNode*> RenderArmorMaterials(RE::Actor* actor, RE::BipedObjectSlot slot);
 
 // Weapons
 void ResetEquippedWeapons(RE::Actor* actor);

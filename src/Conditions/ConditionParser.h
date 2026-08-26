@@ -10,7 +10,7 @@ static result<MaterialCondition> ParseFromString(const char* str) {
   using OpCode = RE::CONDITION_ITEM_DATA::OpCode;
   // insert stupid fucking meme of "AST vs Regex" here
   static srell::regex CONDITION_REGEX{
-      R"(^(\w+)\s*(?:([A-Za-z0-9_$-]+)\s*([=!><]{1,2})\s*(.+))?$)"};
+      R"(^(\w+)\s*(?:([A-Za-z0-9_$-]+)?\s*([=!><]{1,2})\s*(.+))?$)"};
   static srell::cmatch MATCH;
   if (str[0] == '\0') return Err{"Condition string is empty"};
   if (srell::regex_search(str, MATCH, CONDITION_REGEX)) {
@@ -22,11 +22,11 @@ static result<MaterialCondition> ParseFromString(const char* str) {
       return Err{"Unknown condition function: {}", funcStr};
     }
     std::string variable;
-    OpCode op;
-    MaterialConditionParam param;
+    auto op = OpCode::kEqualTo;
+    MaterialConditionParam param = std::nullopt;
     variable = MATCH[2].str();
-    if (!variable.empty()) {
-      if (const auto opStr = MATCH[3].str(); opStr[0] == '!') {
+    if (const auto opStr = MATCH[3].str(); !opStr.empty()) {
+      if (opStr[0] == '!') {
         if (opStr.size() != 2) {
           return Err{"Unexpected end of op code. Expected '!='"};
         }
@@ -65,10 +65,8 @@ static result<MaterialCondition> ParseFromString(const char* str) {
             "got '{}'",
             opStr};
       }
-      const auto paramStr = MATCH[4].str();
-      if (paramStr.size() == 0) {
-        return Err{"Empty condition param"};
-      }
+    }
+    if (const auto paramStr = MATCH[4].str(); !paramStr.empty()) {
       if (paramStr[0] == '\'') {
         // string
         if (paramStr.back() != '\'') {
@@ -105,9 +103,6 @@ static result<MaterialCondition> ParseFromString(const char* str) {
           }
         }
       }
-    } else {
-      op = OpCode::kEqualTo;
-      param = std::nullopt;
     }
 
     return Ok{MaterialCondition{
@@ -115,4 +110,4 @@ static result<MaterialCondition> ParseFromString(const char* str) {
   }
   return Err{"Invalid condition string"};
 }
-}
+}  // namespace Conditions

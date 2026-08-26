@@ -3,7 +3,6 @@
 #include "UI/Pages/DebuggerPage.h"
 #include "UI/Pages/MaterialsPage.h"
 #include "UI/Pages/SettingsPage.h"
-#include "UI/Router.h"
 
 namespace UI {
 // V3 theme v1.1
@@ -212,10 +211,9 @@ static void ConfigureStyles() {
 }
 
 void MainWindow::Initialize() {
-  auto* router = Router::GetSingleton();
-  router->UseRoute("/", [] { Pages::MaterialsPage({}); });
-  router->UseRoute("/settings", [] { Pages::SettingsPage({}); });
-  router->UseRoute("/debugger", [] {
+  router_->UseRoute("/", [] { Pages::MaterialsPage({}); });
+  router_->UseRoute("/settings", [] { Pages::SettingsPage({}); });
+  router_->UseRoute("/debugger", [] {
     Pages::DebuggerPage({.actor = RE::PlayerCharacter::GetSingleton()});
   });
   SetWindowSize({1500, 600});
@@ -224,17 +222,17 @@ void MainWindow::Initialize() {
 void MainWindow::Render() const {
   ConfigureStyles();
   ImGui_Window("MaterialSwapperFramework", NULL, ImGuiWindowFlags_NoTitleBar) {
-    ImGui::Text(Translations::windowTitle());
+    ImGui::Text("$MSF_WindowTitle"_tr);
     ImGui::Separator();
     ImGui_Child("Sidenav", ImVec2{150, 0}) {
-      ImGui::Text(Translations::navigation());
+      ImGui::Text("$MSF_Navigation"_tr);
       ImGui::Separator();
-      Link({.path = "/", .label = Translations::homeTitle()});
-      Link({.path = "/settings", .label = Translations::settingsTitle()});
-      Link({.path = "/debugger", .label = Translations::debuggerTitle()});
+      Link(router_, {.path = "/", .label = "$MSF_HomeSidenav"_tr});
+      Link(router_, {.path = "/settings", .label = "$MSF_SettingsSidenav"_tr});
+      Link(router_, {.path = "/debugger", .label = "$MSF_DebuggerSidenav"_tr});
     }
     ImGui::SameLine();
-    ImGui_Child("Content") { Router::GetSingleton()->operator()(); }
+    ImGui_Child("Content") { router_->Render(); }
   }
 }
 

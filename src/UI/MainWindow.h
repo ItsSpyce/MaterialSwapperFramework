@@ -1,8 +1,10 @@
 #pragma once
 
+#include "Router.h"
 #include "UIManager.h"
 
 namespace UI {
+
 class MainWindow final : public Window, public Singleton<MainWindow> {
  public:
   void Initialize() override;
@@ -13,5 +15,6 @@ class MainWindow final : public Window, public Singleton<MainWindow> {
 
 private:
   RE::NiPointer<RE::NiAVObject> preview_;
+  Router* router_ = new Router();
 };
 }  // namespace UI

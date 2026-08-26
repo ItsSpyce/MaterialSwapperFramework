@@ -1,0 +1,21 @@
+<rml>
+  <head>
+    <title>$MSF_WindowTitle</title>
+    <style>
+      body {
+        font-family: "Noto Sans Display";
+        font-size: 16px;
+        padding: 20px;
+        background-color: #333;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>$MSF_WindowTitle</h1>
+    <p>Hello world</p>
+    <p>$MSF_NotImplemented</p>
+  </body>
+</rml>

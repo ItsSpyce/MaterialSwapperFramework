@@ -32,6 +32,15 @@ TEST_CASE("Validates string condition", "[ParseFromString]") {
   REQUIRE(std::get<std::string>(condition.value().param.value()) == "some string");
 }
 
+TEST_CASE("Permits self-targeted or global variables", "[ParseFromString]") {
+  const auto condition = Conditions::ParseFromString("GetIsCurrentWeather == 0");
+  REQUIRE(condition.is_ok());
+  REQUIRE(condition.value().function == MaterialFunctionID::GetIsCurrentWeather);
+  REQUIRE(condition.value().variable.empty());
+  REQUIRE(condition.value().op == OpCode::kEqualTo);
+  REQUIRE(std::get<int>(condition.value().param.value()) == 0);
+}
+
 TEST_CASE("Errors when condition function not found", "[ParseFromString]") {
   const auto condition = Conditions::ParseFromString("NotValid MyQuest == 100");
   REQUIRE(condition.is_err());

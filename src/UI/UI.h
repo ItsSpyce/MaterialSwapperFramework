@@ -5,6 +5,8 @@
 #include "ImGui/UIManagerImpl.h"
 #elif UI_USE_PRISMA
 #include "Prisma/UIManagerImpl.h"
+#elif UI_USE_RMLUI
+#include "RmlUI/UIManagerImpl.h"
 #endif
 #include "UI/Hooks.h"
 #include "MainWindow.h"
@@ -19,9 +21,7 @@ inline UIManager* GetCurrentUI() {
 }
 
 inline void Install() {
-#ifdef UI_USE_IMGUI
   Hooks::Install();
-#endif
 }
 
 inline void Initialize() {

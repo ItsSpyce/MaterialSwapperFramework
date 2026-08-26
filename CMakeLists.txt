@@ -15,13 +15,43 @@ if(DEFINED ENV{SKYRIM_MODS_FOLDER} AND IS_DIRECTORY "$ENV{SKYRIM_MODS_FOLDER}")
     set(OUTPUT_FOLDER "$ENV{SKYRIM_MODS_FOLDER}/${PROJECT_NAME}")
 endif()
 
+set(DEPENDENCIES
+  spdlog::spdlog
+  glaze::glaze
+  Microsoft::DirectXTex
+  Microsoft::DirectXTK
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed/x64-windows-static-md/lib/detours.lib>
+  sigc-3.0
+  magic_enum
+  matchit::matchit
+  emhash::emhash
+  imgui::imgui
+  RmlUi::RmlUi
+  efsw
+)
+
 add_compile_definitions(SKYRIM)
 add_compile_definitions(SKYRIM_AE)
-add_compile_definitions(UI_USE_IMGUI) # for ImGui
-#add_compile_definitions(UI_USE_PRISMA) # for Prisma
 set(CommonLibPath "${CMAKE_LIB_DIR}/commonlibsse-ng")
 set(CommonLibName "CommonLibSSE")
 set(GameVersion "Skyrim")
+option(UI_USE_IMGUI "Use ImGui for UI" OFF)
+option(UI_USE_RMLUI "Use RmlUI for UI" OFF)
+
+
+if(UI_USE_IMGUI)
+  add_compile_definitions(UI_USE_IMGUI)
+elseif(UI_USE_RMLUI)
+  add_compile_definitions(UI_USE_RMLUI)
+  #set(RMLUI_BACKEND_PATH "${rmlui_DIR}/Backends")
+  #message(STATUS "RMLUI_BACKEND_PATH: ${RMLUI_BACKEND_PATH}")
+  #add_library(RmlUI_backend_Win32_DX11 INTERFACE)
+  #target_sources(RmlUI_backend_Win32_DX11 INTERFACE
+  #  "${RMLUI_BACKEND_PATH}/RmlUI_Platform_Win32.cpp"
+  #  "${RMLUI_BACKEND_PATH}/RmlUI_Renderer_DX11.cpp"
+  #)
+  #target_include_directories(RmlUI_backend_Win32_DX11 INTERFACE "${RMLUI_BACKEND_PATH}")
+endif()
 
 include(CommonLibSSE)
 include(CPM)
@@ -45,7 +75,6 @@ if(MSVC)
 endif()
 
 find_package(spdlog CONFIG REQUIRED)
-find_package(imgui CONFIG REQUIRED)
 find_path(SRELL_INCLUDE_DIRS "srell.hpp")
 find_package(directxtex CONFIG REQUIRED)
 find_package(directxtk CONFIG REQUIRED)
@@ -53,16 +82,22 @@ find_package(binary_io CONFIG REQUIRED)
 find_package(detours)
 find_package(sigc++-3 CONFIG REQUIRED)
 find_package(matchit CONFIG REQUIRED)
+find_package(rmlui CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 
 add_subdirectory(${CommonLibPath} EXCLUDE_FROM_ALL)
 
-CPMAddPackage("gh:stephenberry/glaze@8.0.0")
+CPMAddPackage("gh:stephenberry/glaze@8.1.0")
 CPMAddPackage(
   NAME task-thread-pool
   URL https://github.com/alugowski/task-thread-pool/archive/refs/heads/main.tar.gz
 )
 CPMAddPackage("gh:neargye/magic_enum@0.9.8")
 CPMAddPackage("gh:ktprime/emhash@1.2.0")
+CPMAddPackage(
+  NAME efsw
+  URL https://github.com/SpartanJ/efsw/archive/refs/heads/master.zip
+)
 
 file(GLOB SHADER_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.hlsl")
 set(GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -78,18 +113,6 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third-party")
 file(GLOB_RECURSE THIRD_PARTY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/third-party/*.cpp")
 
-set(DEPENDENCIES
-  spdlog::spdlog
-  imgui::imgui
-  glaze::glaze
-  Microsoft::DirectXTex
-  Microsoft::DirectXTK
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed/x64-windows-static-md/lib/detours.lib>
-  sigc-3.0
-  magic_enum
-  matchit::matchit
-  emhash::emhash
-)
 
 add_commonlibsse_plugin(${PROJECT_NAME}
   SOURCES ${HEADERS} ${SOURCES} ${THIRD_PARTY_SOURCES}

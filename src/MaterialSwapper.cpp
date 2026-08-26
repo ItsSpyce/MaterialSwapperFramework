@@ -20,28 +20,8 @@ using RE::BSVisit::BSVisitControl;
 std::mutex g_lock;
 emhash5::HashMap<RE::FormID, emhash8::HashMap<std::string, MATC>> g_configs;
 emhash5::HashMap<FileID, MATR> g_records;
-constexpr size_t MAX_SEARCH_HISTORY = 16;
 constexpr auto DEFAULT_MATERIAL_KEY = "__DEFAULT__";
 
-template <typename T>
-std::optional<T> RecursivelyFind(
-    const MATR& record,
-    const std::function<std::optional<T>(const MATR& record)>& find) {
-  std::vector<FileID> history(MAX_SEARCH_HISTORY);
-  std::optional<T> result = std::nullopt;
-  auto current = record.id;
-  while (!result.has_value() && current != 0 &&
-         // prevent an overflow, probably a better way to do it but fuck it
-         !std::ranges::contains(history, current)) {
-    // creating a ref here is not supported. per emhash docs, there's no
-    // reference stability guarantee so we can NOT make edits to a record, lest
-    // a rehash occur
-    const auto& parent = g_records[record.inherits];
-    result = find(parent);
-    current = parent.id;
-  }
-  return result;
-}
 
 result<MATR> ReadMaterialJson(const std::string& filename) noexcept {
   glz::generic json;
@@ -50,6 +30,7 @@ result<MATR> ReadMaterialJson(const std::string& filename) noexcept {
     return Err{"Material file does not exist: {}", filename};
   }
   record.id = FilenameIDCache::GetFilenameID(filename);
+  if (record.id == NULL) return Err{"Failed to reserve material cache file"};
   if (const auto it = g_records.find(record.id); it != g_records.end()) {
     return Ok{it->second};
   }
@@ -93,54 +74,18 @@ result<MATR> ReadMaterialJson(const std::string& filename) noexcept {
     SET_TEXTURE(colorBlendMap);
 #undef SET_TEXTURE
   }
-  record.uv = uv{1, 1, 0, 0};
-  if (json.contains("uvOffset")) {
-    record.uv->set_offset(json["uvOffset"].get_array()[0].get_number(),
-                          json["uvOffset"].get_array()[1].get_number());
-  }
-  if (json.contains("uvScale")) {
-    record.uv->set_scale(json["uvScale"].get_array()[2].get_number(),
-                         json["uvScale"].get_array()[3].get_number());
-  }
-  record.clamp = JsonHelpers::MaybeGet<u8>(json, "clamp");
-  record.transparency =
-      JsonHelpers::MaybeGet<half>(json, "transparency")
-          .transform([](const float v) { return static_cast<u8>(v * 255); });
-  record.sourceBlendMode = JsonHelpers::MaybeGet<u8>(json, "sourceBlendMode");
-  record.destinationBlendMode =
-      JsonHelpers::MaybeGet<u8>(json, "destinationBlendMode");
-  record.alphaTestThreshold =
-      JsonHelpers::MaybeGet<float>(json, "alphaTestThreshold")
-          .transform([](const float v) { return static_cast<u8>(v * 255); });
-  record.maskWrites = JsonHelpers::MaybeGet<u8>(json, "maskWrites");
-  record.refractionPower = JsonHelpers::MaybeGet<half>(json, "refractionPower");
-  record.envMapMaskScale = JsonHelpers::MaybeGet<half>(json, "envMapMaskScale");
-  record.rimPower = JsonHelpers::MaybeGet<half>(json, "rimPower");
-  record.backLightPower = JsonHelpers::MaybeGet<half>(json, "backLightPower");
-  record.specularPower = JsonHelpers::MaybeGet<half>(json, "specularPower");
-  record.subsurfaceLightingRolloff =
-      JsonHelpers::MaybeGet<half>(json, "subsurfaceLightingRolloff");
-  record.specularColor = JsonHelpers::MaybeGetArray<3>(json, "specularColor");
-  record.specularMult = JsonHelpers::MaybeGet<half>(json, "specularMult");
-  record.smoothness = JsonHelpers::MaybeGet<half>(json, "smoothness");
-  record.fresnelPower = JsonHelpers::MaybeGet<half>(json, "fresnelPower");
-  record.emitColor = JsonHelpers::MaybeGetArray<3>(json, "emitColor");
-  record.emitMult = JsonHelpers::MaybeGet<half>(json, "emitMult");
-  record.colorBlendMode =
-      JsonHelpers::MaybeGet<u8>(json, "colorBlendMode")
-          .transform([](const u8 v) { return (ColorBlendMode)v; });
-  record.colorChannelR = JsonHelpers::MaybeGetArray<4>(json, "colorChannelR");
-  record.colorChannelG = JsonHelpers::MaybeGetArray<4>(json, "colorChannelG");
-  record.colorChannelB = JsonHelpers::MaybeGetArray<4>(json, "colorChannelB");
+  // TODO:
   return Ok{record};
 }
 
 result<std::vector<MATC>> ReadConfigJson(const std::string& filename) {
   std::vector<MATC> matConfigs;
   if (filename[0] == '_') return Ok{matConfigs};
-  std::unordered_map<std::string, std::vector<glz::generic>> json;
-  _DEBUG("Reading material config {}", filename);
-  if (auto err = glz::read_file_json(json, filename, std::string{})) {
+  std::unordered_map<std::string, std::vector<JsonMATCRecord>> json;
+  _INFO("Reading material config {}", filename);
+  if (auto err = glz::read_file_json<glz::opts{.error_on_unknown_keys = false,
+                                               .error_on_missing_keys = false}>(
+          json, filename, std::string{})) {
     return Err{"Failed to read material config file at {}:\r\n{}", filename,
                glz::format_error(err)};
   }
@@ -152,58 +97,39 @@ result<std::vector<MATC>> ReadConfigJson(const std::string& filename) {
         _ERROR("Unknown form ID {}", item.form);
         continue;
       }
-      item.name = config["name"].get_string();
-      item.isHidden =
-          JsonHelpers::MaybeGet<bool>(config, "isHidden").value_or(false);
-      item.modifyName =
-          JsonHelpers::MaybeGet<bool>(config, "modifyName").value_or(true);
-      item.layer = JsonHelpers::MaybeGet<u8>(config, "layer").value_or(0);
-      item.gender = JsonHelpers::MaybeGet<u8>(config, "gender")
-                        .value_or(RE::SEXES::kTotal);
-      auto conditions =
-          JsonHelpers::MaybeGet<std::vector<glz::generic>>(config, "conditions")
-              .value_or({});
-      for (const auto& condition : conditions) {
+      item.name = config.name;
+      item.gender = config.gender;
+      item.isHidden = config.isHidden;
+      item.layer = config.layer;
+      _DEBUG("Parsing MATC {} for form ID {}", item.name, formID);
+      for (const auto& condition : config.conditions) {
         MaterialCondition materialCondition;
-        // legacy condition handling
-        if (condition.contains("type")) {
-          _DEBUG("Converting legacy condition");
-          const auto type = condition["type"].get_string();
-          if (type == "dayOfWeek") {
-            materialCondition.function = MaterialFunctionID::GetDayOfWeek;
-          } else if (type == "weather") {
-            materialCondition.function =
-                MaterialFunctionID::GetIsCurrentWeather;
-          }
-
-          materialCondition.param =
-              condition["value"]
-                  .as<std::vector<MaterialConditionParam>>()
-                  .front();
-          item.conditions.emplace_back(materialCondition);
+        if (condition.type == "dayOfWeek") {
+          materialCondition.function = MaterialFunctionID::GetDayOfWeek;
+        } else if (condition.type == "weather") {
+          materialCondition.function = MaterialFunctionID::GetIsCurrentWeather;
+        }
+        materialCondition.param = condition.value;
+        materialCondition.op = RE::CONDITION_ITEM_DATA::OpCode::kEqualTo;
+      }
+      for (const auto& filter : config.filters) {
+        auto cond = Conditions::ParseFromString(filter.c_str());
+        if (cond.is_ok()) {
+          item.conditions.emplace_back(cond.value());
         } else {
-          auto cond =
-              Conditions::ParseFromString(condition.get_string().c_str());
-          if (cond.is_ok()) {
-            item.conditions.emplace_back(materialCondition);
-          } else {
-            _ERROR("Failed to parse condition string for {} {}: {}", item.form,
-                   item.name, cond.error());
-            continue;
-          }
+          _ERROR("Failed to parse condition string for {} {}: {}", item.form,
+                 item.name, cond.error());
         }
       }
-      const auto applies =
-          JsonHelpers::MaybeGet<std::unordered_map<std::string, std::string>>(
-              config, "applies")
-              .value_or({});
-      for (const auto& [shape, matrFile] : applies) {
-        const auto path =
-            StringHelpers::AssertPrefix(matrFile, "Data\\materials\\");
+      for (const auto& [shape, matrFile] : config.applies) {
+        const auto path = std::string{"Data/"} +
+                          StringHelpers::AssertPrefix(matrFile, "materials/");
         if (const auto matr = ReadMaterialJson(path)) {
           const auto filenameID = FilenameIDCache::GetFilenameID(path);
           g_records[filenameID] = matr.value();
           item.applies.emplace_back(std::tuple(shape, filenameID));
+        } else {
+          _ERROR("Failed to read material JSON: {}", matr.error());
         }
       }
       matConfigs.emplace_back(item);
@@ -214,8 +140,7 @@ result<std::vector<MATC>> ReadConfigJson(const std::string& filename) {
 
 RE::NiNode* CloneWithMaterial(RE::NiNode* node, RE::FormID formId,
                               const std::vector<std::string>& materials) {
-  auto* clone = (RE::NiNode*)node->Clone();
-  RE::BSVisit::TraverseScenegraphObjects(clone, [&](RE::NiAVObject* geometry) {
+  RE::BSVisit::TraverseScenegraphObjects(node, [&](RE::NiAVObject* geometry) {
     auto* ts = geometry->AsTriShape();
     if (!ts) return BSVisitControl::kContinue;
     const auto& material = ts->GetGeometryRuntimeData().shaderProperty;
@@ -253,7 +178,7 @@ RE::NiNode* CloneWithMaterial(RE::NiNode* node, RE::FormID formId,
     }
     return BSVisitControl::kContinue;
   });
-  return clone;
+  return node;
 }
 
 void UpdateInventoryItemMaterials(const UniqueID uid,
@@ -323,6 +248,11 @@ void ReadMaterialConfigurations() {
     for (auto it = fs::begin(modRdi); it != fs::end(modRdi); ++it) {
       if (!it->is_regular_file() || it->path().extension() != ".json") continue;
       const auto configs = ReadConfigJson(it->path().string());
+      if (configs.is_err()) {
+        _ERROR("Failed to read material config at {}: {}", it->path().string(),
+               configs.error());
+        continue;
+      }
       for (const auto& config : configs.value()) {
         FIND_IN(g_configs, it, config.form) {
           it->second[config.name] = config;
@@ -435,6 +365,47 @@ void LoadArmorMaterials(RE::Actor* actor, RE::BipedObjectSlot slot) {
   SCOPE_GUARD(g_lock);
 }
 
+result<RE::NiNode*> RenderArmorMaterials(RE::Actor* actor,
+                                         RE::BipedObjectSlot slot) {
+  if (!actor) return Err{"Actor is null"};
+  auto* equipped = actor->GetWornArmor(slot);
+  auto uid = Helpers::GetUniqueID(actor, slot, false);
+  if (!equipped || uid == NULL) return Ok{nullptr};
+  SCOPE_GUARD(g_lock);
+  RE::NiPointer<RE::NiNode> nif;
+  if (const auto err =
+          RE::BSModelDB::Demand(equipped->GetArmorAddon(actor->GetRace())
+                                    ->bipedModels[RE::SEXES::kFemale]
+                                    .GetModel(),
+                                nif, RE::BSModelDB::DBTraits::ArgsType{});
+      err != RE::BSResource::ErrorCode::kNone) {
+    switch (err) {
+      case RE::BSResource::ErrorCode::kBusy:
+        return Err{"Failed to load NIF: DEVICE_BUSY"};
+      case RE::BSResource::ErrorCode::kFileError:
+        return Err{"Failed to load NIF: FILE_ERROR"};
+      case RE::BSResource::ErrorCode::kInvalidParam:
+        return Err{"Failed to load NIF: INVALID_PARAM"};
+      case RE::BSResource::ErrorCode::kInvalidPath:
+        return Err{"Failed to load NIF: INVALID_PATH"};
+      case RE::BSResource::ErrorCode::kInvalidType:
+        return Err{"Failed to load NIF: INVALID_TYPE"};
+      case RE::BSResource::ErrorCode::kMemoryError:
+        return Err{"Failed to load NIF: MEMORY_ERROR"};
+      case RE::BSResource::ErrorCode::kNotExist:
+        return Err{"Failed to load NIF: NOT_EXIST"};
+      case RE::BSResource::ErrorCode::kUnsupported:
+        return Err{"Failed to load NIF: UNSUPPORTED"};
+      case RE::BSResource::ErrorCode::kNone:
+        break;
+    }
+  }
+  auto materials = ModState::GetSingleton()->GetMaterials(uid);
+  auto* node = CloneWithMaterial(nif.get(), equipped->GetFormID(), materials);
+  if (!node) return Err{"Failed to clone NiNode"};
+  return Ok{node};
+}
+
 void VisitAppliedArmorMaterials(RE::Actor* actor, RE::InventoryEntryData* data,
                                 const Visitor<const MATC&>& visitor) {
   const auto uid = Helpers::GetUniqueID(actor, data, false);
@@ -463,11 +434,11 @@ void VisitMaterialFiles(RE::FormID formID, const Visitor<MATC>& visitor) {
 
 void VisitApplicableMaterials(const RE::TESForm* form,
                               const Visitor<MATC>& visitor) {
-  if (const auto* refr = form->AsReference()) {
-    VisitMaterialFiles(refr->GetRawFormID(), visitor);
-  } else {
-    VisitMaterialFiles(form->GetFormID(), visitor);
+  if (!form) {
+    // can happen if iterating over a non-equipped item?
+    return;
   }
+  VisitMaterialFiles(form->GetFormID(), visitor);
 }
 
 void VisitAppliedArmorMaterials(RE::Actor* actor, RE::BipedObjectSlot slot,

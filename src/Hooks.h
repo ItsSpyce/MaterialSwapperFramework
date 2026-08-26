@@ -30,18 +30,21 @@ struct BipedAnim_AttachSkinnedObject {
                                           RE::NiNode* skeleton, i32 bipedSlot,
                                           bool flag, bool a6,
                                           RE::BSFaceGenModel* textureOverride) {
-    auto* result =
-        func(_this, loaded, skeleton, bipedSlot, flag, a6, textureOverride);
     auto* actor =
         skeleton ? skyrim_cast<RE::Actor*>(skeleton->GetUserData()) : nullptr;
-    if (actor) {
-      MaterialSwapper::VisitAppliedArmorMaterials(
-          actor, (RE::BipedObjectSlot)bipedSlot, [&result](const MATC& matc) {
-            MeshBuilder::ApplyMaterialToMesh(result->AsNode(), matc);
-            return RE::BSVisit::BSVisitControl::kContinue;
-          });
-    }
-    return result;
+    return MaterialSwapper::RenderArmorMaterials(actor,
+                                                 (RE::BipedObjectSlot)bipedSlot)
+        .match<RE::NiAVObject*>(
+            [&](RE::NiNode* modified) {
+              if (modified) return (RE::NiAVObject*)modified;
+              return func(_this, loaded, skeleton, bipedSlot, flag, a6,
+                          textureOverride);
+            },
+            [&](const std::string& err) {
+              _ERROR("Failed to modify skinned object: {}", err);
+              return func(_this, loaded, skeleton, bipedSlot, flag, a6,
+                          textureOverride);
+            });
   }
 
   static inline REL::Relocation<decltype(&thunk)> func{
@@ -52,8 +55,6 @@ struct Actor_CreateWeaponNodes {
   static void __fastcall thunk(RE::TESObjectREFR* actor, RE::TESForm* weap,
                                bool left) {
     func(actor, weap, left);
-    // Factories::WeaponFactory::GetSingleton()->ApplySavedMaterial(actor->As<RE::Actor>(),
-    // left);
   }
 
   static inline REL::Relocation<decltype(&thunk)> func{
@@ -70,7 +71,7 @@ struct InventoryUtils_WornHasKeyword {
         MaterialSwapper::VisitAppliedArmorMaterials(
             actor, entryData, [&](const MATC& config) {
               if (std::ranges::contains(config.keywords,
-                                   EditorIDCache::GetEditorID(keyword))) {
+                                        EditorIDCache::GetEditorID(keyword))) {
                 didFind = true;
                 return RE::BSVisit::BSVisitControl::kStop;
               }

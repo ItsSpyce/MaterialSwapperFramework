@@ -37,45 +37,6 @@ inline u32 GetFormID(const std::string& name) {
   return NULL;  // return NULL if not found
 }
 
-inline void VisitInventoryItems(RE::TESObjectREFR* refr,
-                                const Visitor<InventoryItem>& visitor) {
-  for (auto inventoryData = refr->GetInventory();
-       auto& [obj, data] : inventoryData) {
-    if (!obj || !data.second) {
-      continue;  // Skip if object or data is null
-    }
-    auto uid = GetUniqueID(refr, data.second.get(), false);
-    visitor(InventoryItem{.object = obj,
-             .count = data.first,
-             .data = std::move(data.second),
-             .uid = uid});
-  }
-}
-
-inline void VisitEquippedInventoryItems(
-    RE::Actor* actor,
-    const Visitor<RE::BipedObjectSlot, RE::InventoryEntryData*>& visitor) {
-  REX::EnumSet<RE::BipedObjectSlot> processed;
-  for (uint8_t i = 1; i < 32; ++i) {
-    const auto slot = static_cast<RE::BipedObjectSlot>(1 << i);
-    if (processed.any(slot)) continue;
-    processed.set(true, slot);
-    auto inventoryData = actor->GetInventory([slot](RE::TESBoundObject& obj) {
-      if (!obj.IsArmor()) return false;
-      auto* armo = obj.As<RE::TESObjectARMO>();
-      return armo->GetSlotMask().any(slot);
-    });
-    for (auto& [obj, data] : inventoryData) {
-      if (!obj || !data.second) continue;
-      if (visitor(slot, data.second.get()) ==
-          RE::BSVisit::BSVisitControl::kStop) {
-        return;
-      }
-      break;
-    }
-  }
-}
-
 inline InventoryItem* GetInventoryItemWithFormID(RE::TESObjectREFR* refr,
                                                  RE::FormID formID) {
   auto inventoryData = refr->GetInventory(
@@ -92,29 +53,6 @@ inline InventoryItem* GetInventoryItemWithFormID(RE::TESObjectREFR* refr,
                              .uid = uid};
   }
   return nullptr;
-}
-
-inline void VisitEquippedInventoryItems(
-    RE::TESObjectREFR* refr, const Visitor<InventoryItem*>& visitor) {
-  for (auto inventoryData = refr->GetInventory();
-       auto& [obj, data] : inventoryData) {
-    if (!obj || !data.second || !data.second->extraLists) {
-      continue;  // Skip if object or data is null
-    }
-    auto uid = GetUniqueID(refr, data.second.get(), false);
-    for (const auto* extraList : *data.second->extraLists) {
-      if (!extraList) {
-        continue;
-      }
-      if (extraList->HasType(RE::ExtraDataType::kWorn)) {
-        auto* inventoryItem = new InventoryItem{.object = obj,
-                                                .count = data.first,
-                                                .data = std::move(data.second),
-                                                .uid = uid};
-        visitor(inventoryItem);
-      }
-    }
-  }
 }
 
 inline InventoryItem* GetInventoryItemWithUID(RE::TESObjectREFR* refr,

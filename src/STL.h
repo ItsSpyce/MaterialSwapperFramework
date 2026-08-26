@@ -152,14 +152,12 @@ struct fmt::formatter<Err> : formatter<string_view> {
 
 template <typename T>
 class result {
+  std::variant<T, std::string> data_;
+
  public:
   using value_type = T;
   using error_type = std::string;
 
- private:
-  std::variant<T, std::string> data_;
-
- public:
   template <typename U,
             std::enable_if_t<std::is_constructible_v<T, U&&>, int> = 0>
   result(Ok<U>&& ok)
@@ -187,6 +185,14 @@ class result {
   const std::string& error() const& { return std::get<1>(data_); }
 
   std::string&& error() && { return std::get<1>(std::move(data_)); }
+
+  template <typename _Match>
+  auto match(const std::function<_Match(T)>& ok, const std::function<_Match(const std::string&)>& err) {
+    if (is_ok()) {
+      return ok(value());
+    }
+    return err(error());
+  }
 };
 
 #ifdef FMT_VERSION

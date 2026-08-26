@@ -24,13 +24,13 @@ void Save::LoadCallback(SKSE::SerializationInterface* iface) {
       V1::SaveData oldData;
       oldData.Read(iface, type, length);
       if (!data.Migrate(oldData)) {
-        RE::DebugMessageBox(Translations::msfSaveDataIncompatibleWarning());
+        RE::DebugMessageBox("$MSF_SaveDataIncompatibleWarning"_tr);
       }
     } else if (version == V2::SaveData::VERSION) {
       V2::SaveData oldData;
       oldData.Read(iface, type, length);
       if (!data.Migrate(oldData)) {
-        RE::DebugMessageBox(Translations::msfSaveDataIncompatibleWarning());
+        RE::DebugMessageBox("$MSF_SaveDataIncompatibleWarning"_tr);
       }
     } else if (version == V3::SaveData::VERSION) {
       data.Read(iface, type, length);

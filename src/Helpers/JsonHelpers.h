@@ -5,6 +5,12 @@ namespace JsonHelpers {
 template <typename T>
 std::optional<T> MaybeGet(const glz::generic& json, std::string_view str) {
   if (json.contains(str)) {
+    if constexpr (std::is_same_v<T, bool>) {
+      return json[str].get_boolean();
+    }
+    if constexpr (std::is_same_v<T, std::string>) {
+      return json[str].get_string();
+    }
     return json[str].as<T>();
   }
   return std::nullopt;

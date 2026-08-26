@@ -8,9 +8,9 @@ struct RouterProps {
   // Define properties for the Router if needed
 };
 
-class Router : public Singleton<Router> {
+class Router {
  public:
-  void operator()() {
+  void Render() {
     for (const auto& [route, render] : routes_) {
       if (currentPath_ == route) {
         render();
@@ -40,8 +40,7 @@ struct LinkProps {
   const char* label;
 };
 
-inline void Link(const LinkProps& props) {
-  auto router = Router::GetSingleton();
+inline void Link(Router* router, const LinkProps& props) {
   // Create a link that navigates to the specified path when clicked
   ImGui_Button(props.label, ImVec2{ImGui::GetContentRegionAvail().x, 0}) {
     router->NavigateTo(props.path);

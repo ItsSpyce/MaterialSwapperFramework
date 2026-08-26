@@ -7,7 +7,11 @@
 #include "Types.h"
 
 class FilenameIDCache {
-public:
+  static inline std::mutex lock_;
+  static inline emhash5::HashMap<FileID, std::string> fileIDs_;
+  static inline emhash8::HashMap<std::string, FileID> filenames_;
+
+ public:
   /// <summary>
   ///   Saves the path into the cache.
   /// </summary>
@@ -16,23 +20,15 @@ public:
   _NODISCARD static FileID GetFilenameID(const std::string& filename) {
     // but spyce, why would we immediately increment! 0 is valid!
     // no it's not. 0 = NULL.
-
-    // TODO: persist the filename to Filesystem:FILE_ID_BIN
-    const FileID expected = lastID_ + 1;
-    const auto result = filenames_.set_get(filename, expected);
-    if (result == expected) {
-      fileIDs_.emplace(result, filename);
-      lastID_ = expected;
-    }
-    return result;
+    auto [fileID, didEmplace] =
+        filenames_.try_emplace(filename, filenames_.size() + 1);
+    return fileID->second;
   }
 
   _NODISCARD static result<std::string> GetPathForID(const FileID id) {
     if (id == NULL) return Err{"Received NULL for file ID"};
     SCOPE_GUARD(lock_);
-    FIND_IN(fileIDs_, it, id) {
-      return Ok{it->second};
-    }
+    FIND_IN(fileIDs_, it, id) { return Ok{it->second}; }
     return Err{"Failed to find file ID {}", id};
   }
 
@@ -40,11 +36,5 @@ public:
     SCOPE_GUARD(lock_);
     fileIDs_.clear();
     filenames_.clear();
-    lastID_ = 0;
   }
-private:
-  static inline FileID lastID_ = 0;
-  static inline std::mutex lock_;
-  static inline emhash5::HashMap<FileID, std::string> fileIDs_;
-  static inline emhash8::HashMap<std::string, FileID> filenames_;
 };

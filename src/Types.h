@@ -238,7 +238,24 @@ struct MATR {
   opt<std::array<u8, 4>> colorChannelG;
   opt<std::array<u8, 4>> colorChannelB;
 
-  bool operator==(const MATR& rhs) const { return rhs.id == id; }
+  bool operator==(const MATR& rhs) const { return id != NULL && rhs.id == id; }
+  bool operator!=(const MATR& rhs) const { return id != NULL && rhs.id != id; }
+};
+
+struct LegacyMaterialCondition {
+  std::string type;
+  f32 value;
+};
+
+struct JsonMATCRecord {
+  std::string name;
+  u8 layer = 0;
+  u8 gender = RE::SEXES::kTotal;
+  bool isHidden = false;
+  bool modifyName = true;
+  std::unordered_map<std::string, std::string> applies{};
+  std::vector<LegacyMaterialCondition> conditions{}; // LEGACY
+  std::vector<std::string> filters;
 };
 
 struct MATC {

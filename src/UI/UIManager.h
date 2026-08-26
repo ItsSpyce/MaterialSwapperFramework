@@ -229,11 +229,11 @@ class UIManager {
     }
   }
 
-  void ForEachWindow(const std::function<void(Window*)>& func) {
-    std::scoped_lock lock(windowsLock_);
+  static void ForEachWindow(const std::function<void(Window*)>& func) {
+    SCOPE_GUARD(windowsLock_);
     for (u8 i = 0; i < windowsCount_; ++i) {
       if (auto* window = windows_[i]) {
-        func(windows_[i]);
+        func(window);
       }
     }
   }

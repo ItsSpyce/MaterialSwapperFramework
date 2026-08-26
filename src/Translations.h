@@ -1,28 +1,27 @@
 #pragma once
 
-#include "TranslationEX.h"
+#include <glaze/glaze.hpp>
 
-struct Translations {
-  TRANSLATION_KEY(windowTitle);
-  TRANSLATION_KEY(showWindowInstructions);
-  TRANSLATION_KEY(showWindowKeybind);
-  TRANSLATION_KEY(navigation);
-  TRANSLATION_KEY(homeTitle);
-  TRANSLATION_KEY(settingsTitle);
-  TRANSLATION_KEY(debuggerTitle);
+namespace Translations {
+inline result<std::string> GetTranslation(const char* key) {
+  static std::unordered_map<std::string, std::string> translations;
+  if (translations.empty()) {
+    if (const auto err = glz::read_file_jsonc(translations, "Data/interface/MSF_english.json", std::string{})) {
+      return Err{"Failed to read translations file: {}", glz::format_error(err)};
+    }
+  }
+  FIND_IN(translations, it, key) {
+    return Ok{it->second};
+  }
+  return Err{"Translation key not found for {}", key};
+}
+}
 
-  TRANSLATION_KEY(homePageTitle);
-  TRANSLATION_KEY(homePageSubtitle);
-
-  TRANSLATION_KEY(materialsPageTitle);
-  TRANSLATION_KEY(materialsPageSubtitle);
-  TRANSLATION_KEY(materialsPageResetButton);
-  TRANSLATION_KEY(materialsPageArmorsTabHeader);
-  TRANSLATION_KEY(materialsPageWeaponsTabHeader);
-  TRANSLATION_KEY(materialsPagePresetsTabHeader);
-  TRANSLATION_KEY(materialsPageActorsTabHeader);
-
-  TRANSLATION_KEY(msfSaveDataIncompatibleWarning);
-  TRANSLATION_KEY(notImplemented);
-  TRANSLATION_KEY(notificationsTitle);
-};
+static const char* operator""_tr(const char* str, std::size_t) {
+  if (auto translation = Translations::GetTranslation(str)) {
+    return translation.value().c_str();
+  } else {
+    _ERROR("Failed to get translation: {}", translation.error());
+    return str;
+  }
+}
