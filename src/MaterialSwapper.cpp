@@ -223,6 +223,7 @@ void ReadMaterialConfigurations() {
   // this is faster than for-each over everything apparently?
   const auto globalRdi = Filesystem::EnumerateMaterialConfigDir();
   FOR_IN_DIR(globalRdi, fileIt) {
+    if (fileIt->path().extension() != ".json") continue;
     const auto configs = ReadConfigJson(fileIt->path().string());
     if (!configs) {
       _ERROR("Failed to read config file {}: {}", fileIt->path().string(),

@@ -13,7 +13,7 @@
 #include "SKEE64.h"
 #include "Save/Save.h"
 #include "Translations.h"
-#include "RmlUi/RmlUi_Backend_SKSE.h"
+#include "UI.h"
 
 SKEE64::IInterfaceMap* g_skee64InterfaceMap;
 
@@ -77,7 +77,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse) {
 
   SKSE::GetMessagingInterface()->RegisterListener(HandleMessage);
   _INFO("Registering UI hooks...");
-  RmlUi::Backend::SKSE::Install();
+  UI::Install();
   _INFO("Installing hooks...");
   Hooks::Install();
   _INFO("Registering Papyrus functions...");

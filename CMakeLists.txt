@@ -23,11 +23,9 @@ set(DEPENDENCIES
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed/x64-windows-static-md/lib/detours.lib>
   sigc-3.0
   magic_enum
-  matchit::matchit
   emhash::emhash
-  imgui::imgui
-  RmlUi::RmlUi
   efsw
+  RmlUi::RmlUi
 )
 
 add_compile_definitions(SKYRIM)
@@ -74,6 +72,7 @@ if(MSVC)
     endif()
 endif()
 
+find_package(pkgconf)
 find_package(spdlog CONFIG REQUIRED)
 find_path(SRELL_INCLUDE_DIRS "srell.hpp")
 find_package(directxtex CONFIG REQUIRED)
@@ -81,9 +80,7 @@ find_package(directxtk CONFIG REQUIRED)
 find_package(binary_io CONFIG REQUIRED)
 find_package(detours)
 find_package(sigc++-3 CONFIG REQUIRED)
-find_package(matchit CONFIG REQUIRED)
 find_package(rmlui CONFIG REQUIRED)
-find_package(imgui CONFIG REQUIRED)
 
 add_subdirectory(${CommonLibPath} EXCLUDE_FROM_ALL)
 
