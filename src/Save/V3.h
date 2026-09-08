@@ -1,7 +1,7 @@
 #pragma once
 
 #include <emhash/hash_table8.hpp>
-#include <srell.hpp>
+#include <srell/srell.hpp>
 
 #include "Types.h"
 #include "Core/StringReader.h"

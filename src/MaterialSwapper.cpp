@@ -6,10 +6,10 @@
 #include "Conditions/ConditionParser.h"
 #include "Filesystem.h"
 #include "Helpers/JsonHelpers.h"
-#include "Helpers/RaceMenuHelpers.h"
 #include "Helpers/SkyrimHelpers.h"
 #include "MeshBuilder.h"
 #include "ModState.h"
+#include "UniqueIDStore.h"
 
 #undef GetObject
 
@@ -202,7 +202,7 @@ void UpdateInventoryItemMaterials(const UniqueID uid,
 }
 
 void VisitMaterials(const UniqueID uid, const Visitor<MATC>& visitor) {
-  auto formID = Helpers::GetFormIDForUniqueID(uid);
+  auto formID = UniqueIDStore::GetFormIDForUniqueID(uid);
   FIND_IN(g_configs, it, formID) {
     for (const auto& materials = ModState::GetSingleton()->GetMaterials(uid);
          const auto& material : materials) {
@@ -324,7 +324,7 @@ void ResetEquippedArmors(RE::Actor* actor) {
 
 void ResetEquippedArmor(RE::Actor* actor, const RE::BipedObjectSlot slot) {
   auto* equipped = actor->GetWornArmor(slot);
-  auto uid = Helpers::GetUniqueID(actor, slot, false);
+  auto uid = UniqueIDStore::GetUniqueID(actor, slot, false);
   if (!equipped || uid == NULL) return;
   SCOPE_GUARD(g_lock);
 }
@@ -332,7 +332,7 @@ void ResetEquippedArmor(RE::Actor* actor, const RE::BipedObjectSlot slot) {
 void ApplyArmorMaterial(RE::Actor* actor, const RE::BipedObjectSlot slot,
                         const MATC& config) {
   auto* equipped = actor->GetWornArmor(slot);
-  auto uid = Helpers::GetUniqueID(actor, slot, true);
+  auto uid = UniqueIDStore::GetUniqueID(actor, slot, true);
   if (!equipped || uid == NULL) return;
   SCOPE_GUARD(g_lock);
   std::vector currentMaterials{config};
@@ -361,7 +361,7 @@ void LoadArmorMaterials(RE::Actor* actor) {
 
 void LoadArmorMaterials(RE::Actor* actor, RE::BipedObjectSlot slot) {
   auto* equipped = actor->GetWornArmor(slot);
-  auto uid = Helpers::GetUniqueID(actor, slot, false);
+  auto uid = UniqueIDStore::GetUniqueID(actor, slot, false);
   if (!equipped || uid == NULL) return;
   SCOPE_GUARD(g_lock);
 }
@@ -370,7 +370,7 @@ result<RE::NiNode*> RenderArmorMaterials(RE::Actor* actor,
                                          RE::BipedObjectSlot slot) {
   if (!actor) return Err{"Actor is null"};
   auto* equipped = actor->GetWornArmor(slot);
-  auto uid = Helpers::GetUniqueID(actor, slot, false);
+  auto uid = UniqueIDStore::GetUniqueID(actor, slot, false);
   if (!equipped || uid == NULL) return Ok{nullptr};
   SCOPE_GUARD(g_lock);
   RE::NiPointer<RE::NiNode> nif;
@@ -409,7 +409,7 @@ result<RE::NiNode*> RenderArmorMaterials(RE::Actor* actor,
 
 void VisitAppliedArmorMaterials(RE::Actor* actor, RE::InventoryEntryData* data,
                                 const Visitor<const MATC&>& visitor) {
-  const auto uid = Helpers::GetUniqueID(actor, data, false);
+  const auto uid = UniqueIDStore::GetUniqueID(actor, data, false);
   if (uid == NULL) return;
   SCOPE_GUARD(g_lock);
   ModState::GetSingleton()->VisitMaterials(uid, [data,
@@ -444,7 +444,7 @@ void VisitApplicableMaterials(const RE::TESForm* form,
 
 void VisitAppliedArmorMaterials(RE::Actor* actor, RE::BipedObjectSlot slot,
                                 const Visitor<MATC>& visitor) {
-  auto uid = Helpers::GetUniqueID(actor, slot, false);
+  auto uid = UniqueIDStore::GetUniqueID(actor, slot, false);
   if (uid == NULL) {
     return;
   }
@@ -453,7 +453,7 @@ void VisitAppliedArmorMaterials(RE::Actor* actor, RE::BipedObjectSlot slot,
 
 void VisitAppliedArmorMaterials(RE::Actor* actor, RE::InventoryEntryData* data,
                                 const Visitor<MATC>& visitor) {
-  const auto uid = Helpers::GetUniqueID(actor, data, false);
+  const auto uid = UniqueIDStore::GetUniqueID(actor, data, false);
   if (uid == NULL) {
     return;
   }
@@ -463,7 +463,7 @@ void VisitAppliedArmorMaterials(RE::Actor* actor, RE::InventoryEntryData* data,
 void VisitAppliedWeaponMaterials(RE::Actor* actor, bool left,
                                  const Visitor<MATC>& visitor) {
   const auto* data = actor->GetEquippedEntryData(left);
-  const auto uid = Helpers::GetUniqueID(actor, data, false);
+  const auto uid = UniqueIDStore::GetUniqueID(actor, data, false);
   if (uid == NULL) {
     return;
   }

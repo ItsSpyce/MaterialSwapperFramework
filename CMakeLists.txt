@@ -74,7 +74,6 @@ endif()
 
 find_package(pkgconf)
 find_package(spdlog CONFIG REQUIRED)
-find_path(SRELL_INCLUDE_DIRS "srell.hpp")
 find_package(directxtex CONFIG REQUIRED)
 find_package(directxtk CONFIG REQUIRED)
 find_package(binary_io CONFIG REQUIRED)
@@ -103,7 +102,6 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateShaderNames.cmake")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/src")
 include_directories("${GENERATED_INCLUDE_DIR}")
-include_directories("${SRELL_INCLUDE_DIRS}")
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "src/*.h")
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 # third-party

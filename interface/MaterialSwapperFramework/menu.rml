@@ -14,8 +14,6 @@
     </style>
   </head>
   <body>
-    <h1>$MSF_WindowTitle</h1>
-    <p>Hello world</p>
-    <p>$MSF_NotImplemented</p>
+    
   </body>
 </rml>

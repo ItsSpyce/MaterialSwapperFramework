@@ -13,9 +13,10 @@
 #include "SKEE64.h"
 #include "Save/Save.h"
 #include "Translations.h"
-#include "UI.h"
+#include "UI/UI.h"
 
 SKEE64::IInterfaceMap* g_skee64InterfaceMap;
+UI::Window* g_ui;
 
 static void InitializeLogging() {
   static bool initialized = false;
@@ -51,7 +52,6 @@ static void InitializeLogging() {
 
 static void HandleMessage(SKSE::MessagingInterface::Message* msg) {
   if (msg->type == SKSE::MessagingInterface::kDataLoaded) {
-    // CoroutineManager::GetSingleton()->Initialize();
     _INFO("Querying RaceMenu...");
     if (!SKEE64Instance::GetSingleton()->Initialize()) {
       stl::report_and_fail(
@@ -66,6 +66,13 @@ static void HandleMessage(SKSE::MessagingInterface::Message* msg) {
       _INFO("CommunityShaders detected, enabling compatibility mode");
       ModState::GetSingleton()->SetCSInstalled(true);
     }
+    _INFO("Setting up UI...");
+    g_ui = UI::NewWindow("Material Swapper Framework",
+                         "Data/interface/MaterialSwapperFramework/menu.rml",
+                         UI::WindowOpts{.size = Rml::Vector2f{500, 500},
+                                        .pos = Rml::Vector2f{0, 0},
+                                        .flags = UI::WindowFlags_ShowTitlebar});
+
     ModState::GetSingleton()->SetReady(true);
   }
 }

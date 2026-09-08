@@ -187,7 +187,8 @@ class result {
   std::string&& error() && { return std::get<1>(std::move(data_)); }
 
   template <typename _Match>
-  auto match(const std::function<_Match(T)>& ok, const std::function<_Match(const std::string&)>& err) {
+  auto match(const std::function<_Match(T)>& ok,
+             const std::function<_Match(const std::string&)>& err) {
     if (is_ok()) {
       return ok(value());
     }
@@ -207,3 +208,41 @@ struct fmt::formatter<result<T>> : formatter<string_view> {
   }
 };
 #endif
+
+// maybe a fun little thing... I like how C# does it
+template <typename... Args>
+class event {
+  using Func = std::function<void(Args...)>;
+
+ public:
+  event() = default;
+
+  void append(const Func& func) const { functions_.emplace_back(func); }
+
+  void remove(const Func& func) const { functions_.erase(func); }
+
+  void operator()(Args&&... args) const {
+    for (const auto& func : functions_) {
+      func((std::move<Args>(args...))...);
+    }
+  }
+
+  void operator+=(const Func& func) const {
+    append(func);
+  }
+
+  void operator+=(const Func& func) {
+    append(func);
+  }
+
+  void operator-=(const Func& func) const {
+    remove(func);
+  }
+
+  void operator-=(const Func& func) {
+    remove(func);
+  }
+
+ private:
+  std::vector<Func> functions_;
+};
